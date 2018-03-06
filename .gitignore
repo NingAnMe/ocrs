@@ -102,5 +102,3 @@ ENV/
 .mypy_cache/
 
 .idea
-publicmodels
-publicmodels/
