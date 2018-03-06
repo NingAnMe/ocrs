@@ -1,0 +1,85 @@
+输入 14 164 3 4492
+
+
+
+obc 458
+
+2013年之后
+1: dn_new = dn_ev * slope_ev + intercept_ev  【# 使用原文件 dn_ev 计算新的 dn_new】
+2: slope_old = dsl**2 * k2_old + dsl * k1_old + k0_old  【# k0, k1, k2 是原文件 RSB_Cal_Cor_Coeff 储存的】
+3: dn_new = dn_new / slope_old + dn_sv
+4: slope_new = dsl**2 * k2_new + dsl * k1_new + k0_new  【# k0, k1, k2 是新给的】
+5: arof = ((dn_new - SV_2000) * slope_new) * 100 【# 四舍五入取整】
+
+
+dn_new = 4492 * 0.01 + 0.0
+
+dn_sv = 64
+
+dsl = 2249
+k0_old = 0.0223
+k1_old = -6.59E-7
+k2_old = 5.35E-10
+
+
+k0_new = 2.000E-02
+k1_new = 1.989E-07
+k2_new = 0
+
+
+slope_old = dsl**2 * k2_old + dsl * k1_old + k0_old
+
+dn_new = dn_new / slope_old + dn_sv
+
+slope_new = dsl**2 * k2_new + dsl * k1_new + k0_new
+
+arof = ((dn_new - dn_sv) * slope_new) * 100
+
+
+
+
+
+
+
+输入 1 1999 7 171  -41
+
+输出         -41
+
+2013年之后
+1: dn_new = dn_ev * slope_ev + intercept_ev  【# 使用原文件 dn_ev 计算新的 dn_new】
+2: slope_old = dsl**2 * k2_old + dsl * k1_old + k0_old  【# k0, k1, k2 是原文件 RSB_Cal_Cor_Coeff 储存的】
+3: dn_new = dn_new / slope_old + dn_sv
+4: slope_new = dsl**2 * k2_new + dsl * k1_new + k0_new  【# k0, k1, k2 是新给的】
+5: arof = ((dn_new - SV_2000) * slope_new) * 100 【# 四舍五入取整】
+
+dn_ev = 171
+
+dn_sv = 1027
+
+dsl = 2249
+
+slope_ev = 0.01
+
+intercept_ev = 0.0
+
+SV_2000 = 1137
+
+
+k0_old = 0.0156
+k1_old = 1.09E-6
+k2_old = 3.37E-10
+
+
+k0_new = 1.655E-02
+k1_new = 3.777E-07
+k2_new = 0
+
+dn_new = dn_ev * slope_ev + intercept_ev
+
+slope_old = dsl**2 * k2_old + dsl * k1_old + k0_old
+
+dn_new1 = dn_new / slope_old + dn_sv
+
+slope_new = dsl**2 * k2_new + dsl * k1_new + k0_new
+
+arof = ((dn_new1 - SV_2000) * slope_new) * 100
