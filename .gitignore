@@ -8,6 +8,7 @@ cookie.txt
 *.so
 
 # Distribution / packaging
+publicmodels/
 .Python
 env/
 build/
