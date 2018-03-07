@@ -27,7 +27,7 @@ def main(date_range):
     ######################### 初始化 ###########################
 
     # 记录初始化时间
-    logging.info(u'开始初始化：ocrs_fy3_mersi_calibration')
+    logging.info(u'开始初始化：ocrs_fy3_mersi_calibration %s' % date_range)
 
     # 程序运行文件目录路径
     main_dir_path, main_file = os.path.split(os.path.realpath(__file__))
