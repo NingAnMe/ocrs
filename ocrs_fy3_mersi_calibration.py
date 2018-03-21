@@ -449,7 +449,7 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000
                 pm.pm_h5py.copy_attrs_h5py(solar_azimuth_m1000, solar_azimuth_out)
                 pm.pm_h5py.copy_attrs_h5py(sensor_zenith_m1000, sensor_zenith_out)
                 pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000, sensor_azimuth_out)
-                
+
                 # 复制文件属性
                 pm.pm_h5py.copy_attrs_h5py(m1000, out_file)
 
