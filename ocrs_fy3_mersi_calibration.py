@@ -378,7 +378,7 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000
                                         data=coeffs,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
-                out_file.create_dataset(u'LandSeaMask', dtype='f4',
+                out_file.create_dataset(u'LandSeaMask', dtype='i1   ',
                                         data=land_sea_mask_m1000,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
@@ -390,19 +390,19 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000
                                         data=longitude_m1000,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
-                out_file.create_dataset(u'SolarZenith', dtype='f4',
+                out_file.create_dataset(u'SolarZenith', dtype='i2',
                                         data=solar_zenith_m1000,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
-                out_file.create_dataset(u'SolarAzimuth', dtype='f4',
+                out_file.create_dataset(u'SolarAzimuth', dtype='i2',
                                         data=solar_azimuth_m1000,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
-                out_file.create_dataset(u'SensorZenith', dtype='f4',
+                out_file.create_dataset(u'SensorZenith', dtype='i2',
                                         data=sensor_zenith_m1000,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
-                out_file.create_dataset(u'SensorAzimuth', dtype='f4',
+                out_file.create_dataset(u'SensorAzimuth', dtype='i2',
                                         data=sensor_azimuth_m1000,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
@@ -423,7 +423,7 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000
                 sensor_zenith_out = out_file.get(u'SensorZenith')
                 sensor_azimuth_out = out_file.get(u'SensorAzimuth')
 
-                # 复制每个表原来的属性
+                # 复制原来每个 dataset 的属性
                 pm.pm_h5py.copy_attrs_h5py(ev_1km_refsb_m1000, ev_1km_refsb_out)
                 pm.pm_h5py.copy_attrs_h5py(ev_250_aggr_m1000, ev_250_aggr_out)
                 pm.pm_h5py.copy_attrs_h5py(sv_1km_obc, sv_1km_out)
@@ -441,7 +441,7 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000
                                                                'Reflective Solar Bands (1-4, 6-20) '
                     rsb_cal_cor_coeff_out.attrs['units'] = 'NO'
                     rsb_cal_cor_coeff_out.attrs['valid_range'] = [0.0, 1.0]
-                
+
                 pm.pm_h5py.copy_attrs_h5py(land_sea_mask_m1000, land_sea_mask_out)
                 pm.pm_h5py.copy_attrs_h5py(latitude_m1000, latitude_out)
                 pm.pm_h5py.copy_attrs_h5py(longitude_m1000, longitude_out)
@@ -449,6 +449,9 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000
                 pm.pm_h5py.copy_attrs_h5py(solar_azimuth_m1000, solar_azimuth_out)
                 pm.pm_h5py.copy_attrs_h5py(sensor_zenith_m1000, sensor_zenith_out)
                 pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000, sensor_azimuth_out)
+                
+                # 复制文件属性
+                pm.pm_h5py.copy_attrs_h5py(m1000, out_file)
 
                 # 添加文件属性
                 out_file.attrs['dsl'] = dsl
