@@ -62,7 +62,8 @@ def sv_dataset_extract(dataset, probe_count, probe_id):
     # 计算 avg 和 std
     avg_std_list = pm.pm_calculate.rolling_calculate_avg_std(dataset_ext, 10)
     # 过滤有效值
-    dataset_valid = pm.pm_calculate.filter_valid_value(dataset_ext, avg_std_list, 2)
+    dataset_valid = pm.pm_calculate.filter_valid_value(dataset_ext,
+                                                       avg_std_list, 2)
     # 计算均值
     dataset_avg = pm.pm_calculate.calculate_avg(dataset_valid)
     dataset_avg = np.array(dataset_avg).reshape(len(dataset_avg), 1)

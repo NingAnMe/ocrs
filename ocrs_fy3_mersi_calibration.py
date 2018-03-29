@@ -20,7 +20,9 @@ import publicmodels as pm
 from publicmodels.pm_time import time_this, time_block
 from ocrs_sv_extract import sv_extract
 
-logging.basicConfig(filename='ocrs.log', format='%(levelname)s::%(asctime)s::%(message)s', level=logging.INFO)
+logging.basicConfig(filename='ocrs.log',
+                    format='%(levelname)s::%(asctime)s::%(message)s',
+                    level=logging.INFO)
 
 
 def main(date_range):
@@ -48,7 +50,6 @@ def main(date_range):
     PROBE_M1000 = config['CALIBRATION']['PROBE']['PROBE_M1000']
     LAUNCH_DATE = config['CALIBRATION']['LAUNCH_DATE']['FY3B']
 
-
     # 获取开始日期和结束日期
     start_date, end_date = pm.pm_time.get_date_range(date_range)
 
@@ -61,17 +62,25 @@ def main(date_range):
     logging.info(u'开始获取文件列表')
 
     # 获取时间范围内的目录列表
-    tem_dir_list_obc = pm.pm_file.filter_dir_by_date_range(IN_PATH_OBC, start_date, end_date)
-    tem_dir_list_1000m = pm.pm_file.filter_dir_by_date_range(IN_PATH_1000M, start_date, end_date)
+    tem_dir_list_obc = pm.pm_file.filter_dir_by_date_range(IN_PATH_OBC,
+                                                           start_date,
+                                                           end_date)
+    tem_dir_list_1000m = pm.pm_file.filter_dir_by_date_range(IN_PATH_1000M,
+                                                             start_date,
+                                                             end_date)
 
     dir_list_obc = []
     for dir_path in tem_dir_list_obc:
-        dirs = pm.pm_file.filter_dir_by_date_range(dir_path, start_date, end_date)
+        dirs = pm.pm_file.filter_dir_by_date_range(dir_path,
+                                                   start_date,
+                                                   end_date)
         dir_list_obc.extend(dirs)
 
     dir_list_1000m = []
     for dir_path in tem_dir_list_1000m:
-        dirs = pm.pm_file.filter_dir_by_date_range(dir_path, start_date, end_date)
+        dirs = pm.pm_file.filter_dir_by_date_range(dir_path,
+                                                   start_date,
+                                                   end_date)
         dir_list_1000m.extend(dirs)
 
     # 获取时间范围内的文件列表
@@ -129,22 +138,26 @@ def main(date_range):
             coefficient = f.get('RSB_Cal_Cor_Coeff')
         if coefficient is None:
             # 2013 年之前
-            EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl)
+            EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_before(
+                m1000, sv_1000m, sv_250m, coeffs, dsl)
         else:
             # 2013 年之后
-            EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl)
+            EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_after(
+                m1000, sv_1000m, sv_250m, coeffs, dsl)
         # 输出 HDF5 文件
-        write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000m, sv_250m, coeffs, dsl)
+        write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
+                  sv_1000m, sv_250m, coeffs, dsl)
         logging.info(u'完成：%s' % m1000)
 
     logging.info(u'结束运行：ocrs_fy3_mersi_calibration')
 
 
-###################################### 辅助函数 ######################################
+# ################################### 辅助函数 ###############################
 def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
     """
     2013年之前
-    1: dn_new = dn_ev * slope_ev + intercept_ev  【# 使用原文件 dn_ev 计算新的 dn_new】
+    1: dn_new = dn_ev * slope_ev + intercept_ev \
+    【# 使用原文件 dn_ev 计算新的 dn_new】
     4: slope = dsl ** 2 * k2 + dsl * k1 + k0  【# k0, k1, k2 是新的】
     5: arof = ((dn_new - SV_2000) * slope) * 100  【# 四舍五入取整】
     :param m1000: L1 文件
@@ -157,8 +170,10 @@ def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
     set_names = [u'EV_1KM_RefSB', u'EV_250_Aggr.1KM_RefSB']
     datasets = pm.pm_h5py.read_dataset_hdf5(m1000, set_names)
 
-    attrs_1000m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_1KM_RefSB', [u'Slope', u'Intercept'])
-    attrs_250m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_250_Aggr.1KM_RefSB', [u'Slope', u'Intercept'])
+    attrs_1000m = pm.pm_h5py.read_attr_hdf5(
+        m1000, u'EV_1KM_RefSB', [u'Slope', u'Intercept'])
+    attrs_250m = pm.pm_h5py.read_attr_hdf5(
+        m1000, u'EV_250_Aggr.1KM_RefSB', [u'Slope', u'Intercept'])
 
     # 对每个通道进行循环处理
     dataset_1km = []
@@ -169,7 +184,8 @@ def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
         sv_1000m_tem = sv_1000m[i]
         coeffs_new = coeffs[i + 4]
 
-        arof = calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs_new, dsl, sv_1000m_tem)
+        arof = calculate_arof_before(intercept_ev, slope_ev, dn_ev,
+                                     coeffs_new, dsl, sv_1000m_tem)
         dataset_1km.append(arof)
 
     dataset_250 = []
@@ -180,7 +196,8 @@ def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
         sv_250m_tem = sv_250m[i]
         coeffs_new = coeffs[i]
 
-        arof = calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs_new, dsl, sv_250m_tem)
+        arof = calculate_arof_before(intercept_ev, slope_ev, dn_ev,
+                                     coeffs_new, dsl, sv_250m_tem)
         dataset_250.append(arof)
 
     # 将无效值填充为 65535
@@ -201,10 +218,13 @@ def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
 def calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl):
     """
     2013年之后
-    1: dn_new = dn_ev * slope_ev + intercept_ev  【# 使用原文件 dn_ev 计算新的 dn_new】
-    2: slope_old = dsl**2 * k2_old + dsl * k1_old + k0_old  【# k0, k1, k2 是原文件 RSB_Cal_Cor_Coeff 储存的】
+    1: dn_new = dn_ev * slope_ev + intercept_ev
+    【# 使用原文件 dn_ev 计算新的 dn_new】
+    2: slope_old = dsl**2 * k2_old + dsl * k1_old + k0_old
+    【# k0, k1, k2 是原文件 RSB_Cal_Cor_Coeff 储存的】
     3: dn_new = dn_new / slope_old + dn_sv
-    4: slope_new = dsl**2 * k2_new + dsl * k1_new + k0_new  【# k0, k1, k2 是新给的】
+    4: slope_new = dsl**2 * k2_new + dsl * k1_new + k0_new
+    【# k0, k1, k2 是新给的】
     5: arof = ((dn_new - SV_2000) * slope_new) * 100 【# 四舍五入取整】
     :param m1000: L1 文件
     :param sv_1000m: OBC 中提取的 SV
@@ -214,12 +234,15 @@ def calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl):
     :return:
     """
     # 从 L1 文件中获取相关的数据集
-    set_names = [u'EV_1KM_RefSB', u'EV_250_Aggr.1KM_RefSB', u'RSB_Cal_Cor_Coeff',
-                 u'SV_1KM_RefSB', u'SV_250_Aggr1KM_RefSB']
+    set_names = [u'EV_1KM_RefSB', u'EV_250_Aggr.1KM_RefSB',
+                 u'RSB_Cal_Cor_Coeff', u'SV_1KM_RefSB',
+                 u'SV_250_Aggr1KM_RefSB']
     datasets = pm.pm_h5py.read_dataset_hdf5(m1000, set_names)
     # 从 L1 文件中获取相关数据集的属性值
-    attrs_1000m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_1KM_RefSB', [u'Slope', u'Intercept'])
-    attrs_250m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_250_Aggr.1KM_RefSB', [u'Slope', u'Intercept'])
+    attrs_1000m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_1KM_RefSB',
+                                            [u'Slope', u'Intercept'])
+    attrs_250m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_250_Aggr.1KM_RefSB',
+                                           [u'Slope', u'Intercept'])
 
     # 对每个通道进行循环处理
     dataset_1km = []
@@ -232,7 +255,8 @@ def calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl):
         dn_sv = datasets[u'SV_1KM_RefSB'][i]
         sv_1000m_tem = sv_1000m[i]
 
-        arof = calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeffs_new, dsl, sv_1000m_tem)
+        arof = calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
+                                    coeffs_old, coeffs_new, dsl, sv_1000m_tem)
 
         dataset_1km.append(arof)
 
@@ -246,7 +270,8 @@ def calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl):
         dn_sv = datasets[u'SV_250_Aggr1KM_RefSB'][i]
         sv_250m_tem = sv_250m[i]
 
-        arof = calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeffs_new, dsl, sv_250m_tem)
+        arof = calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
+                                    coeffs_old, coeffs_new, dsl, sv_250m_tem)
 
         dataset_250.append(arof)
 
@@ -295,7 +320,8 @@ def calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs, dsl, sv_tem):
     return arof
 
 
-def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeffs_new, dsl, sv_tem):
+def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
+                         coeffs_old, coeffs_new, dsl, sv_tem):
     """
     13 年以后定标计算
     :return:
@@ -328,7 +354,8 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeff
     return arof
 
 
-def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000m, sv_250m, coeffs, dsl):
+def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
+              sv_1000m, sv_250m, coeffs, dsl):
     # 处理输出路径
     d, n = os.path.split(m1000)
     ymd, hm = pm.pm_time.get_ymd_and_hm(m1000)
@@ -430,25 +457,35 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB, sv_1000
                 pm.pm_h5py.copy_attrs_h5py(sv_250m_refl_obc, sv_250m_refl_out)
 
                 try:
-                    pm.pm_h5py.copy_attrs_h5py(rsb_cal_cor_coeff_m1000, rsb_cal_cor_coeff_out)
+                    pm.pm_h5py.copy_attrs_h5py(rsb_cal_cor_coeff_m1000,
+                                               rsb_cal_cor_coeff_out)
                 except AttributeError:
                     rsb_cal_cor_coeff_out.attrs['Intercept'] = [0.0]
                     rsb_cal_cor_coeff_out.attrs['Slope'] = [1.0]
                     rsb_cal_cor_coeff_out.attrs['_FillValue'] = [-9999.0]
-                    rsb_cal_cor_coeff_out.attrs['band_name'] = 'Calibration Model:Slope=k0+k1*DSL+k2*DSL*DSL;RefFacor' \
-                                                               '=Slope*(EV-SV);Ref=RefFacor*d*d/100/cos(SolZ) '
-                    rsb_cal_cor_coeff_out.attrs['long_name'] = 'Calibration Updating Model Coefficients for 19 ' \
-                                                               'Reflective Solar Bands (1-4, 6-20) '
+                    rsb_cal_cor_coeff_out.attrs['band_name'] = \
+                        'Calibration Model:Slope=k0+k1*DSL+k2*DSL*DSL;RefFacor'\
+                        '=Slope*(EV-SV);Ref=RefFacor*d*d/100/cos(SolZ) '
+                    rsb_cal_cor_coeff_out.attrs['long_name'] = \
+                        'Calibration Updating Model Coefficients for 19 ' \
+                        'Reflective Solar Bands (1-4, 6-20) '
                     rsb_cal_cor_coeff_out.attrs['units'] = 'NO'
                     rsb_cal_cor_coeff_out.attrs['valid_range'] = [0.0, 1.0]
 
-                pm.pm_h5py.copy_attrs_h5py(land_sea_mask_m1000, land_sea_mask_out)
-                pm.pm_h5py.copy_attrs_h5py(latitude_m1000, latitude_out)
-                pm.pm_h5py.copy_attrs_h5py(longitude_m1000, longitude_out)
-                pm.pm_h5py.copy_attrs_h5py(solar_zenith_m1000, solar_zenith_out)
-                pm.pm_h5py.copy_attrs_h5py(solar_azimuth_m1000, solar_azimuth_out)
-                pm.pm_h5py.copy_attrs_h5py(sensor_zenith_m1000, sensor_zenith_out)
-                pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000, sensor_azimuth_out)
+                pm.pm_h5py.copy_attrs_h5py(land_sea_mask_m1000,
+                                           land_sea_mask_out)
+                pm.pm_h5py.copy_attrs_h5py(latitude_m1000,
+                                           latitude_out)
+                pm.pm_h5py.copy_attrs_h5py(longitude_m1000,
+                                           longitude_out)
+                pm.pm_h5py.copy_attrs_h5py(solar_zenith_m1000,
+                                           solar_zenith_out)
+                pm.pm_h5py.copy_attrs_h5py(solar_azimuth_m1000,
+                                           solar_azimuth_out)
+                pm.pm_h5py.copy_attrs_h5py(sensor_zenith_m1000,
+                                           sensor_zenith_out)
+                pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000,
+                                           sensor_azimuth_out)
 
                 # 复制文件属性
                 pm.pm_h5py.copy_attrs_h5py(m1000, out_file)
