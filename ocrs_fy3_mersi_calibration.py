@@ -386,11 +386,11 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                 sv_250m_refl_obc = obc.get(u'SV_250m_REFL')
 
                 # 创建输出文件的数据集
-                out_file.create_dataset(u'EV_1KM_RefSB', dtype='i4',
+                out_file.create_dataset(u'EV_1KM_RefSB', dtype='u2',
                                         data=EV_1KM_RefSB,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
-                out_file.create_dataset(u'EV_250_Aggr.1KM_RefSB', dtype='i4',
+                out_file.create_dataset(u'EV_250_Aggr.1KM_RefSB', dtype='u2',
                                         data=EV_250_Aggr_1KM_RefSB,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
@@ -405,7 +405,7 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                                         data=coeffs,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
-                out_file.create_dataset(u'LandSeaMask', dtype='i1   ',
+                out_file.create_dataset(u'LandSeaMask', dtype='i1',
                                         data=land_sea_mask_m1000,
                                         compression='gzip', compression_opts=5,
                                         shuffle=True)
