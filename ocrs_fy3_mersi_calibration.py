@@ -495,6 +495,16 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
 
 
 if __name__ == '__main__':
+    # 获取程序参数接口
+    args = sys.argv[1:]
+    help_info = \
+        u'''
+            【参数1】：yyyymmdd-yyyymmdd
+        '''
+    if '-h' in args:
+        print help_info
+        sys.exit(-1)
+
     args = sys.argv
     start_time = datetime.utcnow()
     print u'程序开始: %s' % start_time
