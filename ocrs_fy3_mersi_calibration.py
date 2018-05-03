@@ -103,16 +103,11 @@ def run(pair, date_range):
 
     # 过滤两个列表，找到时间对应的文件
     file_list = []
-    for m1000 in file_list_1000m:
-        ymd, hm = pm.pm_time.get_ymd_and_hm(m1000)
-        ymdhm_1000m = int(ymd + hm)
-        for obc in file_list_obc:
-            ymd, hm = pm.pm_time.get_ymd_and_hm(obc)
-            ymdhm_obc = int(ymd + hm)
-            if ymdhm_1000m == ymdhm_obc:
-                file_list.append([m1000, obc])
-            else:
-                continue
+    for obc in file_list_obc:
+        m1000_name = obc.replace("OBCXX", "1000M")
+        m1000 = m1000_name.replace(IN_PATH_OBC, IN_PATH_1000M)
+        if os.path.isfile(obc) and os.path.isfile(m1000):
+            file_list.append([m1000, obc])
 
     # 记录获取文件列表的信息
     if len(file_list) == 0:
