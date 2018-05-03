@@ -10,56 +10,59 @@ author : anning
 """
 import os
 import sys
-import logging
+import calendar
 from datetime import datetime
+from multiprocessing import Pool, Lock
 
-import h5py
 import numpy as np
+import h5py
+from matplotlib.ticker import MultipleLocator
+
+from configobj import ConfigObj
+from dateutil.relativedelta import relativedelta
+from numpy.lib.polynomial import polyfit
+from numpy.ma.core import std, mean
+from numpy.ma.extras import corrcoef
+
+from PB.CSC.pb_csc_console import LogServer
+from PB import pb_time, pb_io
+from ocrs_io import loadYamlCfg
 
 import publicmodels as pm
 from publicmodels.pm_time import time_this, time_block
+
 from ocrs_sv_extract import sv_extract
 
-logging.basicConfig(filename='ocrs.log',
-                    format='%(levelname)s::%(asctime)s::%(message)s',
-                    level=logging.INFO)
 
-
-def main(date_range):
+def run(pair, date_range):
     ######################### 初始化 ###########################
 
-    # 记录初始化时间
-    logging.info(u'开始初始化：ocrs_fy3_mersi_calibration %s' % date_range)
+    # 加载程序配置文件
+    proj_cfg_file = os.path.join(main_path, "cfg", "global.yaml")
+    proj_cfg = loadYamlCfg(proj_cfg_file)
+    if proj_cfg is None:
+        log.error("Can't find the config file: {}".format(proj_cfg_file))
+        return
 
-    # 程序运行文件目录路径
-    main_dir_path, main_file = os.path.split(os.path.realpath(__file__))
+    # 加载配置信息
+    try:
+        IN_PATH_OBC = proj_cfg['calibration'][pair]['obc']
+        IN_PATH_1000M = proj_cfg['calibration'][pair]['m1000']
+        OUT_PATH = proj_cfg['calibration'][pair]['out']
+        PROBE_M250 = proj_cfg['calibration'][pair]['probe_m250']
+        PROBE_M1000 = proj_cfg['calibration'][pair]['probe_m1000']
+        LAUNCH_DATE = proj_cfg['lanch_date']['FY3B']
+    except ValueError:
+        log.error("Please check the yaml calibration args")
+        return
 
     # 日期范围
     date_range = date_range
 
-    # 配置信息
-    try:
-        config = pm.pm_main.get_config(main_dir_path, 'ocrs.cfg')
-    except ValueError:
-        logging.error(u'读取配置文件失败')
-        sys.exit(-1)
-    IN_PATH_OBC = config['CALIBRATION']['PATH']['IN_PATH_OBC']
-    IN_PATH_1000M = config['CALIBRATION']['PATH']['IN_PATH_1000M']
-    OUT_PATH = config['CALIBRATION']['PATH']['OUT_PATH']
-    PROBE_M250 = config['CALIBRATION']['PROBE']['PROBE_M250']
-    PROBE_M1000 = config['CALIBRATION']['PROBE']['PROBE_M1000']
-    LAUNCH_DATE = config['CALIBRATION']['LAUNCH_DATE']['FY3B']
-
     # 获取开始日期和结束日期
     start_date, end_date = pm.pm_time.get_date_range(date_range)
 
-    # 记录初始化信息
-    logging.info(u'正确读取配置文件和参数，完成初始化')
-
     ######################### 获取文件列表 ###########################
-
-    # 记录获取文件列表的时间
-    logging.info(u'开始获取文件列表')
 
     # 获取时间范围内的目录列表
     tem_dir_list_obc = pm.pm_file.filter_dir_by_date_range(IN_PATH_OBC,
@@ -112,14 +115,12 @@ def main(date_range):
                 continue
 
     # 记录获取文件列表的信息
-    if len(file_list) != 0:
-        logging.info(u'成功获取文件列表')
-    else:
-        logging.warning(u'未获取到文件列表： %s' % date_range)
+    if len(file_list) == 0:
+        log.warning("Didn't find any file: {}".format(date_range))
 
     ######################### MERSI L1 定标处理 ###########################
 
-    logging.info(u'开始进行定标处理')
+    log.info('Start processing: {}'.format(date_range))
     for names in file_list:
         m1000, obc = names
 
@@ -127,7 +128,7 @@ def main(date_range):
         sv_250m, sv_1000m = sv_extract(obc, PROBE_M250, PROBE_M1000)
 
         # 获取 coefficient 水色波段系统定标系数
-        coeffs_path = os.path.join(main_dir_path, 'coefficient/2017.txt')
+        coeffs_path = os.path.join(main_path, 'coefficient/2017.txt')
         coeffs = np.loadtxt(coeffs_path)
 
         # 获取 dsl 数据生成时间与卫星发射时间相差的天数
@@ -147,9 +148,9 @@ def main(date_range):
         # 输出 HDF5 文件
         write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                   sv_1000m, sv_250m, coeffs, dsl)
-        logging.info(u'完成：%s' % m1000)
+        log.info("Finish: {}".format(m1000))
 
-    logging.info(u'结束运行：ocrs_fy3_mersi_calibration')
+    log.info("Success: {}".format(date_range))
 
 
 # ################################### 辅助函数 ###############################
@@ -494,21 +495,43 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                 out_file.attrs['dsl'] = dsl
 
 
-if __name__ == '__main__':
+######################### 程序全局入口 ##############################
+if __name__ == "__main__":
     # 获取程序参数接口
     args = sys.argv[1:]
     help_info = \
-        u'''
-            【参数1】：yyyymmdd-yyyymmdd
-        '''
-    if '-h' in args:
+        u"""
+        [参数1]：SAT1+SENSOR1
+        [参数2]：yyyymmdd-yyyymmdd
+        """
+    if "-h" in args:
         print help_info
         sys.exit(-1)
 
-    args = sys.argv
-    start_time = datetime.utcnow()
-    print u'程序开始: %s' % start_time
-    main(args[1])
-    end_time = datetime.utcnow()
-    end_time = end_time - start_time
-    print u'程序结束: %s' % end_time
+    # 获取程序所在位置，拼接配置文件
+    main_path, main_file = os.path.split(os.path.realpath(__file__))
+    project_path = main_path
+    config_file = os.path.join(project_path, "cfg", "global.cfg")
+
+    # 配置不存在预警
+    if not os.path.isfile(config_file):
+        print (u"配置文件不存在 %s" % config_file)
+        sys.exit(-1)
+
+    # 载入配置文件
+    inCfg = ConfigObj(config_file)
+    LOG_PATH = inCfg["PATH"]["OUT"]["LOG"]
+    log = LogServer(LOG_PATH)
+
+    # 开启进程池
+    thread_number = inCfg["CROND"]["threads"]
+    # thread_number = 1
+    pool = Pool(processes=int(thread_number))
+
+    if not len(args) == 2:
+        print help_info
+    else:
+        sat_sensor = args[0]
+        file_path = args[1]
+        run(sat_sensor, file_path)
+        # pool.apply_async(run, (sat_sensor, file_path))
