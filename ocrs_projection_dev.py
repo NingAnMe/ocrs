@@ -34,10 +34,26 @@ def run(config_file):
     with open(config_file, 'r') as stream:
         cfg = yaml.load(stream)
         ifile = cfg['PATH']['ipath']
-        ofile = cfg['PATH']['opath']
-    ifile = ["/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M.HDF".format(x, x) for x in xrange(0, 9999)]
+        ofile = cfg['PATH']['ppath']
+
+        res = cfg['PROJ']['res']
+
+        half_res = deg2meter(res) / 2.
+        cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
+
+        col = cfg['PROJ']['col']
+        row = cfg['PROJ']['row']
+
+    lookup_table = prj_core(cmd, res, unit="deg", row=row, col=col)
+    ifile = ["/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M.HDF".format(x, x) for x in xrange(0, 2500)]
     ofile = [
-        "/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M_PROJ.HDF".format(x, x) for x in xrange(0, 9999)]
+        "/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M_PROJ.HDF".format(x, x) for x in xrange(0, 2500)]
+    ifile = [
+        "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M.HDF".format(
+            x, x) for x in xrange(0, 2500)]
+    ofile = [
+        "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M_PROJ.HDF".format(
+            x, x) for x in xrange(0, 2500)]
     for idx_file, in_file in enumerate(ifile):
         if not os.path.isfile(in_file):
             print in_file
@@ -45,30 +61,20 @@ def run(config_file):
         else:
             print in_file
         with time_block("one projection"):
-            projection = Projection(in_file)  # 初始化一个投影实例
-            projection.load_yaml_config(config_file)  # 加载配置文件
-            if projection.error:
-                continue
-            with time_block("load data"):
-                projection.load_data()
-            if projection.error:
-                continue
-            with time_block("create lut"):
-                projection.create_lut()  # 创建投影查找表
-            with time_block("project"):
-                projection.project()
-            with time_block("write"):
-                projection.write(ofile[idx_file])
-            # with time_block("draw"):
-            #     projection.draw()
+            out_file = ofile[idx_file]
+            projection = Projection()
+            projection.load_yaml_config(config_file)
+            projection.project(in_file, out_file, lookup_table)
+
+        # with time_block("draw one projection picture"):
+        #     dataset_name = "Ocean_Aod_550"
+        #     projection.draw(in_file, out_file, dataset_name)
 
 
 class Projection(object):
 
-    def __init__(self, in_file):
+    def __init__(self):
         self.error = False
-
-        self.file = in_file
 
         self.sat = None
         self.sensor = None
@@ -83,10 +89,18 @@ class Projection(object):
         self.attrs = {}
         self.out_data = {}
 
+        self.lons = None
+        self.lats = None
+
         self.lookup_table = None
 
         self.ii = None
         self.jj = None
+        self.index = None
+        self.index_ii = None
+        self.index_jj = None
+        self.data_ii = None
+        self.data_jj = None
 
     def load_yaml_config(self, in_proj_cfg):
         """
@@ -112,53 +126,72 @@ class Projection(object):
         self.col = cfg['PROJ']['col']
         self.row = cfg['PROJ']['row']
 
-    def load_data(self):
+    def _load_lons_lats(self, in_file):
         # 加载数据
-        if os.path.isfile(self.file):
+        if os.path.isfile(in_file):
             try:
-                with h5py.File(self.file, 'r') as h5:
-                    for k in h5.keys():
-                        self.in_data[k] = h5.get(k)[:]
-                        self.attrs[k] = attrs2dict(h5.get(k).attrs)
+                with h5py.File(in_file, 'r') as h5:
+                    self.lons = h5.get("Longitude")[:]
+                    self.lats = h5.get("Latitude")[:]
             except Exception as why:
                 print why
-                print "Can't open file: {}".format(self.file)
+                print "Can't open file: {}".format(in_file)
                 self.error = True
                 return
         else:
-            print "File does not exist: {}".format(self.file)
+            print "File does not exist: {}".format(in_file)
             self.error = True
             return
 
-    def create_lut(self):
+    def _create_lut(self, lookup_table):
         # 创建查找表
-        self.lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
-        lon = self.in_data.get("Longitude")
-        lat = self.in_data.get("Latitude")
-        self.lookup_table.create_lut(lon, lat)
+        # with time_block("prj core"):
+        #     self.lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
+        lookup_table.create_lut(self.lons, self.lats)
+        self.ii = lookup_table.lut_i
+        self.jj = lookup_table.lut_j
 
-    def project(self):
-        # 进行投影
-        ii = self.lookup_table.lut_i
-        jj = self.lookup_table.lut_j
+    def _get_index(self):
+        # 获取数据的索引信息
+        self.index = np.logical_and(self.ii >= 0, self.jj >= 0)
+        self.index = np.where(self.index)  # 全球投影的行列索引信息
+        self.index_ii = self.index[0].T
+        self.index_jj = self.index[1].T
+        self.data_ii = self.ii[self.index]  # 数据行索引信息
+        self.data_jj = self.jj[self.index]  # 数据列索引信息
 
-        # idx = np.where(ii >= 0)
-        idx = np.logical_and(ii >= 0, jj >= 0)
-        for k in self.in_data.keys():
-            if k == "Longitude" or k == "Latitude":
-                continue
-            else:
-                if k in self.out_data.keys():
-                    self.out_data[k][idx] = self.in_data[k][ii[idx], jj[idx]]
-                else:
-                    fillValue = -999
-                    self.out_data[k] = np.full((self.row, self.col), fillValue, dtype='f4')
-                    self.out_data[k][idx] = self.in_data[k][ii[idx], jj[idx]]
+    def _write(self, out_file):
+        pb_io.make_sure_path_exists(os.path.dirname(out_file))
+        # 写入 HDF5 文件
+        with h5py.File(out_file, 'w') as h5:
+            # 创建数据集
+            h5.create_dataset("data_ii", dtype='i2',
+                              data=self.data_ii,
+                              compression='gzip', compression_opts=1,
+                              shuffle=True)
+            h5.create_dataset("data_jj", dtype='i2',
+                              data=self.data_jj,
+                              compression='gzip', compression_opts=1,
+                              shuffle=True)
+            h5.create_dataset("index_ii", dtype='i2',
+                              data=self.index_ii,
+                              compression='gzip', compression_opts=1,
+                              shuffle=True)
+            h5.create_dataset("index_jj", dtype='i2',
+                              data=self.index_jj,
+                              compression='gzip', compression_opts=1,
+                              shuffle=True)
+        print out_file
 
-        # if "Longitude" not in self.out_data.keys():
-        #     self.lookup_table.grid_lonslats()
-        #     self.out_data["Longitude"] = self.lookup_table.lons
-        #     self.out_data["Latitude"] = self.lookup_table.lats
+    def project(self, in_file, out_file, lookup_table):
+        with time_block("load lons and lats"):
+            self._load_lons_lats(in_file)
+        with time_block("create lut"):
+            self._create_lut(lookup_table)
+        with time_block("get index"):
+            self._get_index()
+        with time_block("write data"):
+            self._write(out_file)
 
     def write(self, out_file):
         # 写入 HDF5 文件
@@ -174,13 +207,39 @@ class Projection(object):
                 for key, value in attrs.items():
                     h5[k].attrs[key] = value
 
-    def draw(self):
-        dataset_name = "Ocean_Aod_550"
-        # out_png_path = os.path.dirname(self.ofile)
-        out_png = os.path.join("", 'test.png')
+    def draw(self, in_file, proj_file, dataset_name):
+        # 加载 Proj 数据
+        if os.path.isfile(proj_file):
+            try:
+                with h5py.File(proj_file, 'r') as h5:
+                    index_ii = h5.get("index_ii")[:]
+                    index_jj = h5.get("index_jj")[:]
+                    data_ii = h5.get("data_ii")[:]
+                    data_jj = h5.get("data_jj")[:]
+            except Exception as why:
+                print why
+                print "Can't open file: {}".format(proj_file)
+                return
+        else:
+            print "File does not exist: {}".format(proj_file)
+            return
+        with time_block("draw load"):
+            # 加载投影后的数据
+            if os.path.isfile(in_file):
+                try:
+                    with h5py.File(in_file, 'r') as h5:
+                        proj_value = h5.get(dataset_name)[:][data_ii, data_jj]
+                except Exception as why:
+                    print why
+                    print "Can't open file: {}".format(in_file)
+                    return
+            else:
+                print "File does not exist: {}".format(in_file)
+                return
+        out_png_path = os.path.dirname(in_file)
+        out_png = os.path.join(out_png_path, '{}.png'.format(dataset_name))
 
         p = dv_map.dv_map()
-        # p.title = u'%s_%s %s_%s IR%d tbb (calType %d)' % (sat1, sat2, date, hm, i, calType)
         p.title = "{}    {}".format(dataset_name, self.ymd)
 
         # 增加省边界
@@ -191,14 +250,20 @@ class Projection(object):
         #         p.colormap = 'gist_rainbow'
         #         p.colormap = 'viridis'
         #         p.colormap = 'brg'
-        lat = self.out_data["Latitude"]
-        lon = self.out_data["Longitude"]
-        for k, v in self.out_data.items():
-            idx = np.where(v > 0)
-            print len(idx[0]), k
-        value = self.out_data[dataset_name]
-        value = np.ma.masked_less_equal(value, 0)
-        p.easyplot(lat, lon, value, ptype=None, vmin=0, vmax=32767, markersize=0.1, marker='o')
+
+        # 创建查找表
+        lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
+        lookup_table.grid_lonslats()
+        lons = lookup_table.lons
+        lats = lookup_table.lats
+
+        # 创建完整的数据投影
+        fillValue = -999
+        value = np.full((self.row, self.col), fillValue, dtype='f4')
+        value[index_ii, index_jj] = proj_value
+        value = np.ma.masked_less_equal(value, 0)  # 过滤 <=0 的数据
+
+        p.easyplot(lats, lons, value, ptype=None, vmin=0, vmax=32767, markersize=0.1, marker='o')
         pb_io.make_sure_path_exists(os.path.dirname(out_png))
         p.savefig(out_png, dpi=300)
         print out_png
