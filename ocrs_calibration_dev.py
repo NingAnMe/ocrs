@@ -52,6 +52,7 @@ def run(pair, date_range):
         PROBE_M250 = proj_cfg['calibration'][pair]['probe_m250']
         PROBE_M1000 = proj_cfg['calibration'][pair]['probe_m1000']
         LAUNCH_DATE = proj_cfg['lanch_date']['FY3B']
+        COEFFICIENT = proj_cfg['calibration'][pair]['coefficient']
     except ValueError:
         log.error("Please check the yaml calibration args")
         return
@@ -123,7 +124,8 @@ def run(pair, date_range):
         sv_250m, sv_1000m = sv_extract(obc, PROBE_M250, PROBE_M1000)
 
         # 获取 coefficient 水色波段系统定标系数
-        coeffs_path = os.path.join(main_path, 'coefficient/2017.txt')
+        coeffs_path = os.path.join(main_path, 'coefficient/{}'.format(COEFFICIENT))
+        print coeffs_path
         coeffs = np.loadtxt(coeffs_path)
 
         # 获取 dsl 数据生成时间与卫星发射时间相差的天数
@@ -488,6 +490,7 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
 
                 # 添加文件属性
                 out_file.attrs['dsl'] = dsl
+    print out_filename
 
 
 ######################### 程序全局入口 ##############################
@@ -528,5 +531,8 @@ if __name__ == "__main__":
     else:
         sat_sensor = args[0]
         file_path = args[1]
-        run(sat_sensor, file_path)
+        with time_block("success time"):
+            run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))
+        # pool.close()
+        # pool.join()
