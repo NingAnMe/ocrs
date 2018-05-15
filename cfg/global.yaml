@@ -9,6 +9,7 @@ lanch_date:
 ################################ 数据处理配置 ####################################
 calibration:
   FY3B+MERSI:
+    coefficient: "2013.txt"
     obc: "/FY3/FY3B/MERSI/L1/OBC/"                                    # FY3B_MERSI_GBAL_L1_20180105_0000_OBCXX_MS.HDF
     m1000: "/FY3/FY3B/MERSI/L1/1000M/"                                # FY3B_MERSI_GBAL_L1_20180105_0005_1000M_MS.HDF
     out: "/storage-space/disk1_w/ocrs_data/SupportData/L1/1000M"
@@ -26,3 +27,26 @@ plt_gray:
   FY3B+MERSI:
     datasets: ["Ocean_Rw_412", "Ocean_Rw_443", "Ocean_Rw_490"]  # R G B 数据，按顺序
     filename_suffix: "Rw412_Rw433_Rw_490"
+
+################################ 日合成画图配置 ######################################
+plt_combine:
+  FY3B+MERSI:
+    legend_range:
+    - ["Combin_Land_Ocean_AOD_550", "1.20", "0.00"]
+    - ["Ocean_Aod_1030", "1.20", "0.00"]
+    - ["Ocean_Aod_2130", "1.20", "0.00"]
+    - ["Ocean_Aod_490", "1.20", "0.00"]
+    - ["Ocean_Aod_Angstrom", "1.20", "0.00"]
+    - ["Ocean_Aod_Angstrom_520865", "1.20", "0.00"]
+    - ["Ocean_CHL1", "50.00", "0.00"]
+    - ["Ocean_CHL2", "50.00", "0.00"]
+    - ["Ocean_PIG1", "50.00", "0.00"]
+    - ["Ocean_Rw_490", "0.40", "0.00"]
+    - ["Ocean_TSM", "50.00", "0.00"]
+    - ["Ocean_YS443", "100.00", "0.00"]
+    - ["Land_Aod_Angstrom", "2.00", "0.00"]
+    area_range:
+#      lat_s: "-90"
+#      lat_n: "90"
+#      lon_w: "180"
+#      lon_e: "-180"
