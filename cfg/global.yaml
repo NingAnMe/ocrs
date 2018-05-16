@@ -9,10 +9,12 @@ lanch_date:
 ################################ 数据处理配置 ####################################
 calibration:
   FY3B+MERSI:
-    coefficient: "2013.txt"
-    obc: "/FY3/FY3B/MERSI/L1/OBC/"                                    # FY3B_MERSI_GBAL_L1_20180105_0000_OBCXX_MS.HDF
+    coefficient:
+      before: "2013.txt"
+      after: "2017.txt"
+    obc: "/FY3/FY3B/MERSI/L1/OBC/"                                   # FY3B_MERSI_GBAL_L1_20180105_0000_OBCXX_MS.HDF
     m1000: "/FY3/FY3B/MERSI/L1/1000M/"                                # FY3B_MERSI_GBAL_L1_20180105_0005_1000M_MS.HDF
-    out: "/storage-space/disk1_w/ocrs_data/SupportData/L1/1000M"
+    out: "/storage-space/disk1_w/ocrs_data/SupportData/FY3B+MERSI/L1/1000M/"
     probe_m250: [19, 20, 38, 40]                                        # 250m 4 个通道选取的探元 id，取值范围(1~40)
     probe_m1000: [8, 7, 6, 8, 5, 10, 7, 10, 10, 9, 9, 5, 5, 6, 4]       # 1000m 4 个通道选取的探元 id，取值范围(1~40)
 
@@ -33,18 +35,33 @@ plt_combine:
   FY3B+MERSI:
     legend_range:
     - ["Combin_Land_Ocean_AOD_550", "1.20", "0.00"]
+    - ["Ocean_Aod_443", "1.20", "0.00"]
+    - ["Ocean_Aod_490", "1.20", "0.00"]
+    - ["Ocean_Aod_550", "1.20", "0.00"]
+    - ["Ocean_Aod_565", "1.20", "0.00"]
+    - ["Ocean_Aod_685", "1.20", "0.00"]
+    - ["Ocean_Aod_765", "1.20", "0.00"]
+    - ["Ocean_Aod_865", "1.20", "0.00"]
     - ["Ocean_Aod_1030", "1.20", "0.00"]
     - ["Ocean_Aod_2130", "1.20", "0.00"]
-    - ["Ocean_Aod_490", "1.20", "0.00"]
     - ["Ocean_Aod_Angstrom", "1.20", "0.00"]
     - ["Ocean_Aod_Angstrom_520865", "1.20", "0.00"]
+    - ["Ocean_Rw_412", "0.40", "0.00"]
+    - ["Ocean_Rw_443", "0.40", "0.00"]
+    - ["Ocean_Rw_490", "0.40", "0.00"]
+    - ["Ocean_Rw_520", "0.40", "0.00"]
+    - ["Ocean_Rw_565", "0.40", "0.00"]
+    - ["Ocean_Rw_650", "0.40", "0.00"]
+    - ["Ocean_Rw_685", "0.40", "0.00"]
+    - ["Ocean_Rw_765", "0.40", "0.00"]
+    - ["Ocean_Rw_865", "0.40", "0.00"]
     - ["Ocean_CHL1", "50.00", "0.00"]
     - ["Ocean_CHL2", "50.00", "0.00"]
     - ["Ocean_PIG1", "50.00", "0.00"]
-    - ["Ocean_Rw_490", "0.40", "0.00"]
     - ["Ocean_TSM", "50.00", "0.00"]
     - ["Ocean_YS443", "100.00", "0.00"]
     - ["Land_Aod_Angstrom", "2.00", "0.00"]
+
     area_range:
 #      lat_s: "-90"
 #      lat_n: "90"
