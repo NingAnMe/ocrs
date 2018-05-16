@@ -34,7 +34,7 @@ def run(config_file):
     with open(config_file, 'r') as stream:
         cfg = yaml.load(stream)
         ifile = cfg['PATH']['ipath']
-        ofile = cfg['PATH']['ppath']
+        pfile = cfg['PATH']['ppath']
 
         res = cfg['PROJ']['res']
 
@@ -46,13 +46,19 @@ def run(config_file):
 
     lookup_table = prj_core(cmd, res, unit="deg", row=row, col=col)
     ifile = ["/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M.HDF".format(x, x) for x in xrange(0, 2500)]
-    ofile = [
+    pfile = [
         "/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M_PROJ.HDF".format(x, x) for x in xrange(0, 2500)]
+    # ifile = [
+    #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M.HDF".format(
+    #         x, x) for x in xrange(0, 2500)]
+    # pfile = [
+    #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M_PROJ.HDF".format(
+    #         x, x) for x in xrange(0, 2500)]
     ifile = [
-        "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M.HDF".format(
+        "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M.HDF".format(
             x, x) for x in xrange(0, 2500)]
-    ofile = [
-        "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M_PROJ.HDF".format(
+    pfile = [
+        "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M_PROJ.HDF".format(
             x, x) for x in xrange(0, 2500)]
     for idx_file, in_file in enumerate(ifile):
         if not os.path.isfile(in_file):
@@ -61,7 +67,7 @@ def run(config_file):
         else:
             print in_file
         with time_block("one projection"):
-            out_file = ofile[idx_file]
+            out_file = pfile[idx_file]
             projection = Projection()
             projection.load_yaml_config(config_file)
             projection.project(in_file, out_file, lookup_table)
@@ -279,6 +285,52 @@ def attrs2dict(attrs):
     for key, value in attrs.items():
         attrs_dict[key] = value
     return attrs_dict
+
+
+######################### 程序全局入口 ##############################
+if __name__ == "__main__":
+    # 获取程序参数接口
+    args = sys.argv[1:]
+    help_info = \
+        u"""
+        [参数1]：SAT+SENSOR
+        [参数2]：colloc 文件
+        [样例]： python ocrs_projection.py FY3B+MERSI 20171012.colloc
+        """
+    if "-h" in args:
+        print help_info
+        sys.exit(-1)
+
+    # 获取程序所在位置，拼接配置文件
+    main_path, main_file = os.path.split(os.path.realpath(__file__))
+    project_path = main_path
+    config_file = os.path.join(project_path, "cfg", "global.cfg")
+
+    # 配置不存在预警
+    if not os.path.isfile(config_file):
+        print (u"配置文件不存在 %s" % config_file)
+        sys.exit(-1)
+
+    # 载入配置文件
+    inCfg = ConfigObj(config_file)
+    LOG_PATH = inCfg["PATH"]["OUT"]["LOG"]
+    log = LogServer(LOG_PATH)
+
+    # 开启进程池
+    # thread_number = inCfg["CROND"]["threads"]
+    # thread_number = 1
+    # pool = Pool(processes=int(thread_number))
+
+    if not len(args) == 2:
+        print help_info
+    else:
+        sat_sensor = args[0]
+        file_path = args[1]
+        with time_block("projecte time:"):
+            run(sat_sensor, file_path)
+        # pool.apply_async(run, (sat_sensor, file_path))
+        # pool.close()
+        # pool.join()
 
 
 if __name__ == "__main__":

@@ -6,17 +6,20 @@
 lanch_date:
   FY3B: "20101105"
 
-################################ 数据处理配置 ####################################
-calibration:
+################################ 数据预处理配置 ####################################
+calibrate:
   FY3B+MERSI:
-    coefficient:
-      before: "2013.txt"
-      after: "2017.txt"
     obc: "/FY3/FY3B/MERSI/L1/OBC/"                                   # FY3B_MERSI_GBAL_L1_20180105_0000_OBCXX_MS.HDF
     m1000: "/FY3/FY3B/MERSI/L1/1000M/"                                # FY3B_MERSI_GBAL_L1_20180105_0005_1000M_MS.HDF
     out: "/storage-space/disk1_w/ocrs_data/SupportData/FY3B+MERSI/L1/1000M/"
     probe_m250: [19, 20, 38, 40]                                        # 250m 4 个通道选取的探元 id，取值范围(1~40)
     probe_m1000: [8, 7, 6, 8, 5, 10, 7, 10, 10, 9, 9, 5, 5, 6, 4]       # 1000m 4 个通道选取的探元 id，取值范围(1~40)
+
+################################ 投影程序配置#################################
+project:
+  FY3B+MERSI:
+    draw:
+    - ["Ocean_Aod_550", "1.20", "0.00"]
 
 ################################ HDF5 压缩复制配置#################################
 compress:
@@ -63,7 +66,7 @@ plt_combine:
     - ["Land_Aod_Angstrom", "2.00", "0.00"]
 
     area_range:
-#      lat_s: "-90"
-#      lat_n: "90"
-#      lon_w: "180"
-#      lon_e: "-180"
+      lat_s: "-90"
+      lat_n: "90"
+      lon_w: "180"
+      lon_e: "-180"
