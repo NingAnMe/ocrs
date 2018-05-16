@@ -34,7 +34,7 @@ from publicmodels.pm_time import time_this, time_block
 from ocrs_sv_extract import sv_extract
 
 
-def run(pair, date_range):
+def run(pair, m1000_file):
     ######################### 初始化 ###########################
 
     # 加载程序配置文件
@@ -57,97 +57,101 @@ def run(pair, date_range):
         log.error("Please check the yaml calibration args")
         return
 
-    # 日期范围
-    date_range = date_range
-
-    # 获取开始日期和结束日期
-    start_date, end_date = pm.pm_time.get_date_range(date_range)
-
-    ######################### 获取文件列表 ###########################
-
-    # 获取时间范围内的目录列表
-    tem_dir_list_obc = pm.pm_file.filter_dir_by_date_range(IN_PATH_OBC,
-                                                           start_date,
-                                                           end_date)
-    tem_dir_list_1000m = pm.pm_file.filter_dir_by_date_range(IN_PATH_1000M,
-                                                             start_date,
-                                                             end_date)
-
-    dir_list_obc = []
-    for dir_path in tem_dir_list_obc:
-        dirs = pm.pm_file.filter_dir_by_date_range(dir_path,
-                                                   start_date,
-                                                   end_date)
-        dir_list_obc.extend(dirs)
-
-    dir_list_1000m = []
-    for dir_path in tem_dir_list_1000m:
-        dirs = pm.pm_file.filter_dir_by_date_range(dir_path,
-                                                   start_date,
-                                                   end_date)
-        dir_list_1000m.extend(dirs)
-
-    # 获取时间范围内的文件列表
-    file_list_obc = []  # obc 文件列表
-    for dir_path in dir_list_obc:
-        files = pm.pm_file.get_file_list(dir_path, '.*HDF$')
-        file_list_obc.extend(files)
-
-    file_list_1000m = []  # mersi l1 1000m 文件列表
-    for dir_path in dir_list_1000m:
-        files = pm.pm_file.get_file_list(dir_path, '.*HDF$')
-        file_list_1000m.extend(files)
-
-    # 对两个文件列表进行排序
-    file_list_obc.sort()
-    file_list_1000m.sort()
-
-    # 过滤两个列表，找到时间对应的文件
-    file_list = []
-    for obc in file_list_obc:
-        m1000_name = obc.replace("OBCXX", "1000M")
-        m1000 = m1000_name.replace(IN_PATH_OBC, IN_PATH_1000M)
-        if os.path.isfile(obc) and os.path.isfile(m1000):
-            file_list.append([m1000, obc])
-
-    # 记录获取文件列表的信息
-    if len(file_list) == 0:
-        log.warning("Didn't find any file: {}".format(date_range))
+    # TODO 根据传入的 L1000M 文件 生成对应的 OBC 文件
+    # TODO 删除原来的文件查找过程
+    # TODO 根据不同的年份使用不同的系数文件
+    # # 日期范围
+    # date_range = date_range
+    #
+    # # 获取开始日期和结束日期
+    # start_date, end_date = pm.pm_time.get_date_range(date_range)
+    #
+    # ######################### 获取文件列表 ###########################
+    #
+    # # 获取时间范围内的目录列表
+    # tem_dir_list_obc = pm.pm_file.filter_dir_by_date_range(IN_PATH_OBC,
+    #                                                        start_date,
+    #                                                        end_date)
+    # tem_dir_list_1000m = pm.pm_file.filter_dir_by_date_range(IN_PATH_1000M,
+    #                                                          start_date,
+    #                                                          end_date)
+    #
+    # dir_list_obc = []
+    # for dir_path in tem_dir_list_obc:
+    #     dirs = pm.pm_file.filter_dir_by_date_range(dir_path,
+    #                                                start_date,
+    #                                                end_date)
+    #     dir_list_obc.extend(dirs)
+    #
+    # dir_list_1000m = []
+    # for dir_path in tem_dir_list_1000m:
+    #     dirs = pm.pm_file.filter_dir_by_date_range(dir_path,
+    #                                                start_date,
+    #                                                end_date)
+    #     dir_list_1000m.extend(dirs)
+    #
+    # # 获取时间范围内的文件列表
+    # file_list_obc = []  # obc 文件列表
+    # for dir_path in dir_list_obc:
+    #     files = pm.pm_file.get_file_list(dir_path, '.*HDF$')
+    #     file_list_obc.extend(files)
+    #
+    # file_list_1000m = []  # mersi l1 1000m 文件列表
+    # for dir_path in dir_list_1000m:
+    #     files = pm.pm_file.get_file_list(dir_path, '.*HDF$')
+    #     file_list_1000m.extend(files)
+    #
+    # # 对两个文件列表进行排序
+    # file_list_obc.sort()
+    # file_list_1000m.sort()
+    #
+    # # 过滤两个列表，找到时间对应的文件
+    # file_list = []
+    # for obc in file_list_obc:
+    #     m1000_name = obc.replace("OBCXX", "1000M")
+    #     m1000 = m1000_name.replace(IN_PATH_OBC, IN_PATH_1000M)
+    #     if os.path.isfile(obc) and os.path.isfile(m1000):
+    #         file_list.append([m1000, obc])
+    #
+    # # 记录获取文件列表的信息
+    # if len(file_list) == 0:
+    #     log.warning("Didn't find any file: {}".format(date_range))
 
     ######################### MERSI L1 定标处理 ###########################
 
-    log.info('Start processing: {}'.format(date_range))
-    for names in file_list:
-        m1000, obc = names
+    log.info('Start calibration: {}'.format(m1000_file))
+    # for names in file_list:
+    #     m1000, obc = names
+    m1000 = m1000_file
+    obc = get_obc_file(m1000)
 
-        # 对 OBC 文件进行 SV 提取
-        sv_250m, sv_1000m = sv_extract(obc, PROBE_M250, PROBE_M1000)
+    # 对 OBC 文件进行 SV 提取
+    sv_250m, sv_1000m = sv_extract(obc, PROBE_M250, PROBE_M1000)
 
-        # 获取 coefficient 水色波段系统定标系数
-        coeffs_path = os.path.join(main_path, 'coefficient/{}'.format(COEFFICIENT))
-        print coeffs_path
-        coeffs = np.loadtxt(coeffs_path)
+    # 获取 coefficient 水色波段系统定标系数
+    coeffs_path = os.path.join(main_path, 'coefficient/{}'.format(COEFFICIENT))
+    print coeffs_path
+    coeffs = np.loadtxt(coeffs_path)
 
-        # 获取 dsl 数据生成时间与卫星发射时间相差的天数
-        dsl = pm.pm_time.get_dsl(m1000, LAUNCH_DATE)
+    # 获取 dsl 数据生成时间与卫星发射时间相差的天数
+    dsl = pm.pm_time.get_dsl(m1000, LAUNCH_DATE)
 
-        # 定标计算
-        with h5py.File(m1000, 'r') as f:
-            coefficient = f.get('RSB_Cal_Cor_Coeff')
-        if coefficient is None:
-            # 2013 年之前
-            EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_before(
-                m1000, sv_1000m, sv_250m, coeffs, dsl)
-        else:
-            # 2013 年之后
-            EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_after(
-                m1000, sv_1000m, sv_250m, coeffs, dsl)
-        # 输出 HDF5 文件
-        write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
-                  sv_1000m, sv_250m, coeffs, dsl)
-        log.info("Finish: {}".format(m1000))
+    # 定标计算
+    with h5py.File(m1000, 'r') as f:
+        coefficient = f.get('RSB_Cal_Cor_Coeff')
+    if coefficient is None:
+        # 2013 年之前
+        EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_before(
+            m1000, sv_1000m, sv_250m, coeffs, dsl)
+    else:
+        # 2013 年之后
+        EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_after(
+            m1000, sv_1000m, sv_250m, coeffs, dsl)
+    # 输出 HDF5 文件
+    write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
+              sv_1000m, sv_250m, coeffs, dsl)
 
-    log.info("Success: {}".format(date_range))
+    log.info("Success: {}".format(m1000_file))
 
 
 # ################################### 辅助函数 ###############################
@@ -384,53 +388,30 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                 sv_250m_refl_obc = obc.get(u'SV_250m_REFL')
 
                 # 创建输出文件的数据集
-                out_file.create_dataset(u'EV_1KM_RefSB', dtype='u2',
-                                        data=EV_1KM_RefSB,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'EV_250_Aggr.1KM_RefSB', dtype='u2',
-                                        data=EV_250_Aggr_1KM_RefSB,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
+                out_file.create_dataset(u'EV_1KM_RefSB', dtype='u2', data=EV_1KM_RefSB,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'EV_250_Aggr.1KM_RefSB', dtype='u2', data=EV_250_Aggr_1KM_RefSB,
+                                        compression='gzip', compression_opts=5, shuffle=True)
                 out_file.create_dataset(u'SV_1km', dtype='i4', data=sv_1000m,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'SV_250m_REFL', dtype='i4',
-                                        data=sv_250m,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'RSB_Cal_Cor_Coeff', dtype='f4',
-                                        data=coeffs,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'LandSeaMask', dtype='i1',
-                                        data=land_sea_mask_m1000,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'Latitude', dtype='f4',
-                                        data=latitude_m1000,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'Longitude', dtype='f4',
-                                        data=longitude_m1000,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'SolarZenith', dtype='i2',
-                                        data=solar_zenith_m1000,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'SolarAzimuth', dtype='i2',
-                                        data=solar_azimuth_m1000,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'SensorZenith', dtype='i2',
-                                        data=sensor_zenith_m1000,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
-                out_file.create_dataset(u'SensorAzimuth', dtype='i2',
-                                        data=sensor_azimuth_m1000,
-                                        compression='gzip', compression_opts=5,
-                                        shuffle=True)
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'SV_250m_REFL', dtype='i4', data=sv_250m,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'RSB_Cal_Cor_Coeff', dtype='f4', data=coeffs,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'LandSeaMask', dtype='i1', data=land_sea_mask_m1000,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'Latitude', dtype='f4', data=latitude_m1000,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'Longitude', dtype='f4', data=longitude_m1000,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'SolarZenith', dtype='i2', data=solar_zenith_m1000,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'SolarAzimuth', dtype='i2', data=solar_azimuth_m1000,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'SensorZenith', dtype='i2', data=sensor_zenith_m1000,
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_file.create_dataset(u'SensorAzimuth', dtype='i2', data=sensor_azimuth_m1000,
+                                        compression='gzip', compression_opts=5, shuffle=True)
 
                 # 读取输出文件的数据集
                 ev_1km_refsb_out = out_file.get(u'EV_1KM_RefSB')
@@ -470,20 +451,13 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                     rsb_cal_cor_coeff_out.attrs['units'] = 'NO'
                     rsb_cal_cor_coeff_out.attrs['valid_range'] = [0.0, 1.0]
 
-                pm.pm_h5py.copy_attrs_h5py(land_sea_mask_m1000,
-                                           land_sea_mask_out)
-                pm.pm_h5py.copy_attrs_h5py(latitude_m1000,
-                                           latitude_out)
-                pm.pm_h5py.copy_attrs_h5py(longitude_m1000,
-                                           longitude_out)
-                pm.pm_h5py.copy_attrs_h5py(solar_zenith_m1000,
-                                           solar_zenith_out)
-                pm.pm_h5py.copy_attrs_h5py(solar_azimuth_m1000,
-                                           solar_azimuth_out)
-                pm.pm_h5py.copy_attrs_h5py(sensor_zenith_m1000,
-                                           sensor_zenith_out)
-                pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000,
-                                           sensor_azimuth_out)
+                pm.pm_h5py.copy_attrs_h5py(land_sea_mask_m1000, land_sea_mask_out)
+                pm.pm_h5py.copy_attrs_h5py(latitude_m1000, latitude_out)
+                pm.pm_h5py.copy_attrs_h5py(longitude_m1000, longitude_out)
+                pm.pm_h5py.copy_attrs_h5py(solar_zenith_m1000, solar_zenith_out)
+                pm.pm_h5py.copy_attrs_h5py(solar_azimuth_m1000, solar_azimuth_out)
+                pm.pm_h5py.copy_attrs_h5py(sensor_zenith_m1000, sensor_zenith_out)
+                pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000, sensor_azimuth_out)
 
                 # 复制文件属性
                 pm.pm_h5py.copy_attrs_h5py(m1000, out_file)
@@ -491,6 +465,11 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                 # 添加文件属性
                 out_file.attrs['dsl'] = dsl
     print out_filename
+
+
+def get_obc_file(m1000_file):
+    obc_file = m1000_file.repace("1000M", "OBCXX")
+    return obc_file
 
 
 ######################### 程序全局入口 ##############################
@@ -522,16 +501,16 @@ if __name__ == "__main__":
     log = LogServer(LOG_PATH)
 
     # 开启进程池
-    thread_number = inCfg["CROND"]["threads"]
+    # thread_number = inCfg["CROND"]["threads"]
     # thread_number = 1
-    pool = Pool(processes=int(thread_number))
+    # pool = Pool(processes=int(thread_number))
 
     if not len(args) == 2:
         print help_info
     else:
         sat_sensor = args[0]
         file_path = args[1]
-        with time_block("success time"):
+        with time_block("calibration time"):
             run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
