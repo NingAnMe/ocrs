@@ -1,5 +1,12 @@
 # coding:utf-8
-
+"""
+ocrs_project.py
+将水色产品在全球进行投影，获取投影后的位置信息和数据的位置查找表信息
+~~~~~~~~~~~~~~~~~~~
+creation time : 2018 5 9
+author : anning
+~~~~~~~~~~~~~~~~~~~
+"""
 import os
 import sys
 import calendar
@@ -26,55 +33,86 @@ from ocrs_io import loadYamlCfg
 from publicmodels.pm_time import time_block
 
 
-def run(config_file):
-    if not os.path.isfile(config_file):
-        print 'Not Found %s' % config_file
+def run(pair, colloc_file):
+    # 加载程序配置文件
+    proj_cfg_file = os.path.join(main_path, "global.yaml")
+    proj_cfg = loadYamlCfg(proj_cfg_file)
+    if proj_cfg is None:
+        log.error("File is not exist: {}".format(proj_cfg_file))
         return
 
-    with open(config_file, 'r') as stream:
-        cfg = yaml.load(stream)
-        ifile = cfg['PATH']['ipath']
-        pfile = cfg['PATH']['ppath']
+    # 加载配置信息
+    try:
+        DRAW_INFO = proj_cfg['project'][pair]['draw']
+        LAUNCH_DATE = proj_cfg['lanch_date'][pair.split('+')[0]]
+    except ValueError:
+        log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
+        return
 
-        res = cfg['PROJ']['res']
+    # 加载 colloc 文件内容
+    if not os.path.isfile(colloc_file):
+        log.error("File is not exist: {}".format(colloc_file))
+        return
+    try:
+        with open(colloc_file, 'r') as stream:
+            cfg = yaml.load(stream)
+            ifile = cfg['PATH']['ipath']
+            pfile = cfg['PATH']['ppath']
 
-        half_res = deg2meter(res) / 2.
-        cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
+            res = cfg['PROJ']['res']
 
-        col = cfg['PROJ']['col']
-        row = cfg['PROJ']['row']
+            half_res = deg2meter(res) / 2.
+            cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
 
+            col = cfg['PROJ']['col']
+            row = cfg['PROJ']['row']
+            if ifile is None or pfile is None:
+                log.error("Is None: ifile or pfile".format(colloc_file))
+                return
+    except Exception as why:
+        print why
+        log.error("Load colloc file error, please check it. : {}".format(colloc_file))
+
+    # 创建查找表
     lookup_table = prj_core(cmd, res, unit="deg", row=row, col=col)
-    ifile = ["/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M.HDF".format(x, x) for x in xrange(0, 2500)]
-    pfile = [
-        "/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M_PROJ.HDF".format(x, x) for x in xrange(0, 2500)]
+    # ifile = ["/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M.HDF".format(x, x) for x in xrange(0, 2500)]
+    # pfile = [
+    #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M_PROJ.HDF".format(x, x) for x in xrange(0, 2500)]
     # ifile = [
     #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M.HDF".format(
     #         x, x) for x in xrange(0, 2500)]
     # pfile = [
     #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M_PROJ.HDF".format(
     #         x, x) for x in xrange(0, 2500)]
-    ifile = [
-        "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M.HDF".format(
-            x, x) for x in xrange(0, 2500)]
-    pfile = [
-        "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M_PROJ.HDF".format(
-            x, x) for x in xrange(0, 2500)]
+    # ifile = [
+    #     "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M.HDF".format(
+    #         x, x) for x in xrange(0, 2500)]
+    # pfile = [
+    #     "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M_PROJ.HDF".format(
+    #         x, x) for x in xrange(0, 2500)]
+
+    # 对数据列表进行循环处理
     for idx_file, in_file in enumerate(ifile):
+        print "-" * 100
+
         if not os.path.isfile(in_file):
-            print in_file
+            log.error("File is not exist: {}".format(in_file))
             continue
         else:
-            print in_file
-        with time_block("one projection"):
+            print "Input file: {}".format(in_file)
+        with time_block("one project time:"):
             out_file = pfile[idx_file]
             projection = Projection()
-            projection.load_yaml_config(config_file)
+            projection.load_yaml_config(colloc_file)
             projection.project(in_file, out_file, lookup_table)
 
-        # with time_block("draw one projection picture"):
-        #     dataset_name = "Ocean_Aod_550"
-        #     projection.draw(in_file, out_file, dataset_name)
+        with time_block("draw one projection picture"):
+            if DRAW_INFO is not None:
+                for info in DRAW_INFO:
+                    dataset_name = info[0]
+                    projection.draw(in_file, out_file, dataset_name)
+
+        print "-" * 100
 
 
 class Projection(object):
@@ -103,8 +141,8 @@ class Projection(object):
         self.ii = None
         self.jj = None
         self.index = None
-        self.index_ii = None
-        self.index_jj = None
+        self.lut_ii = None
+        self.lut_jj = None
         self.data_ii = None
         self.data_jj = None
 
@@ -112,6 +150,8 @@ class Projection(object):
         """
         读取 yaml 格式配置文件
         """
+        if self.error:
+            return
         if not os.path.isfile(in_proj_cfg):
             print 'Not Found %s' % in_proj_cfg
             self.error = True
@@ -133,6 +173,8 @@ class Projection(object):
         self.row = cfg['PROJ']['row']
 
     def _load_lons_lats(self, in_file):
+        if self.error:
+            return
         # 加载数据
         if os.path.isfile(in_file):
             try:
@@ -150,7 +192,9 @@ class Projection(object):
             return
 
     def _create_lut(self, lookup_table):
-        # 创建查找表
+        if self.error:
+            return
+        # 通过查找表和经纬度数据生成数据在全球的行列信息
         # with time_block("prj core"):
         #     self.lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
         lookup_table.create_lut(self.lons, self.lats)
@@ -158,15 +202,19 @@ class Projection(object):
         self.jj = lookup_table.lut_j
 
     def _get_index(self):
+        if self.error:
+            return
         # 获取数据的索引信息
         self.index = np.logical_and(self.ii >= 0, self.jj >= 0)
         self.index = np.where(self.index)  # 全球投影的行列索引信息
-        self.index_ii = self.index[0].T
-        self.index_jj = self.index[1].T
+        self.lut_ii = self.index[0].T
+        self.lut_jj = self.index[1].T
         self.data_ii = self.ii[self.index]  # 数据行索引信息
         self.data_jj = self.jj[self.index]  # 数据列索引信息
 
     def _write(self, out_file):
+        if self.error:
+            return
         pb_io.make_sure_path_exists(os.path.dirname(out_file))
         # 写入 HDF5 文件
         with h5py.File(out_file, 'w') as h5:
@@ -179,27 +227,33 @@ class Projection(object):
                               data=self.data_jj,
                               compression='gzip', compression_opts=1,
                               shuffle=True)
-            h5.create_dataset("index_ii", dtype='i2',
-                              data=self.index_ii,
+            h5.create_dataset("lut_ii", dtype='i2',
+                              data=self.lut_ii,
                               compression='gzip', compression_opts=1,
                               shuffle=True)
-            h5.create_dataset("index_jj", dtype='i2',
-                              data=self.index_jj,
+            h5.create_dataset("lut_jj", dtype='i2',
+                              data=self.lut_jj,
                               compression='gzip', compression_opts=1,
                               shuffle=True)
-        print out_file
+        print "Output file: {}".format(out_file)
 
     def project(self, in_file, out_file, lookup_table):
-        with time_block("load lons and lats"):
-            self._load_lons_lats(in_file)
-        with time_block("create lut"):
-            self._create_lut(lookup_table)
-        with time_block("get index"):
-            self._get_index()
-        with time_block("write data"):
-            self._write(out_file)
+        # with time_block("load lons and lats time:"):
+        # 加载经纬度数据
+        self._load_lons_lats(in_file)
+        # with time_block("create lut time:"):
+        # 使用查找表生成经纬度对应的行列信息
+        self._create_lut(lookup_table)
+        # with time_block("get index time:"):
+        # 使用生成的行列信息生成数据的索引信息
+        self._get_index()
+        # with time_block("write data time:"):
+        # 将数据的索引信息和在全球的行列信息进行写入
+        self._write(out_file)
 
     def write(self, out_file):
+        if self.error:
+            return
         # 写入 HDF5 文件
         with h5py.File(out_file, 'w') as h5:
             for k in self.out_data.keys():
@@ -212,14 +266,17 @@ class Projection(object):
                 attrs = self.attrs[k]
                 for key, value in attrs.items():
                     h5[k].attrs[key] = value
+        print "Output file: {}".format(out_file)
 
-    def draw(self, in_file, proj_file, dataset_name):
+    def draw(self, in_file, proj_file, dataset_name, vmin=None, vmax=None):
+        if self.error:
+            return
         # 加载 Proj 数据
         if os.path.isfile(proj_file):
             try:
                 with h5py.File(proj_file, 'r') as h5:
-                    index_ii = h5.get("index_ii")[:]
-                    index_jj = h5.get("index_jj")[:]
+                    lut_ii = h5.get("lut_ii")[:]
+                    lut_jj = h5.get("lut_jj")[:]
                     data_ii = h5.get("data_ii")[:]
                     data_jj = h5.get("data_jj")[:]
             except Exception as why:
@@ -229,8 +286,9 @@ class Projection(object):
         else:
             print "File does not exist: {}".format(proj_file)
             return
+
         with time_block("draw load"):
-            # 加载投影后的数据
+            # 加载产品数据
             if os.path.isfile(in_file):
                 try:
                     with h5py.File(in_file, 'r') as h5:
@@ -242,8 +300,11 @@ class Projection(object):
             else:
                 print "File does not exist: {}".format(in_file)
                 return
-        out_png_path = os.path.dirname(in_file)
-        out_png = os.path.join(out_png_path, '{}.png'.format(dataset_name))
+
+        if vmin is not None:
+            vmin = vmin
+        if vmax is not None:
+            vmax = vmax
 
         p = dv_map.dv_map()
         p.title = "{}    {}".format(dataset_name, self.ymd)
@@ -264,15 +325,23 @@ class Projection(object):
         lats = lookup_table.lats
 
         # 创建完整的数据投影
-        fillValue = -999
+        fillValue = -32767
         value = np.full((self.row, self.col), fillValue, dtype='f4')
-        value[index_ii, index_jj] = proj_value
-        value = np.ma.masked_less_equal(value, 0)  # 过滤 <=0 的数据
 
-        p.easyplot(lats, lons, value, ptype=None, vmin=0, vmax=32767, markersize=0.1, marker='o')
+        value[lut_ii, lut_jj] = proj_value
+        value = np.ma.masked_less_equal(value, 0)  # 掩掉 <=0 的数据
+
+        # 乘数据的系数，水色产品为 0.001
+        slope = 0.001
+        value = value * slope
+
+        p.easyplot(lats, lons, value, ptype=None, vmin=vmin, vmax=vmax, markersize=0.1, marker='o')
+
+        out_png_path = os.path.dirname(in_file)
+        out_png = os.path.join(out_png_path, '{}.png'.format(dataset_name))
         pb_io.make_sure_path_exists(os.path.dirname(out_png))
         p.savefig(out_png, dpi=300)
-        print out_png
+        print "Output picture: {}".format(out_png)
 
 
 def attrs2dict(attrs):
@@ -295,7 +364,7 @@ if __name__ == "__main__":
         u"""
         [参数1]：SAT+SENSOR
         [参数2]：colloc 文件
-        [样例]： python ocrs_projection.py FY3B+MERSI 20171012.colloc
+        [样例]： python ocrs_project.py FY3B+MERSI 20171012.colloc
         """
     if "-h" in args:
         print help_info
@@ -304,7 +373,7 @@ if __name__ == "__main__":
     # 获取程序所在位置，拼接配置文件
     main_path, main_file = os.path.split(os.path.realpath(__file__))
     project_path = main_path
-    config_file = os.path.join(project_path, "cfg", "global.cfg")
+    config_file = os.path.join(project_path, "global.cfg")
 
     # 配置不存在预警
     if not os.path.isfile(config_file):
@@ -326,27 +395,8 @@ if __name__ == "__main__":
     else:
         sat_sensor = args[0]
         file_path = args[1]
-        with time_block("projecte time:"):
+        with time_block("project time:"):
             run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
         # pool.join()
-
-
-if __name__ == "__main__":
-    # 获取程序参数接口
-    args = sys.argv[1:]
-    help_info = \
-        u"""
-        [参数1]：配置文件
-        [样例]： python ocrs_projection.py 20171012.colloc
-        """
-    if "-h" in args:
-        print help_info
-        sys.exit(-1)
-
-    if len(args) == 1:
-        with time_block("all"):
-            run(args[0])
-    else:
-        print help_info

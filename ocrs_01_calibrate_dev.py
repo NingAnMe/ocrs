@@ -1,8 +1,7 @@
 # coding:utf-8
 """
-ocrs_fy3_mersi_calibration.py
-1：提取 OBC 文件的 SV 数据
-2：对 MERSI L1 的产品进行定标处理
+ocrs_calibrate.py
+提取 OBC 文件的 SV 数据，使用矫正系数对 MERSI L1 的产品进行定标预处理
 ~~~~~~~~~~~~~~~~~~~
 creation time : 2018 1 24
 author : anning
@@ -39,54 +38,58 @@ def run(pair, m1000_file):
     ######################### 初始化 ###########################
 
     # 加载程序配置文件
-    proj_cfg_file = os.path.join(main_path, "cfg", "global.yaml")
+    proj_cfg_file = os.path.join(main_path, "global.yaml")
     proj_cfg = loadYamlCfg(proj_cfg_file)
     if proj_cfg is None:
-        log.error("Can't find the config file: {}".format(proj_cfg_file))
+        log.error("File is not exist: {}".format(proj_cfg_file))
         return
 
     # 加载配置信息
     try:
-        IN_PATH_OBC = proj_cfg['calibration'][pair]['obc']
-        IN_PATH_1000M = proj_cfg['calibration'][pair]['m1000']
-        OUT_PATH = proj_cfg['calibration'][pair]['out']
-        PROBE_M250 = proj_cfg['calibration'][pair]['probe_m250']
-        PROBE_M1000 = proj_cfg['calibration'][pair]['probe_m1000']
-        LAUNCH_DATE = proj_cfg['lanch_date']['FY3B']
-        COEFFICIENT = proj_cfg['calibration'][pair]['coefficient']
+        PROBE_M250 = proj_cfg['calibrate'][pair]['probe_m250']
+        PROBE_M1000 = proj_cfg['calibrate'][pair]['probe_m1000']
+        LAUNCH_DATE = proj_cfg['lanch_date'][pair.split('+')[0]]
     except ValueError:
-        log.error("Please check the yaml calibration args")
+        log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
         return
 
     ######################### MERSI L1 定标处理 ###########################
-    log.info('Start calibration: {}'.format(m1000_file))
+    print '-' * 100
+    print 'Start calibration'
 
     # 获取 M1000 文件和对应 OBC 文件
     m1000 = m1000_file
-    obc = get_obc_file(m1000, IN_PATH_1000M, IN_PATH_OBC)
-
-    # 对 OBC 文件进行 SV 提取
-    sv_250m, sv_1000m = sv_extract(obc, PROBE_M250, PROBE_M1000)
+    obc = get_obc_file(m1000, L1_PATH, OBC_PATH)
+    if not os.path.isfile(m1000):
+        log.error("File is not exist: {}".format(m1000))
+        return
+    elif not os.path.isfile(obc):
+        log.error("File is not exist: {}".format(obc))
+        return
+    else:
+        print m1000
+        print obc
 
     # 获取 ymd
     ymd = get_ymd(m1000)
 
     # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
-    if ymd[0:4] > 2013:
-        coefficient = COEFFICIENT.get("after")
+    coeffs_path = os.path.join(COEFF_PATH, '{}.txt'.format(ymd[0:4]))
+    if not os.path.isfile(coeffs_path):
+        log.error("File is not exist: {}".format(coeffs_path))
+        return
     else:
-        coefficient = COEFFICIENT.get("before")
-    coeffs_path = os.path.join(main_path, 'coefficient/{}'.format(coefficient))
-    print coeffs_path
+        print coeffs_path
     coeffs = np.loadtxt(coeffs_path)
+
+    # 对 OBC 文件进行 SV 提取
+    sv_250m, sv_1000m = sv_extract(obc, PROBE_M250, PROBE_M1000)
 
     # 获取 dsl 数据生成时间与卫星发射时间相差的天数
     dsl = pm.pm_time.get_dsl(m1000, LAUNCH_DATE)
 
     # 定标计算
-    with h5py.File(m1000, 'r') as f:
-        coefficient = f.get('RSB_Cal_Cor_Coeff')
-    if coefficient is None:
+    if int(ymd[0:4]) <= 2013:
         # 2013 年之前
         EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_before(
             m1000, sv_1000m, sv_250m, coeffs, dsl)
@@ -94,11 +97,15 @@ def run(pair, m1000_file):
         # 2013 年之后
         EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_after(
             m1000, sv_1000m, sv_250m, coeffs, dsl)
+
     # 输出 HDF5 文件
-    write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
+    _dir, _name = os.path.split(m1000)
+    out_file = os.path.join(OUT_PATH, ymd[0:4], ymd, _name)
+    write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
               sv_1000m, sv_250m, coeffs, dsl)
 
-    log.info("Success: {}".format(m1000_file))
+    print ("Success")
+    print '-' * 100
 
 
 # ################################### 辅助函数 ###############################
@@ -303,19 +310,12 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
     return arof
 
 
-def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
+def write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
               sv_1000m, sv_250m, coeffs, dsl):
-    # 处理输出路径
-    d, n = os.path.split(m1000)
-    ymd, hm = pm.pm_time.get_ymd_and_hm(m1000)
-    yyyy = ymd[0:4]
-    out_path = os.path.join(OUT_PATH, yyyy, ymd)
-    out_filename = os.path.join(OUT_PATH, yyyy, ymd, n)
     # 创建生成输出目录
-    if not os.path.isdir(out_path):
-        os.makedirs(out_path)
+    pb_io.make_sure_path_exists(os.path.dirname(out_file))
     # 写入数据
-    with h5py.File(out_filename, 'w') as out_file:
+    with h5py.File(out_file, 'w') as out_hdf5:
         with h5py.File(m1000, 'r') as m1000:
             with h5py.File(obc, 'r') as obc:
                 # 读取 L1 m1000 的数据集
@@ -335,46 +335,46 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                 sv_250m_refl_obc = obc.get(u'SV_250m_REFL')
 
                 # 创建输出文件的数据集
-                out_file.create_dataset(u'EV_1KM_RefSB', dtype='u2', data=EV_1KM_RefSB,
+                out_hdf5.create_dataset(u'EV_1KM_RefSB', dtype='u2', data=EV_1KM_RefSB,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'EV_250_Aggr.1KM_RefSB', dtype='u2', data=EV_250_Aggr_1KM_RefSB,
+                out_hdf5.create_dataset(u'EV_250_Aggr.1KM_RefSB', dtype='u2', data=EV_250_Aggr_1KM_RefSB,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'SV_1km', dtype='i4', data=sv_1000m,
+                out_hdf5.create_dataset(u'SV_1km', dtype='i4', data=sv_1000m,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'SV_250m_REFL', dtype='i4', data=sv_250m,
+                out_hdf5.create_dataset(u'SV_250m_REFL', dtype='i4', data=sv_250m,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'RSB_Cal_Cor_Coeff', dtype='f4', data=coeffs,
+                out_hdf5.create_dataset(u'RSB_Cal_Cor_Coeff', dtype='f4', data=coeffs,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'LandSeaMask', dtype='i1', data=land_sea_mask_m1000,
+                out_hdf5.create_dataset(u'LandSeaMask', dtype='i1', data=land_sea_mask_m1000,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'Latitude', dtype='f4', data=latitude_m1000,
+                out_hdf5.create_dataset(u'Latitude', dtype='f4', data=latitude_m1000,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'Longitude', dtype='f4', data=longitude_m1000,
+                out_hdf5.create_dataset(u'Longitude', dtype='f4', data=longitude_m1000,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'SolarZenith', dtype='i2', data=solar_zenith_m1000,
+                out_hdf5.create_dataset(u'SolarZenith', dtype='i2', data=solar_zenith_m1000,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'SolarAzimuth', dtype='i2', data=solar_azimuth_m1000,
+                out_hdf5.create_dataset(u'SolarAzimuth', dtype='i2', data=solar_azimuth_m1000,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'SensorZenith', dtype='i2', data=sensor_zenith_m1000,
+                out_hdf5.create_dataset(u'SensorZenith', dtype='i2', data=sensor_zenith_m1000,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_file.create_dataset(u'SensorAzimuth', dtype='i2', data=sensor_azimuth_m1000,
+                out_hdf5.create_dataset(u'SensorAzimuth', dtype='i2', data=sensor_azimuth_m1000,
                                         compression='gzip', compression_opts=5, shuffle=True)
 
                 # 读取输出文件的数据集
-                ev_1km_refsb_out = out_file.get(u'EV_1KM_RefSB')
-                ev_250_aggr_out = out_file.get(u'EV_250_Aggr.1KM_RefSB')
-                rsb_cal_cor_coeff_out = out_file.get(u'RSB_Cal_Cor_Coeff')
+                ev_1km_refsb_out = out_hdf5.get(u'EV_1KM_RefSB')
+                ev_250_aggr_out = out_hdf5.get(u'EV_250_Aggr.1KM_RefSB')
+                rsb_cal_cor_coeff_out = out_hdf5.get(u'RSB_Cal_Cor_Coeff')
 
-                sv_1km_out = out_file.get(u'SV_1km')
-                sv_250m_refl_out = out_file.get(u'SV_250m_REFL')
+                sv_1km_out = out_hdf5.get(u'SV_1km')
+                sv_250m_refl_out = out_hdf5.get(u'SV_250m_REFL')
 
-                land_sea_mask_out = out_file.get(u'LandSeaMask')
-                latitude_out = out_file.get(u'Latitude')
-                longitude_out = out_file.get(u'Longitude')
-                solar_zenith_out = out_file.get(u'SolarZenith')
-                solar_azimuth_out = out_file.get(u'SolarAzimuth')
-                sensor_zenith_out = out_file.get(u'SensorZenith')
-                sensor_azimuth_out = out_file.get(u'SensorAzimuth')
+                land_sea_mask_out = out_hdf5.get(u'LandSeaMask')
+                latitude_out = out_hdf5.get(u'Latitude')
+                longitude_out = out_hdf5.get(u'Longitude')
+                solar_zenith_out = out_hdf5.get(u'SolarZenith')
+                solar_azimuth_out = out_hdf5.get(u'SolarAzimuth')
+                sensor_zenith_out = out_hdf5.get(u'SensorZenith')
+                sensor_azimuth_out = out_hdf5.get(u'SensorAzimuth')
 
                 # 复制原来每个 dataset 的属性
                 pm.pm_h5py.copy_attrs_h5py(ev_1km_refsb_m1000, ev_1km_refsb_out)
@@ -407,16 +407,20 @@ def write_hdf(m1000, obc, OUT_PATH, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                 pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000, sensor_azimuth_out)
 
                 # 复制文件属性
-                pm.pm_h5py.copy_attrs_h5py(m1000, out_file)
+                pm.pm_h5py.copy_attrs_h5py(m1000, out_hdf5)
 
                 # 添加文件属性
-                out_file.attrs['dsl'] = dsl
-    print out_filename
+                out_hdf5.attrs['dsl'] = dsl
+    print "Output file: {}".format(out_file)
 
 
 def get_obc_file(m1000_file, m1000_path, obc_path):
-    obc_file = m1000_file.replace("1000M", "OBCXX")
-    obc_file = obc_file.replace(m1000_path, obc_path)
+    m1000_path = m1000_path.replace("%YYYY/%YYYY%MM%DD", '')
+    obc_path = obc_path.replace("%YYYY/%YYYY%MM%DD", '')
+
+    obc_file = m1000_file.replace(m1000_path, obc_path)
+    obc_file = obc_file.replace("_1000M", "_OBCXX")
+
     return obc_file
 
 
@@ -439,8 +443,9 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：SAT1+SENSOR1
-        [参数2]：yyyymmdd-yyyymmdd
+        [参数1]：SAT+SENSOR
+        [参数2]：file_path
+        [样例]： python ocrs_calibrate.py FY3B+MERSI /FY3/FY3B/MERSI/L1/1000M/2017/20170101/FY3B_MERSI_GBAL_L1_20170101_0045_1000M_MS.HDF
         """
     if "-h" in args:
         print help_info
@@ -449,7 +454,7 @@ if __name__ == "__main__":
     # 获取程序所在位置，拼接配置文件
     main_path, main_file = os.path.split(os.path.realpath(__file__))
     project_path = main_path
-    config_file = os.path.join(project_path, "cfg", "global.cfg")
+    config_file = os.path.join(project_path, "global.cfg")
 
     # 配置不存在预警
     if not os.path.isfile(config_file):
@@ -471,7 +476,11 @@ if __name__ == "__main__":
     else:
         sat_sensor = args[0]
         file_path = args[1]
-        with time_block("calibration time"):
+        L1_PATH = inCfg["PATH"]["IN"]["L1"]  # L1 数据文件路径
+        OBC_PATH = inCfg["PATH"]["IN"]["OBC"]  # OBC 数据文件路径
+        COEFF_PATH = inCfg["PATH"]["IN"]["Coeff"]  # 系数文件
+        OUT_PATH = inCfg["PATH"]["MID"]["Calibration"]  # 预处理文件输出路径
+        with time_block("calibrate time:"):
             run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
