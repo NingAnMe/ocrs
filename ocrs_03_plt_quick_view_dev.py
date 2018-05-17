@@ -37,8 +37,8 @@ def run(pair, hdf5_file):
 
     # 加载配置信息
     try:
-        datasets = proj_cfg["plt_gray"][pair].get("datasets")
-        filename_suffix = proj_cfg["plt_gray"][pair].get("filename_suffix")
+        datasets = proj_cfg["plt_quick_view"][pair].get("datasets")
+        filename_suffix = proj_cfg["plt_quick_view"][pair].get("filename_suffix")
     except Exception as why:
         print why
         log.error("Please check the yaml plt_gray args")
