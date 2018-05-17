@@ -1,6 +1,6 @@
 # coding:utf-8
 """
-ocrs_project.py
+ocrs_projection.py
 将水色产品在全球进行投影，获取投影后的位置信息和数据的位置查找表信息
 ~~~~~~~~~~~~~~~~~~~
 creation time : 2018 5 9
@@ -343,7 +343,7 @@ if __name__ == "__main__":
         u"""
         [参数1]：SAT+SENSOR
         [参数2]：colloc 文件
-        [样例]： python ocrs_project.py FY3B+MERSI 20171012.colloc
+        [样例]： python ocrs_projection.py FY3B+MERSI 20171012.colloc
         """
     if "-h" in args:
         print help_info
@@ -361,7 +361,7 @@ if __name__ == "__main__":
 
     # 载入配置文件
     inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["LOG"]
+    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
     log = LogServer(LOG_PATH)
 
     # 开启进程池
@@ -374,6 +374,7 @@ if __name__ == "__main__":
     else:
         sat_sensor = args[0]
         file_path = args[1]
+
         with time_block("Project time:", switch=TIME_TEST):
             run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))

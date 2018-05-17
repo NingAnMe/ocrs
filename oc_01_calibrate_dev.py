@@ -15,30 +15,30 @@ import h5py
 from configobj import ConfigObj
 
 from PB.CSC.pb_csc_console import LogServer
-from PB import pb_io, pb_time
+from PB import pb_io, pb_time, pb_calculate
 from PB.pb_time import time_block
 
-from ocrs_sv_extract import sv_extract
+
+TIME_TEST = True  # 时间测试
 
 
 def run(pair, m1000_file):
     ######################### 初始化 ###########################
-
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
     proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
         log.error("File is not exist: {}".format(proj_cfg_file))
         return
-
-    # 加载配置信息
-    try:
-        PROBE_M250 = proj_cfg['calibrate'][pair]['probe_m250']
-        PROBE_M1000 = proj_cfg['calibrate'][pair]['probe_m1000']
-        LAUNCH_DATE = proj_cfg['lanch_date'][pair.split('+')[0]]
-    except ValueError:
-        log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
-        return
+    else:
+        # 加载配置信息
+        try:
+            PROBE_M250 = proj_cfg['calibrate'][pair]['probe_m250']
+            PROBE_M1000 = proj_cfg['calibrate'][pair]['probe_m1000']
+            LAUNCH_DATE = proj_cfg['lanch_date'][pair.split('+')[0]]
+        except ValueError:
+            log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
+            return
 
     ######################### MERSI L1 定标处理 ###########################
     print '-' * 100
@@ -261,8 +261,7 @@ def calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs, dsl, sv_tem):
     return arof
 
 
-def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
-                         coeffs_old, coeffs_new, dsl, sv_tem):
+def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeffs_new, dsl, sv_tem):
     """
     13 年以后定标计算
     :return:
@@ -293,6 +292,73 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
     arof = dn_new * slope * 100
 
     return arof
+
+
+def sv_extract(obc, probe_250m, probe_1000m):
+    """
+    提取 OBC 文件的 SV 数据
+    # SV 提取(OBC文件)
+    1: 250m 的前 4 个通道，先把 SV 8000*24 使用 40 个探元转换为 200 * 24 (选择 40 个探元中某个探元号的数据)，每个通道，可配置参数取某一个探元号
+    2: 1000m 的 15 个通道，先把 SV 2000*6 使用 10 个探元 变为 200 * 6 (选择 10 个探元中某个探元号的数据)，每个通道，可配置参数取某一个探元号
+    3: 然后按照 10 行滑动 从 200 * 6 变成 200 * 1
+    4: 然后 10 行用 1 个 SV 均值，从 200 * 1 变成 2000 * 1
+    5: 总共 19 * 2000 (sv_2000)
+    :param obc: OBC 文件
+    :param probe_250m: (list)250m 每个通道选取的探元 id
+    :param probe_1000m: (list)1000m 每个通道选取的探元 id
+    :return:
+    """
+    # 获取数据集
+    setnames_obc = ['SV_1km', 'SV_250m_REFL']
+    datasets_obc = pb_io.read_dataset_hdf5(obc, setnames_obc)
+    # 提取 SV_250m_REFL
+    dataset_250m = []
+    for i in xrange(0, 4):
+        dataset = datasets_obc['SV_250m_REFL'][i]
+        probe_count = 40
+        probe_id = probe_250m[i]
+
+        dataset_new = sv_dataset_extract(dataset, probe_count, probe_id)
+        dataset_250m.append(dataset_new)
+    # 提取 SV_1km
+    dataset_1000m = []
+    for i in xrange(0, 15):
+        dataset = datasets_obc['SV_1km'][i]
+        probe_count = 10
+        probe_id = probe_1000m[i]
+
+        dataset_new = sv_dataset_extract(dataset, probe_count, probe_id)
+        dataset_1000m.append(dataset_new)
+
+    # 将数据转换为 ndarray 类
+    sv_250m = np.array(dataset_250m)
+    sv_1000m = np.array(dataset_1000m)
+
+    return sv_250m, sv_1000m
+
+
+def sv_dataset_extract(dataset, probe_count, probe_id):
+    """
+    提取某个通道 SV 数据集的数据
+    :param dataset: SV 数据集
+    :param probe_count: (int) 探元数量
+    :param probe_id: (int) 此通道对应的探元 id
+    :return:
+    """
+    # 筛选探元号对应的行
+    dataset_ext = pb_calculate.extract_lines(dataset, probe_count, probe_id)
+    # 计算 avg 和 std
+    avg_std_list = pb_calculate.rolling_calculate_avg_std(dataset_ext, 10)
+    # 过滤有效值
+    dataset_valid = pb_calculate.filter_valid_value(dataset_ext, avg_std_list, 2)
+    # 计算均值
+    dataset_avg = pb_calculate.calculate_avg(dataset_valid)
+    dataset_avg = np.array(dataset_avg).reshape(len(dataset_avg), 1)
+    # 将行数扩大 10 倍
+    dataset_avg = pb_calculate.expand_dataset_line(dataset_avg, 10)
+    # 对浮点数据数据进行四舍五入
+    dataset_new = np.rint(dataset_avg)
+    return dataset_new
 
 
 def write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
@@ -410,7 +476,7 @@ if __name__ == "__main__":
 
     # 载入配置文件
     inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["LOG"]
+    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
     log = LogServer(LOG_PATH)
 
     # 开启进程池
@@ -423,11 +489,13 @@ if __name__ == "__main__":
     else:
         sat_sensor = args[0]
         file_path = args[1]
-        L1_PATH = inCfg["PATH"]["IN"]["L1"]  # L1 数据文件路径
-        OBC_PATH = inCfg["PATH"]["IN"]["OBC"]  # OBC 数据文件路径
-        COEFF_PATH = inCfg["PATH"]["IN"]["Coeff"]  # 系数文件
-        OUT_PATH = inCfg["PATH"]["MID"]["Calibration"]  # 预处理文件输出路径
-        with time_block("calibrate time:"):
+
+        L1_PATH = inCfg["PATH"]["IN"]["l1"]  # L1 数据文件路径
+        OBC_PATH = inCfg["PATH"]["IN"]["obc"]  # OBC 数据文件路径
+        COEFF_PATH = inCfg["PATH"]["IN"]["coeff"]  # 系数文件
+        OUT_PATH = inCfg["PATH"]["MID"]["projection"]  # 预处理文件输出路径
+
+        with time_block("Calibrate time:", switch=TIME_TEST):
             run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()

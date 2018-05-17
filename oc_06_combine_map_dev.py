@@ -2,34 +2,25 @@
 
 import os
 import sys
-import calendar
-from datetime import datetime
-from multiprocessing import Pool, Manager
 
-import numpy as np
 import h5py
-import yaml
-from matplotlib.ticker import MultipleLocator
-
+import numpy as np
 from configobj import ConfigObj
-from dateutil.relativedelta import relativedelta
-from numpy.lib.polynomial import polyfit
-from numpy.ma.core import std, mean
-from numpy.ma.extras import corrcoef
 
-from PB.CSC.pb_csc_console import LogServer
-from DP.dp_prj_new import prj_core
 from DV import dv_map
-from PB import pb_time, pb_io
-from PB.pb_space import deg2meter
-from ocrs_io import loadYamlCfg
-from publicmodels.pm_time import time_block
+from PB import pb_io
+from PB.pb_time import time_block
+from PB.CSC.pb_csc_console import LogServer
+
+
+TIME_TEST = True  # 时间测试
 
 
 def run(pair, in_file):
+    ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
-    proj_cfg = loadYamlCfg(proj_cfg_file)
+    proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
         log.error("Can't find the config file: {}".format(proj_cfg_file))
         return
@@ -45,6 +36,7 @@ def run(pair, in_file):
             log.error("Please check the yaml plt_gray args")
             return
 
+    ######################### 开始处理 ###########################
     if os.path.isfile(in_file):
         print "Start draw combine picture: {}".format(in_file)
     else:
@@ -57,7 +49,7 @@ def run(pair, in_file):
         vmin = float(legend[2])  # color bar 范围 最小值
         dir_path = os.path.dirname(in_file)
         pic_name = os.path.join(dir_path, "pictures/{}_{}_AOAD.png".format(pair, dataset_name))
-        with time_block("draw combine"):
+        with time_block("Draw combine time:", switch=TIME_TEST):
             draw_combine(in_file, dataset_name, pic_name, vmin=vmin, vmax=vmax, area_range=area_range)
 
     print '-' * 100
@@ -66,6 +58,7 @@ def run(pair, in_file):
 def draw_combine(in_file, dataset_name, pic_name, vmin=None, vmax=None, area_range=None):
     """
     通过日合成文件，画数据集的全球分布图
+    :param area_range:
     :param in_file:
     :param dataset_name:
     :param pic_name:
@@ -160,7 +153,7 @@ if __name__ == "__main__":
 
     # 载入配置文件
     inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["LOG"]
+    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
     log = LogServer(LOG_PATH)
 
     # 开启进程池
@@ -173,8 +166,7 @@ if __name__ == "__main__":
     else:
         sat_sensor = args[0]
         file_path = args[1]
-        # file_path = "/storage-space/disk3/admin/product/FY3B/973Aerosol/1-Day/2013/201301/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130101_AOAD_5000M.HDF"
-        # file_path = '/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_0000_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_0000_1000M_COMBINE.HDF'
+
         run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()

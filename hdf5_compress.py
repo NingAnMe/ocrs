@@ -16,8 +16,6 @@ import logging
 
 import publicmodels as pm
 
-logging.basicConfig(filename='ocrs.log', format='%(levelname)s::%(asctime)s::%(message)s', level=logging.INFO)
-
 
 def main(date_range):
     # 记录程序开始运行时间

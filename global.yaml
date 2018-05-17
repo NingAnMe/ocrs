@@ -28,10 +28,12 @@ compress:
     out_path:
 
 ################################ 快视图配置 ######################################
-plt_gray:
+plt_quick_view:
   FY3B+MERSI:
-    datasets: ["Ocean_Rw_412", "Ocean_Rw_443", "Ocean_Rw_490"]  # R G B 数据，按顺序
-    filename_suffix: "Rw412_Rw433_Rw_490"
+#    datasets: ["Ocean_Rw_412", "Ocean_Rw_443", "Ocean_Rw_490"]  # R G B 数据，按顺序
+#    filename_suffix: "Rw412_Rw433_Rw_490"  # 在文件名的基础上增加的后缀
+    datasets: ["Ocean_Aod_550"]  # 一个数据集的灰度图
+    filename_suffix: "Aod550"  # 在文件名的基础上增加的后缀
 
 ################################ 日合成画图配置 ######################################
 plt_combine:
@@ -66,7 +68,7 @@ plt_combine:
     - ["Land_Aod_Angstrom", "2.00", "0.00"]
 
     area_range:
-      lat_s: "-90"
-      lat_n: "90"
-      lon_w: "180"
-      lon_e: "-180"
+      lat_s: "90"
+      lat_n: "-90"
+      lon_w: "-180"
+      lon_e: "180"

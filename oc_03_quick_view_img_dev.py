@@ -1,27 +1,13 @@
 # coding:utf-8
-################# 全局引用 #####################
 import os
 import sys
-import calendar
-from datetime import datetime
-from multiprocessing import Pool, Lock
+
+import h5py
 from configobj import ConfigObj
 
-import numpy as np
-import h5py
-from matplotlib.ticker import MultipleLocator
-
-
-from dateutil.relativedelta import relativedelta
-from numpy.lib.polynomial import polyfit
-from numpy.ma.core import std, mean
-from numpy.ma.extras import corrcoef
-
 from PB.CSC.pb_csc_console import LogServer
-from PB import pb_time, pb_io
-from ocrs_io import loadYamlCfg
-from publicmodels.pm_time import time_this, time_block
-################# 程序引用 #####################
+from PB import pb_io
+from PB.pb_time import time_block
 from DV.dv_img import dv_rgb
 
 import matplotlib as mpl
@@ -29,23 +15,27 @@ mpl.use("agg")
 import matplotlib.pyplot as plt
 
 
+TIME_TEST = True  # 时间测试
+
+
 def run(pair, hdf5_file):
+    ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
-    proj_cfg = loadYamlCfg(proj_cfg_file)
+    proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
         log.error("Not find the config file: {}".format(proj_cfg_file))
         return
-
-    # 加载配置信息
-    try:
-        datasets = proj_cfg["plt_quick_view"][pair].get("datasets")
-        filename_suffix = proj_cfg["plt_quick_view"][pair].get("filename_suffix")
-    except Exception as why:
-        print why
-        log.error("Please check the yaml plt_gray args")
-        return
-
+    else:
+        # 加载配置信息
+        try:
+            datasets = proj_cfg["plt_quick_view"][pair].get("datasets")
+            filename_suffix = proj_cfg["plt_quick_view"][pair].get("filename_suffix")
+        except Exception as why:
+            print why
+            log.error("Please check the yaml plt_gray args")
+            return
+    ######################### 开始处理 ###########################
     print '-' * 100
     print "Start plot gray picture."
     if not os.path.isfile(hdf5_file):
@@ -84,7 +74,7 @@ def run(pair, hdf5_file):
                 return
     except Exception as why:
         print why
-        log.error("Plot quick view error: {}".format(hdf5_file))
+        log.error("Plot quick view picture error: {}".format(hdf5_file))
         return
 
     print "Output picture: {}".format(out_pic)
@@ -117,7 +107,7 @@ if __name__ == "__main__":
 
     # 载入配置文件
     inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["LOG"]
+    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
     log = LogServer(LOG_PATH)
 
     # 开启进程池
@@ -127,15 +117,10 @@ if __name__ == "__main__":
 
     if not len(args) == 2:
         print help_info
-
     else:
-        # file_path = "/storage-space/disk3/admin/product/FY3B/973Aerosol/Granule/2013/201310/20131012/20131012_0025_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20131012_0025_1000M.HDF"
-        # file_path = "/storage-space/disk3/Granule/out/2017/201710/20171012/20171012_0000_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_0000_1000M.HDF"
-        # pair_tem = "FY3B+MERSI"
-        # run(pair_tem, file_path)
         sat_sensor = args[0]
         file_path = args[1]
-        with time_block("Plot quick view time:"):
+        with time_block("Plot quick view time:", switch=TIME_TEST):
             run(sat_sensor, file_path)
             # pool.apply_async(run, (sat_sensor, file_path))
             # pool.close()
