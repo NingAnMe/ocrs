@@ -9,29 +9,16 @@ author : anning
 """
 import os
 import sys
-import calendar
-from datetime import datetime
-from multiprocessing import Pool, Lock
 
 import numpy as np
 import h5py
-from matplotlib.ticker import MultipleLocator
-
 from configobj import ConfigObj
-from dateutil.relativedelta import relativedelta
-from numpy.lib.polynomial import polyfit
-from numpy.ma.core import std, mean
-from numpy.ma.extras import corrcoef
 
 from PB.CSC.pb_csc_console import LogServer
-from PB import pb_time, pb_io
-from ocrs_io import loadYamlCfg
-
-import publicmodels as pm
-from publicmodels.pm_time import time_this, time_block
+from PB import pb_io, pb_time
+from PB.pb_time import time_block
 
 from ocrs_sv_extract import sv_extract
-import re
 
 
 def run(pair, m1000_file):
@@ -39,7 +26,7 @@ def run(pair, m1000_file):
 
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
-    proj_cfg = loadYamlCfg(proj_cfg_file)
+    proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
         log.error("File is not exist: {}".format(proj_cfg_file))
         return
@@ -71,7 +58,7 @@ def run(pair, m1000_file):
         print obc
 
     # 获取 ymd
-    ymd = get_ymd(m1000)
+    ymd = pb_time.get_ymd(m1000)
 
     # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
     coeffs_path = os.path.join(COEFF_PATH, '{}.txt'.format(ymd[0:4]))
@@ -83,26 +70,26 @@ def run(pair, m1000_file):
     coeffs = np.loadtxt(coeffs_path)
 
     # 对 OBC 文件进行 SV 提取
-    sv_250m, sv_1000m = sv_extract(obc, PROBE_M250, PROBE_M1000)
+    SV_250m_REFL, SV_1km = sv_extract(obc, PROBE_M250, PROBE_M1000)
 
     # 获取 dsl 数据生成时间与卫星发射时间相差的天数
-    dsl = pm.pm_time.get_dsl(m1000, LAUNCH_DATE)
+    dsl = pb_time.get_dsl(ymd, LAUNCH_DATE)
 
     # 定标计算
     if int(ymd[0:4]) <= 2013:
         # 2013 年之前
         EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_before(
-            m1000, sv_1000m, sv_250m, coeffs, dsl)
+            m1000, SV_1km, SV_250m_REFL, coeffs, dsl)
     else:
         # 2013 年之后
         EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB = calibration_after(
-            m1000, sv_1000m, sv_250m, coeffs, dsl)
+            m1000, SV_1km, SV_250m_REFL, coeffs, dsl)
 
     # 输出 HDF5 文件
     _dir, _name = os.path.split(m1000)
     out_file = os.path.join(OUT_PATH, ymd[0:4], ymd, _name)
     write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
-              sv_1000m, sv_250m, coeffs, dsl)
+              SV_1km, SV_250m_REFL, coeffs, dsl)
 
     print ("Success")
     print '-' * 100
@@ -117,26 +104,26 @@ def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
     4: slope = dsl ** 2 * k2 + dsl * k1 + k0  【# k0, k1, k2 是新的】
     5: arof = ((dn_new - SV_2000) * slope) * 100  【# 四舍五入取整】
     :param m1000: L1 文件
-    :param sv_1000m: OBC 中提取的 SV
-    :param sv_250m:  OBC 中提取的 SV
+    :param sv_1000m: OBC 中提取的 SV_1km
+    :param sv_250m:  OBC 中提取的 SV_250m_REFL
     :param coeffs:  水色波段系统定标系数
     :param dsl:  数据生成时间与卫星发射时间相差的天数
     :return:
     """
-    set_names = [u'EV_1KM_RefSB', u'EV_250_Aggr.1KM_RefSB']
-    datasets = pm.pm_h5py.read_dataset_hdf5(m1000, set_names)
+    set_names = ['EV_1KM_RefSB', 'EV_250_Aggr.1KM_RefSB']
+    datasets = pb_io.read_dataset_hdf5(m1000, set_names)
 
-    attrs_1000m = pm.pm_h5py.read_attr_hdf5(
-        m1000, u'EV_1KM_RefSB', [u'Slope', u'Intercept'])
-    attrs_250m = pm.pm_h5py.read_attr_hdf5(
-        m1000, u'EV_250_Aggr.1KM_RefSB', [u'Slope', u'Intercept'])
+    attrs_1000m = pb_io.read_attr_hdf5(
+        m1000, 'EV_1KM_RefSB', ['Slope', 'Intercept'])
+    attrs_250m = pb_io.read_attr_hdf5(
+        m1000, 'EV_250_Aggr.1KM_RefSB', ['Slope', 'Intercept'])
 
     # 对每个通道进行循环处理
     dataset_1km = []
     for i in xrange(0, 15):
-        dn_ev = datasets[u'EV_1KM_RefSB'][i]
-        slope_ev = attrs_1000m[u'Slope'][i]
-        intercept_ev = attrs_1000m[u'Intercept'][i]
+        dn_ev = datasets['EV_1KM_RefSB'][i]
+        slope_ev = attrs_1000m['Slope'][i]
+        intercept_ev = attrs_1000m['Intercept'][i]
         sv_1000m_tem = sv_1000m[i]
         coeffs_new = coeffs[i + 4]
 
@@ -146,9 +133,9 @@ def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
 
     dataset_250 = []
     for i in xrange(0, 4):
-        dn_ev = datasets[u'EV_250_Aggr.1KM_RefSB'][i]
-        slope_ev = attrs_250m[u'Slope'][i]
-        intercept_ev = attrs_250m[u'Intercept'][i]
+        dn_ev = datasets['EV_250_Aggr.1KM_RefSB'][i]
+        slope_ev = attrs_250m['Slope'][i]
+        intercept_ev = attrs_250m['Intercept'][i]
         sv_250m_tem = sv_250m[i]
         coeffs_new = coeffs[i]
 
@@ -183,32 +170,30 @@ def calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl):
     【# k0, k1, k2 是新给的】
     5: arof = ((dn_new - SV_2000) * slope_new) * 100 【# 四舍五入取整】
     :param m1000: L1 文件
-    :param sv_1000m: OBC 中提取的 SV
-    :param sv_250m:  OBC 中提取的 SV
+    :param sv_1000m: OBC 中提取的 SV_1km
+    :param sv_250m:  OBC 中提取的 SV_250m_REFL
     :param coeffs:  水色波段系统定标系数
     :param dsl:  数据生成时间与卫星发射时间相差的天数
     :return:
     """
     # 从 L1 文件中获取相关的数据集
-    set_names = [u'EV_1KM_RefSB', u'EV_250_Aggr.1KM_RefSB',
-                 u'RSB_Cal_Cor_Coeff', u'SV_1KM_RefSB',
-                 u'SV_250_Aggr1KM_RefSB']
-    datasets = pm.pm_h5py.read_dataset_hdf5(m1000, set_names)
+    set_names = ['EV_1KM_RefSB', 'EV_250_Aggr.1KM_RefSB',
+                 'RSB_Cal_Cor_Coeff', 'SV_1KM_RefSB',
+                 'SV_250_Aggr1KM_RefSB']
+    datasets = pb_io.read_dataset_hdf5(m1000, set_names)
     # 从 L1 文件中获取相关数据集的属性值
-    attrs_1000m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_1KM_RefSB',
-                                            [u'Slope', u'Intercept'])
-    attrs_250m = pm.pm_h5py.read_attr_hdf5(m1000, u'EV_250_Aggr.1KM_RefSB',
-                                           [u'Slope', u'Intercept'])
+    attrs_1000m = pb_io.read_attr_hdf5(m1000, 'EV_1KM_RefSB', ['Slope', 'Intercept'])
+    attrs_250m = pb_io.read_attr_hdf5(m1000, 'EV_250_Aggr.1KM_RefSB', ['Slope', 'Intercept'])
 
     # 对每个通道进行循环处理
     dataset_1km = []
     for i in xrange(0, 15):
-        dn_ev = datasets[u'EV_1KM_RefSB'][i]
-        slope_ev = attrs_1000m[u'Slope'][i]
-        intercept_ev = attrs_1000m[u'Intercept'][i]
-        coeffs_old = datasets[u'RSB_Cal_Cor_Coeff'][i + 4]
+        dn_ev = datasets['EV_1KM_RefSB'][i]
+        slope_ev = attrs_1000m['Slope'][i]
+        intercept_ev = attrs_1000m['Intercept'][i]
+        coeffs_old = datasets['RSB_Cal_Cor_Coeff'][i + 4]
         coeffs_new = coeffs[i + 4]
-        dn_sv = datasets[u'SV_1KM_RefSB'][i]
+        dn_sv = datasets['SV_1KM_RefSB'][i]
         sv_1000m_tem = sv_1000m[i]
 
         arof = calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
@@ -218,12 +203,12 @@ def calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl):
 
     dataset_250 = []
     for i in xrange(0, 4):
-        dn_ev = datasets[u'EV_250_Aggr.1KM_RefSB'][i]
-        slope_ev = attrs_250m[u'Slope'][i]
-        intercept_ev = attrs_250m[u'Intercept'][i]
-        coeffs_old = datasets[u'RSB_Cal_Cor_Coeff'][i]
+        dn_ev = datasets['EV_250_Aggr.1KM_RefSB'][i]
+        slope_ev = attrs_250m['Slope'][i]
+        intercept_ev = attrs_250m['Intercept'][i]
+        coeffs_old = datasets['RSB_Cal_Cor_Coeff'][i]
         coeffs_new = coeffs[i]
-        dn_sv = datasets[u'SV_250_Aggr1KM_RefSB'][i]
+        dn_sv = datasets['SV_250_Aggr1KM_RefSB'][i]
         sv_250m_tem = sv_250m[i]
 
         arof = calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
@@ -311,103 +296,71 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv,
 
 
 def write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
-              sv_1000m, sv_250m, coeffs, dsl):
+              SV_1km, SV_250m_REFL, RSB_Cal_Cor_Coeff, dsl):
     # 创建生成输出目录
     pb_io.make_sure_path_exists(os.path.dirname(out_file))
     # 写入数据
     with h5py.File(out_file, 'w') as out_hdf5:
         with h5py.File(m1000, 'r') as m1000:
             with h5py.File(obc, 'r') as obc:
-                # 读取 L1 m1000 的数据集
-                ev_1km_refsb_m1000 = m1000.get(u'EV_1KM_RefSB')
-                ev_250_aggr_m1000 = m1000.get(u'EV_250_Aggr.1KM_RefSB')
-                rsb_cal_cor_coeff_m1000 = m1000.get(u'RSB_Cal_Cor_Coeff')
-                land_sea_mask_m1000 = m1000.get(u'LandSeaMask')
-                latitude_m1000 = m1000.get(u'Latitude')
-                longitude_m1000 = m1000.get(u'Longitude')
-                solar_zenith_m1000 = m1000.get(u'SolarZenith')
-                solar_azimuth_m1000 = m1000.get(u'SolarAzimuth')
-                sensor_zenith_m1000 = m1000.get(u'SensorZenith')
-                sensor_azimuth_m1000 = m1000.get(u'SensorAzimuth')
-
-                # 读取 OBC m1000 的数据集
-                sv_1km_obc = obc.get(u'SV_1km')
-                sv_250m_refl_obc = obc.get(u'SV_250m_REFL')
+                # M1000 文件的数据集
+                dataset_m1000 = ['EV_1KM_RefSB', 'EV_250_Aggr.1KM_RefSB', 'RSB_Cal_Cor_Coeff',
+                                 'LandSeaMask', 'Latitude', 'Longitude', 'SolarZenith',
+                                 'SolarAzimuth', 'SensorZenith', 'SensorAzimuth']
+                # OBC 文件的数据集
+                dataset_obc = ['SV_1km', 'SV_250m_REFL']
 
                 # 创建输出文件的数据集
-                out_hdf5.create_dataset(u'EV_1KM_RefSB', dtype='u2', data=EV_1KM_RefSB,
+                out_hdf5.create_dataset('EV_1KM_RefSB', dtype='u2', data=EV_1KM_RefSB,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'EV_250_Aggr.1KM_RefSB', dtype='u2', data=EV_250_Aggr_1KM_RefSB,
+                out_hdf5.create_dataset('EV_250_Aggr.1KM_RefSB', dtype='u2', data=EV_250_Aggr_1KM_RefSB,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'SV_1km', dtype='i4', data=sv_1000m,
+                out_hdf5.create_dataset('SV_1km', dtype='i4', data=SV_1km,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'SV_250m_REFL', dtype='i4', data=sv_250m,
+                out_hdf5.create_dataset('SV_250m_REFL', dtype='i4', data=SV_250m_REFL,
                                         compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'RSB_Cal_Cor_Coeff', dtype='f4', data=coeffs,
-                                        compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'LandSeaMask', dtype='i1', data=land_sea_mask_m1000,
-                                        compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'Latitude', dtype='f4', data=latitude_m1000,
-                                        compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'Longitude', dtype='f4', data=longitude_m1000,
-                                        compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'SolarZenith', dtype='i2', data=solar_zenith_m1000,
-                                        compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'SolarAzimuth', dtype='i2', data=solar_azimuth_m1000,
-                                        compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'SensorZenith', dtype='i2', data=sensor_zenith_m1000,
-                                        compression='gzip', compression_opts=5, shuffle=True)
-                out_hdf5.create_dataset(u'SensorAzimuth', dtype='i2', data=sensor_azimuth_m1000,
+                out_hdf5.create_dataset('RSB_Cal_Cor_Coeff', dtype='f4', data=RSB_Cal_Cor_Coeff,
                                         compression='gzip', compression_opts=5, shuffle=True)
 
-                # 读取输出文件的数据集
-                ev_1km_refsb_out = out_hdf5.get(u'EV_1KM_RefSB')
-                ev_250_aggr_out = out_hdf5.get(u'EV_250_Aggr.1KM_RefSB')
-                rsb_cal_cor_coeff_out = out_hdf5.get(u'RSB_Cal_Cor_Coeff')
+                out_hdf5.create_dataset('LandSeaMask', dtype='i1', data=m1000.get('LandSeaMask')[:],
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_hdf5.create_dataset('Latitude', dtype='f4', data=m1000.get('Latitude')[:],
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_hdf5.create_dataset('Longitude', dtype='f4', data=m1000.get('Longitude')[:],
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_hdf5.create_dataset('SolarZenith', dtype='i2', data=m1000.get('SolarZenith')[:],
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_hdf5.create_dataset('SolarAzimuth', dtype='i2', data=m1000.get('SolarAzimuth')[:],
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_hdf5.create_dataset('SensorZenith', dtype='i2', data=m1000.get('SensorZenith')[:],
+                                        compression='gzip', compression_opts=5, shuffle=True)
+                out_hdf5.create_dataset('SensorAzimuth', dtype='i2', data=m1000.get('SensorAzimuth')[:],
+                                        compression='gzip', compression_opts=5, shuffle=True)
 
-                sv_1km_out = out_hdf5.get(u'SV_1km')
-                sv_250m_refl_out = out_hdf5.get(u'SV_250m_REFL')
-
-                land_sea_mask_out = out_hdf5.get(u'LandSeaMask')
-                latitude_out = out_hdf5.get(u'Latitude')
-                longitude_out = out_hdf5.get(u'Longitude')
-                solar_zenith_out = out_hdf5.get(u'SolarZenith')
-                solar_azimuth_out = out_hdf5.get(u'SolarAzimuth')
-                sensor_zenith_out = out_hdf5.get(u'SensorZenith')
-                sensor_azimuth_out = out_hdf5.get(u'SensorAzimuth')
-
+                coeff_attrs = {
+                    'Intercept': [0.0], 'Slope': [1.0], '_FillValue': [-9999.0],
+                    'band_name': "Calibration Model:Slope=k0+k1*DSL+k2*DSL*DSL;RefFacor=Slope*(EV-SV);Ref=RefFacor*d*d/100/cos(SolZ)",
+                    'long_name': "Calibration Updating Model Coefficients for 19 Reflective Solar Bands (1-4, 6-20)",
+                    'units': 'NO', 'valid_range': [0.0, 1.0],
+                }
                 # 复制原来每个 dataset 的属性
-                pm.pm_h5py.copy_attrs_h5py(ev_1km_refsb_m1000, ev_1km_refsb_out)
-                pm.pm_h5py.copy_attrs_h5py(ev_250_aggr_m1000, ev_250_aggr_out)
-                pm.pm_h5py.copy_attrs_h5py(sv_1km_obc, sv_1km_out)
-                pm.pm_h5py.copy_attrs_h5py(sv_250m_refl_obc, sv_250m_refl_out)
-
-                try:
-                    pm.pm_h5py.copy_attrs_h5py(rsb_cal_cor_coeff_m1000,
-                                               rsb_cal_cor_coeff_out)
-                except AttributeError:
-                    rsb_cal_cor_coeff_out.attrs['Intercept'] = [0.0]
-                    rsb_cal_cor_coeff_out.attrs['Slope'] = [1.0]
-                    rsb_cal_cor_coeff_out.attrs['_FillValue'] = [-9999.0]
-                    rsb_cal_cor_coeff_out.attrs['band_name'] = \
-                        'Calibration Model:Slope=k0+k1*DSL+k2*DSL*DSL;RefFacor'\
-                        '=Slope*(EV-SV);Ref=RefFacor*d*d/100/cos(SolZ) '
-                    rsb_cal_cor_coeff_out.attrs['long_name'] = \
-                        'Calibration Updating Model Coefficients for 19 ' \
-                        'Reflective Solar Bands (1-4, 6-20) '
-                    rsb_cal_cor_coeff_out.attrs['units'] = 'NO'
-                    rsb_cal_cor_coeff_out.attrs['valid_range'] = [0.0, 1.0]
-
-                pm.pm_h5py.copy_attrs_h5py(land_sea_mask_m1000, land_sea_mask_out)
-                pm.pm_h5py.copy_attrs_h5py(latitude_m1000, latitude_out)
-                pm.pm_h5py.copy_attrs_h5py(longitude_m1000, longitude_out)
-                pm.pm_h5py.copy_attrs_h5py(solar_zenith_m1000, solar_zenith_out)
-                pm.pm_h5py.copy_attrs_h5py(solar_azimuth_m1000, solar_azimuth_out)
-                pm.pm_h5py.copy_attrs_h5py(sensor_zenith_m1000, sensor_zenith_out)
-                pm.pm_h5py.copy_attrs_h5py(sensor_azimuth_m1000, sensor_azimuth_out)
+                for dataset_name in dataset_m1000:
+                    for k, v in m1000.get(dataset_name).attrs.items():
+                        if k == "RSB_Cal_Cor_Coeff":
+                            continue
+                        else:
+                            out_hdf5.get(dataset_name).attrs[k] = v
+                for dataset_name in dataset_obc:
+                    for k, v in obc.get(dataset_name).attrs.items():
+                        if k == "RSB_Cal_Cor_Coeff":
+                            continue
+                        else:
+                            out_hdf5.get(dataset_name).attrs[k] = v
+                for k, v in coeff_attrs.items():
+                    out_hdf5.get(RSB_Cal_Cor_Coeff).attrs[k] = v
 
                 # 复制文件属性
-                pm.pm_h5py.copy_attrs_h5py(m1000, out_hdf5)
+                pb_io.copy_attrs_h5py(m1000, out_hdf5)
 
                 # 添加文件属性
                 out_hdf5.attrs['dsl'] = dsl
@@ -415,6 +368,13 @@ def write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
 
 
 def get_obc_file(m1000_file, m1000_path, obc_path):
+    """
+    通过 1KM 文件路径生成 OBC 文件的路径
+    :param m1000_file:
+    :param m1000_path:
+    :param obc_path:
+    :return:
+    """
     m1000_path = m1000_path.replace("%YYYY/%YYYY%MM%DD", '')
     obc_path = obc_path.replace("%YYYY/%YYYY%MM%DD", '')
 
@@ -422,19 +382,6 @@ def get_obc_file(m1000_file, m1000_path, obc_path):
     obc_file = obc_file.replace("_1000M", "_OBCXX")
 
     return obc_file
-
-
-def get_ymd(file_str):
-    pattern = ".*_(\d{8})_.*"
-    prog = re.compile(pattern)
-    result = prog.match(file_str)
-    if result is not None:
-        groups = result.groups()
-        if len(groups) != 0:
-            ymd = result.groups()[0]
-            return ymd
-    else:
-        return
 
 
 ######################### 程序全局入口 ##############################

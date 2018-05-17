@@ -38,7 +38,8 @@ def run(pair, in_file):
         try:
             legend_range = proj_cfg["plt_combine"][pair].get("legend_range")
             area_range = proj_cfg["plt_combine"][pair].get("area_range")
-            area_range = [float(x) for x in area_range]
+            for k, v in area_range.items():
+                area_range[k] = float(v)
         except Exception as why:
             print why
             log.error("Please check the yaml plt_gray args")
@@ -101,8 +102,8 @@ def draw_combine(in_file, dataset_name, pic_name, vmin=None, vmax=None, area_ran
     else:
         print "{} valid value count: {}".format(dataset_name, len(idx[0]))
 
-    value = np.ma.masked_less(value, 0)  # 掩去小于 0 的无效值
-    # value = np.ma.masked_less_equal(value, 0)  # 掩去小于等于 0 的无效值
+    # value = np.ma.masked_less_(value, 0)  # 掩去小于 0 的无效值
+    value = np.ma.masked_less_equal(value, 0)  # 掩去小于等于 0 的无效值
 
     p = dv_map.dv_map()
     p.colorbar_fmt = "%0.2f"
@@ -150,7 +151,7 @@ if __name__ == "__main__":
     # 获取程序所在位置，拼接全局配置文件
     main_path, main_file = os.path.split(os.path.realpath(__file__))
     project_path = main_path
-    config_file = os.path.join(project_path, "cfg", "global.cfg")
+    config_file = os.path.join(project_path, "global.cfg")
 
     # 配置不存在预警
     if not os.path.isfile(config_file):

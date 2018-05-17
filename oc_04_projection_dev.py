@@ -9,87 +9,68 @@ author : anning
 """
 import os
 import sys
-import calendar
-from datetime import datetime
-from multiprocessing import Pool, Manager
 
-import numpy as np
 import h5py
 import yaml
-from matplotlib.ticker import MultipleLocator
-
+import numpy as np
 from configobj import ConfigObj
-from dateutil.relativedelta import relativedelta
-from numpy.lib.polynomial import polyfit
-from numpy.ma.core import std, mean
-from numpy.ma.extras import corrcoef
 
-from PB.CSC.pb_csc_console import LogServer
 from DP.dp_prj_new import prj_core
 from DV import dv_map
-from PB import pb_time, pb_io
+from PB import pb_io
+from PB.pb_time import time_block
 from PB.pb_space import deg2meter
-from ocrs_io import loadYamlCfg
-from publicmodels.pm_time import time_block
+from PB.CSC.pb_csc_console import LogServer
+
+
+TIME_TEST = True  # 时间测试
 
 
 def run(pair, colloc_file):
+    ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
-    proj_cfg = loadYamlCfg(proj_cfg_file)
+    proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
         log.error("File is not exist: {}".format(proj_cfg_file))
         return
+    else:
+        # 加载配置信息
+        try:
+            DRAW_INFO = proj_cfg['project'][pair]['draw']
+        except ValueError:
+            log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
+            return
 
-    # 加载配置信息
-    try:
-        DRAW_INFO = proj_cfg['project'][pair]['draw']
-        LAUNCH_DATE = proj_cfg['lanch_date'][pair.split('+')[0]]
-    except ValueError:
-        log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
-        return
-
+    ######################### 开始处理 ###########################
     # 加载 colloc 文件内容
     if not os.path.isfile(colloc_file):
         log.error("File is not exist: {}".format(colloc_file))
         return
-    try:
-        with open(colloc_file, 'r') as stream:
-            cfg = yaml.load(stream)
-            ifile = cfg['PATH']['ipath']
-            pfile = cfg['PATH']['ppath']
+    else:
+        try:
+            with open(colloc_file, 'r') as stream:
+                cfg = yaml.load(stream)
+                ifile = cfg['PATH']['ipath']
+                pfile = cfg['PATH']['ppath']
 
-            res = cfg['PROJ']['res']
+                res = cfg['PROJ']['res']
 
-            half_res = deg2meter(res) / 2.
-            cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
+                half_res = deg2meter(res) / 2.
+                cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
 
-            col = cfg['PROJ']['col']
-            row = cfg['PROJ']['row']
-            if ifile is None or pfile is None:
-                log.error("Is None: ifile or pfile".format(colloc_file))
-                return
-    except Exception as why:
-        print why
-        log.error("Load colloc file error, please check it. : {}".format(colloc_file))
+                col = cfg['PROJ']['col']
+                row = cfg['PROJ']['row']
+                if ifile is None or pfile is None:
+                    log.error("Is None: ifile or pfile".format(colloc_file))
+                    return
+        except Exception as why:
+            print why
+            log.error("Load colloc file error, please check it. : {}".format(colloc_file))
+            return
 
     # 创建查找表
     lookup_table = prj_core(cmd, res, unit="deg", row=row, col=col)
-    # ifile = ["/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M.HDF".format(x, x) for x in xrange(0, 2500)]
-    # pfile = [
-    #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_{:0>4}_1000M_PROJ.HDF".format(x, x) for x in xrange(0, 2500)]
-    # ifile = [
-    #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M.HDF".format(
-    #         x, x) for x in xrange(0, 2500)]
-    # pfile = [
-    #     "/storage-space/disk3/Granule/out_del_cloudmask/2017/201710/20171012/20171012_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20171012_{:0>4}_1000M_PROJ.HDF".format(
-    #         x, x) for x in xrange(0, 2500)]
-    # ifile = [
-    #     "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M.HDF".format(
-    #         x, x) for x in xrange(0, 2500)]
-    # pfile = [
-    #     "/storage-space/disk3/Granule/out_del_cloudmask/2013/201301/20130101/20130101_{:0>4}_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_{:0>4}_1000M_PROJ.HDF".format(
-    #         x, x) for x in xrange(0, 2500)]
 
     # 对数据列表进行循环处理
     for idx_file, in_file in enumerate(ifile):
@@ -100,13 +81,13 @@ def run(pair, colloc_file):
             continue
         else:
             print "Input file: {}".format(in_file)
-        with time_block("one project time:"):
+        with time_block("One project time:", switch=TIME_TEST):
             out_file = pfile[idx_file]
             projection = Projection()
             projection.load_yaml_config(colloc_file)
             projection.project(in_file, out_file, lookup_table)
 
-        with time_block("draw one projection picture"):
+        with time_block("Draw one projection picture time:", switch=TIME_TEST):
             if DRAW_INFO is not None:
                 for info in DRAW_INFO:
                     dataset_name = info[0]
@@ -195,8 +176,6 @@ class Projection(object):
         if self.error:
             return
         # 通过查找表和经纬度数据生成数据在全球的行列信息
-        # with time_block("prj core"):
-        #     self.lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
         lookup_table.create_lut(self.lons, self.lats)
         self.ii = lookup_table.lut_i
         self.jj = lookup_table.lut_j
@@ -238,18 +217,18 @@ class Projection(object):
         print "Output file: {}".format(out_file)
 
     def project(self, in_file, out_file, lookup_table):
-        # with time_block("load lons and lats time:"):
-        # 加载经纬度数据
-        self._load_lons_lats(in_file)
-        # with time_block("create lut time:"):
-        # 使用查找表生成经纬度对应的行列信息
-        self._create_lut(lookup_table)
-        # with time_block("get index time:"):
-        # 使用生成的行列信息生成数据的索引信息
-        self._get_index()
-        # with time_block("write data time:"):
-        # 将数据的索引信息和在全球的行列信息进行写入
-        self._write(out_file)
+        with time_block("Load lons and lats time:", switch=TIME_TEST):
+            # 加载经纬度数据
+            self._load_lons_lats(in_file)
+        with time_block("Create lut time:", switch=TIME_TEST):
+            # 使用查找表生成经纬度对应的行列信息
+            self._create_lut(lookup_table)
+        with time_block("Get index time:", switch=TIME_TEST):
+            # 使用生成的行列信息生成数据的索引信息
+            self._get_index()
+        with time_block("Write data time:", switch=TIME_TEST):
+            # 将数据的索引信息和在全球的行列信息进行写入
+            self._write(out_file)
 
     def write(self, out_file):
         if self.error:
@@ -287,7 +266,7 @@ class Projection(object):
             print "File does not exist: {}".format(proj_file)
             return
 
-        with time_block("draw load"):
+        with time_block("Draw load", switch=TIME_TEST):
             # 加载产品数据
             if os.path.isfile(in_file):
                 try:
@@ -395,7 +374,7 @@ if __name__ == "__main__":
     else:
         sat_sensor = args[0]
         file_path = args[1]
-        with time_block("project time:"):
+        with time_block("Project time:", switch=TIME_TEST):
             run(sat_sensor, file_path)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()

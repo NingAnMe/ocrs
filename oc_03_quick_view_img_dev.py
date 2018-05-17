@@ -1,16 +1,17 @@
 # coding:utf-8
-
+################# 全局引用 #####################
 import os
 import sys
 import calendar
 from datetime import datetime
 from multiprocessing import Pool, Lock
+from configobj import ConfigObj
 
 import numpy as np
 import h5py
 from matplotlib.ticker import MultipleLocator
 
-from configobj import ConfigObj
+
 from dateutil.relativedelta import relativedelta
 from numpy.lib.polynomial import polyfit
 from numpy.ma.core import std, mean
@@ -19,7 +20,8 @@ from numpy.ma.extras import corrcoef
 from PB.CSC.pb_csc_console import LogServer
 from PB import pb_time, pb_io
 from ocrs_io import loadYamlCfg
-
+from publicmodels.pm_time import time_this, time_block
+################# 程序引用 #####################
 from DV.dv_img import dv_rgb
 
 import matplotlib as mpl
@@ -62,16 +64,27 @@ def run(pair, hdf5_file):
                 dv_rgb(datas[0], datas[1], datas[2], out_pic)
             elif len(datasets) == 1:
                 for set_name in datasets:
-                    data = h5.get(set_name)
-                    plt.imshow(data, cmap=plt.cm.gray)
-                    plt.savefig(out_pic, dpi=200)
+                    data = h5.get(set_name)[:]
+                    # 计算宽和高
+                    h, w = data.shape
+                    wight = 5. * w / w
+                    height = 5. * h / w
+                    fig = plt.figure(figsize=(wight, height))
 
+                    plt.imshow(data, cmap=plt.cm.gray)
+                    plt.axis('off')
+                    plt.tight_layout()
+                    fig.subplots_adjust(bottom=0, top=1, left=0, right=1)
+                    pb_io.make_sure_path_exists(os.path.dirname(out_pic))
+                    fig.savefig(out_pic, dpi=200)
+                    fig.clear()
+                    plt.close()
             else:
                 log.error("datasets must be 1 or 3")
                 return
     except Exception as why:
         print why
-        log.error("Plot gray picture error: {}".format(hdf5_file))
+        log.error("Plot quick view error: {}".format(hdf5_file))
         return
 
     print "Output picture: {}".format(out_pic)
@@ -84,8 +97,9 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：SAT1+SENSOR1
+        [参数1]：SAT+SENSOR
         [参数2]：文件路径
+        [样例]: python octs_plt_quick_view.py FY3B+MERSI /storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_0045_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_0045_1000M_COMBINE_TEST.HDF
         """
     if "-h" in args:
         print help_info
@@ -121,7 +135,8 @@ if __name__ == "__main__":
         # run(pair_tem, file_path)
         sat_sensor = args[0]
         file_path = args[1]
-        run(sat_sensor, file_path)
-        # pool.apply_async(run, (sat_sensor, file_path))
-        # pool.close()
-        # pool.join()
+        with time_block("Plot quick view time:"):
+            run(sat_sensor, file_path)
+            # pool.apply_async(run, (sat_sensor, file_path))
+            # pool.close()
+            # pool.join()
