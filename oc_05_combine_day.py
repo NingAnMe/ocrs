@@ -170,11 +170,11 @@ class Combine(object):
             self.error = True
             log.error("Is None: ifile or pfile or ofile: {}".format(self.yaml_file))
             return
-        elif len(self.ifile) < 2:
+        elif len(self.ifile) < 1:
             self.error = True
-            log.error("File count lower than 2: {}".format(self.yaml_file))
+            log.error("File count lower than 1: {}".format(self.yaml_file))
 
-        fillvalue = -32767.
+        fill_value = -32767.
         for file_idx, in_file in enumerate(self.ifile):
             proj_file = self.pfile[file_idx]
             if os.path.isfile(in_file) and os.path.isfile(proj_file):
@@ -194,7 +194,7 @@ class Combine(object):
                             if k == "Longitude" or k == "Latitude":
                                 continue
                             elif k not in self.out_data.keys():
-                                self.out_data[k] = np.full((self.row, self.col), fillvalue, dtype='f4')
+                                self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='f4')
 
                             # 合并一个数据
                             proj_data = h5.get(k)[:]
