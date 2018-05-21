@@ -22,7 +22,7 @@ from PB.pb_time import time_block
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, m1000_file):
+def run(sat_sensor, m1000_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -33,9 +33,12 @@ def run(pair, m1000_file):
     else:
         # 加载配置信息
         try:
-            PROBE_M250 = proj_cfg['calibrate'][pair]['probe_m250']
-            PROBE_M1000 = proj_cfg['calibrate'][pair]['probe_m1000']
-            LAUNCH_DATE = proj_cfg['lanch_date'][pair.split('+')[0]]
+            PROBE_M250 = proj_cfg['calibrate'][sat_sensor]['probe_m250']
+            PROBE_M1000 = proj_cfg['calibrate'][sat_sensor]['probe_m1000']
+            LAUNCH_DATE = proj_cfg['lanch_date'][sat_sensor.split('+')[0]]
+            if pb_io.is_none(PROBE_M250, PROBE_M1000, LAUNCH_DATE):
+                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                return
         except ValueError:
             log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
             return
@@ -59,6 +62,16 @@ def run(pair, m1000_file):
 
     # 获取 ymd
     ymd = pb_time.get_ymd(m1000)
+
+    # 获取输出文件
+    out_path = pb_io.path_replace_ymd(OUT_PATH, ymd)
+    _, _name = os.path.split(m1000)
+    out_file = os.path.join(out_path, _name)
+
+    # 如果文件已经存在，跳过
+    if os.path.isfile(out_file):
+        print "File is already exist, skip it: {}".format(out_file)
+        return
 
     # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
     coeffs_path = os.path.join(COEFF_PATH, '{}.txt'.format(ymd[0:4]))
@@ -86,8 +99,6 @@ def run(pair, m1000_file):
             m1000, SV_1km, SV_250m_REFL, coeffs, dsl)
 
     # 输出 HDF5 文件
-    _dir, _name = os.path.split(m1000)
-    out_file = os.path.join(OUT_PATH, ymd[0:4], ymd, _name)
     write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
               SV_1km, SV_250m_REFL, coeffs, dsl)
 
@@ -411,19 +422,19 @@ def write_hdf(m1000, obc, out_file, EV_1KM_RefSB, EV_250_Aggr_1KM_RefSB,
                 }
                 # 复制原来每个 dataset 的属性
                 for dataset_name in dataset_m1000:
-                    for k, v in m1000.get(dataset_name).attrs.items():
-                        if k == "RSB_Cal_Cor_Coeff":
-                            continue
-                        else:
+                    if dataset_name == "RSB_Cal_Cor_Coeff":
+                        continue
+                    else:
+                        for k, v in m1000.get(dataset_name).attrs.items():
                             out_hdf5.get(dataset_name).attrs[k] = v
                 for dataset_name in dataset_obc:
-                    for k, v in obc.get(dataset_name).attrs.items():
-                        if k == "RSB_Cal_Cor_Coeff":
-                            continue
-                        else:
+                    if dataset_name == "RSB_Cal_Cor_Coeff":
+                        continue
+                    else:
+                        for k, v in obc.get(dataset_name).attrs.items():
                             out_hdf5.get(dataset_name).attrs[k] = v
                 for k, v in coeff_attrs.items():
-                    out_hdf5.get(RSB_Cal_Cor_Coeff).attrs[k] = v
+                    out_hdf5.get("RSB_Cal_Cor_Coeff").attrs[k] = v
 
                 # 复制文件属性
                 pb_io.copy_attrs_h5py(m1000, out_hdf5)
@@ -456,9 +467,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：SAT+SENSOR
-        [参数2]：file_path
-        [样例]： python ocrs_calibrate.py FY3B+MERSI /FY3/FY3B/MERSI/L1/1000M/2017/20170101/FY3B_MERSI_GBAL_L1_20170101_0045_1000M_MS.HDF
+        [参数1]：L1文件
+        [样例]： python 程序 L1文件
         """
     if "-h" in args:
         print help_info
@@ -484,19 +494,22 @@ if __name__ == "__main__":
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 2:
+    if not len(args) == 1:
         print help_info
     else:
-        sat_sensor = args[0]
-        file_path = args[1]
+        FILE_PATH = args[0]
 
         L1_PATH = inCfg["PATH"]["IN"]["l1"]  # L1 数据文件路径
         OBC_PATH = inCfg["PATH"]["IN"]["obc"]  # OBC 数据文件路径
         COEFF_PATH = inCfg["PATH"]["IN"]["coeff"]  # 系数文件
-        OUT_PATH = inCfg["PATH"]["MID"]["projection"]  # 预处理文件输出路径
+        OUT_PATH = inCfg["PATH"]["MID"]["calibrate"]  # 预处理文件输出路径
+        SAT = inCfg["PATH"]["sat"]
+        SENSOR = inCfg["PATH"]["sensor"]
+        SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("Calibrate time:", switch=TIME_TEST):
-            run(sat_sensor, file_path)
+            run(SAT_SENSOR, FILE_PATH)
+
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
         # pool.join()

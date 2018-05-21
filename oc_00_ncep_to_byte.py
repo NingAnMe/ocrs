@@ -145,7 +145,7 @@ if __name__ == "__main__":
     help_info = \
         u"""
         [参数1]： NCEP文件
-        [样例]： python oc_ncep_to_byte_dev.py NCEP文件
+        [样例]： python 程序 NCEP文件
         """
     if "-h" in args:
         print help_info

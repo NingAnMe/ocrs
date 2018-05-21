@@ -16,7 +16,7 @@ from PB.CSC.pb_csc_console import LogServer
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, in_file):
+def run(sat_sensor, in_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -27,30 +27,35 @@ def run(pair, in_file):
     else:
         # 加载配置信息
         try:
-            legend_range = proj_cfg["plt_combine"][pair].get("legend_range")
-            area_range = proj_cfg["plt_combine"][pair].get("area_range")
-            for k, v in area_range.items():
-                area_range[k] = float(v)
+            LEGEND_RANGE = proj_cfg["plt_combine"][sat_sensor].get("legend_range")
+            AREA_RANGE = proj_cfg["plt_combine"][sat_sensor].get("area_range")
+            if pb_io.is_none(LEGEND_RANGE, AREA_RANGE):
+                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                return
+            for k, v in AREA_RANGE.items():
+                AREA_RANGE[k] = float(v)
         except Exception as why:
             print why
             log.error("Please check the yaml plt_gray args")
             return
 
     ######################### 开始处理 ###########################
+    print '-' * 100
+
     if os.path.isfile(in_file):
         print "Start draw combine picture: {}".format(in_file)
     else:
-        print "File is not exist: {}".format(in_file)
+        log.error("File is not exist: {}".format(in_file))
         return
 
-    for legend in legend_range:
+    for legend in LEGEND_RANGE:
         dataset_name = legend[0]  # 数据集名称
         vmax = float(legend[1])  # color bar 范围 最大值
         vmin = float(legend[2])  # color bar 范围 最小值
         dir_path = os.path.dirname(in_file)
-        pic_name = os.path.join(dir_path, "pictures/{}_{}_AOAD.png".format(pair, dataset_name))
+        pic_name = os.path.join(dir_path, "pictures/{}_{}_AOAD.png".format(sat_sensor, dataset_name))
         with time_block("Draw combine time:", switch=TIME_TEST):
-            draw_combine(in_file, dataset_name, pic_name, vmin=vmin, vmax=vmax, area_range=area_range)
+            draw_combine(in_file, dataset_name, pic_name, vmin=vmin, vmax=vmax, area_range=AREA_RANGE)
 
     print '-' * 100
 
@@ -88,14 +93,12 @@ def draw_combine(in_file, dataset_name, pic_name, vmin=None, vmax=None, area_ran
     #     return
 
     idx = np.where(value > 0)  # 不计算小于 0 的无效值
-    # idx = np.where(value >= 0)  # 不计算小于等于 0 的无效值
     if len(idx[0]) == 0:
         print "Don't have enough valid value： {}  {}".format(dataset_name, len(idx[0]))
         return
     else:
         print "{} valid value count: {}".format(dataset_name, len(idx[0]))
 
-    # value = np.ma.masked_less_(value, 0)  # 掩去小于 0 的无效值
     value = np.ma.masked_less_equal(value, 0)  # 掩去小于等于 0 的无效值
 
     p = dv_map.dv_map()
@@ -133,9 +136,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：SAT+SENSOR
-        [参数2]：file_path
-        [样例]：python ocrs_plt_combine.py /storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_0045_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_0045_1000M_COMBINE_TEST.HDF
+        [参数1]：HDF5文件
+        [样例]：python 程序 HDF5文件
         """
     if "-h" in args:
         print help_info
@@ -164,10 +166,13 @@ if __name__ == "__main__":
     if not len(args) == 2:
         print help_info
     else:
-        sat_sensor = args[0]
-        file_path = args[1]
+        FILE_PATH = args[0]
+        SAT = inCfg["PATH"]["sat"]
+        SENSOR = inCfg["PATH"]["sensor"]
+        SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
-        run(sat_sensor, file_path)
+        with time_block("Plot combine map time:"):
+            run(SAT_SENSOR, FILE_PATH)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
         # pool.join()

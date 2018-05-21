@@ -284,8 +284,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：水色产品文件路径
-        [样例]： python oc_projection.py /storage-space/disk3/OceanColor/FY3B+MERSI/Granule/2013/20130101/OC.HDF
+        [参数1]：HDF5文件
+        [样例]： python 程序 HDF5文件
         """
     if "-h" in args:
         print help_info

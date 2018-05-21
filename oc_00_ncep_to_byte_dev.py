@@ -107,7 +107,10 @@ class Ncep2Byte(object):
             name = _name.replace("_c", "") + self.suffix
             self.out_file = os.path.join(out_path, name)
             if not os.path.isdir(os.path.dirname(self.out_file)):
-                os.makedirs(os.path.dirname(self.out_file))
+                try:
+                    os.makedirs(os.path.dirname(self.out_file))
+                except OSError as why:
+                    print why
         else:
             self.error = False
             return
@@ -142,7 +145,7 @@ if __name__ == "__main__":
     help_info = \
         u"""
         [参数1]： NCEP文件
-        [样例]： python oc_ncep_to_byte_dev.py NCEP文件
+        [样例]： python 程序 NCEP文件
         """
     if "-h" in args:
         print help_info

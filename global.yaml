@@ -6,6 +6,11 @@
 lanch_date:
   FY3B: "20101105"
 
+################################ HDF5 压缩复制配置#################################
+ncep2byte:
+  wgrib1: "wgrib -s %s | grep -E \"%s\" | wgrib -i %s -nh -append -o %s"
+  wgrib2: "wgrib2 -set local_table 1 -s %s | grep -E \"%s\" | wgrib2 -i %s -no_header -append -bin %s"
+  filename_suffix: "_all.bin"  # 在文件名的基础上增加的后缀
 ################################ 数据预处理配置 ####################################
 calibrate:
   FY3B+MERSI:
@@ -18,8 +23,11 @@ calibrate:
 ################################ 投影程序配置#################################
 project:
   FY3B+MERSI:
-    draw:
-#    - ["Ocean_Aod_550", "1.20", "0.00"]
+    cmd: '+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=-%f +y_0=%f +datum=WGS84'
+    row: 3600
+    col: 7200
+    res: 0.05
+    mesh_zise: "5000M"
 
 ################################ HDF5 压缩复制配置#################################
 compress:
@@ -30,10 +38,10 @@ compress:
 ################################ 快视图配置 ######################################
 plt_quick_view:
   FY3B+MERSI:
-#    datasets: ["Ocean_Rw_412", "Ocean_Rw_443", "Ocean_Rw_490"]  # R G B 数据，按顺序
-#    filename_suffix: "Rw412_Rw433_Rw_490"  # 在文件名的基础上增加的后缀
-    datasets: ["Ocean_Aod_550"]  # 一个数据集的灰度图
-    filename_suffix: "Aod550"  # 在文件名的基础上增加的后缀
+    datasets: ["Ocean_Rw_412", "Ocean_Rw_443", "Ocean_Rw_490"]  # R G B 数据，按顺序
+    filename_suffix: "Rw412_Rw443_Rw490"  # 在文件名的基础上增加的后缀
+#    datasets: ["Ocean_Aod_550"]  # 一个数据集的灰度图
+#    filename_suffix: "Aod550"  # 在文件名的基础上增加的后缀
 
 ################################ 日合成画图配置 ######################################
 plt_combine:

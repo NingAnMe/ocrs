@@ -31,13 +31,16 @@ def run(pair, hdf5_file):
         try:
             datasets = proj_cfg["plt_quick_view"][pair].get("datasets")
             filename_suffix = proj_cfg["plt_quick_view"][pair].get("filename_suffix")
+            if pb_io.is_none(datasets, filename_suffix):
+                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                return
         except Exception as why:
             print why
             log.error("Please check the yaml plt_gray args")
             return
     ######################### 开始处理 ###########################
     print '-' * 100
-    print "Start plot gray picture."
+    print "Start plot quick view picture."
     if not os.path.isfile(hdf5_file):
         log.error("File not exist: {}".format(hdf5_file))
         return
@@ -87,9 +90,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：SAT+SENSOR
-        [参数2]：文件路径
-        [样例]: python octs_plt_quick_view.py FY3B+MERSI /storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_0045_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_0045_1000M_COMBINE_TEST.HDF
+        [参数1]：HDF5文件
+        [样例]: python 程序 HDF5文件
         """
     if "-h" in args:
         print help_info
@@ -115,13 +117,16 @@ if __name__ == "__main__":
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 2:
+    if not len(args) == 1:
         print help_info
     else:
-        sat_sensor = args[0]
-        file_path = args[1]
+        FILE_PATH = args[0]
+        SAT = inCfg["PATH"]["sat"]
+        SENSOR = inCfg["PATH"]["sensor"]
+        SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
+
         with time_block("Plot quick view time:", switch=TIME_TEST):
-            run(sat_sensor, file_path)
+            run(SAT_SENSOR, FILE_PATH)
             # pool.apply_async(run, (sat_sensor, file_path))
             # pool.close()
             # pool.join()

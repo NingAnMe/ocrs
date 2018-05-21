@@ -18,7 +18,7 @@ from PB.CSC.pb_csc_console import LogServer
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, colloc_file):
+def run(pair, yaml_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -26,20 +26,33 @@ def run(pair, colloc_file):
     if proj_cfg is None:
         log.error("File is not exist: {}".format(proj_cfg_file))
         return
+    else:
+        # 加载配置信息
+        try:
+            RES = proj_cfg['project'][pair]['res']
+            half_res = deg2meter(RES) / 2.
+            CMD = proj_cfg['project'][pair]['cmd'] % (half_res, half_res)
+            ROW = proj_cfg['project'][pair]['row']
+            COL = proj_cfg['project'][pair]['col']
+            MESH_SIZE = proj_cfg['project'][pair]['mesh_zise']
+            if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
+                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                return
+        except Exception as why:
+            print why
+            log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
+            return
 
     ######################### 开始处理 ###########################
-    # 判断 colloc 文件是否存在
-    if not os.path.isfile(colloc_file):
-        log.error("File is not exist: {}".format(colloc_file))
+    # 判断 yaml 文件是否存在
+    if not os.path.isfile(yaml_file):
+        log.error("File is not exist: {}".format(yaml_file))
         return
     else:
         with time_block("All combine time:", switch=TIME_TEST):
             combine = Combine()  # 初始化一个投影实例
-            combine.load_colloc(colloc_file)  # 加载 colloc 文件
-
-            sat, sensor = pair.split("+")
-            if sat != combine.sat or sensor != combine.sensor:
-                return
+            combine.load_cmd_info(cmd=CMD, res=RES, row=ROW, col=COL)
+            combine.load_yaml(yaml_file)  # 加载 yaml 文件
 
             with time_block("One combine time:", switch=TIME_TEST):
                 combine.combine()
@@ -52,14 +65,12 @@ class Combine(object):
     def __init__(self):
         self.error = False
 
-        self.sat = None
-        self.sensor = None
-        self.ymd = None
-
         self.res = None
         self.cmd = None
         self.col = None
         self.row = None
+
+        self.yaml_file = None
 
         self.ifile = None
         self.pfile = None
@@ -82,39 +93,46 @@ class Combine(object):
         self.data_ii = None
         self.data_jj = None
 
-    def load_colloc(self, colloc_file):
+    def load_cmd_info(self, cmd=None, res=None, row=None, col=None):
+        """
+        获取拼接投影命令的参数信息
+        :param cmd: 
+        :param res: 
+        :param row: 
+        :param col: 
+        :return: 
+        """
+        if self.error:
+            return
+        self.res = res
+        half_res = deg2meter(self.res) / 2.
+        self.cmd = cmd % (half_res, half_res)
+        self.row = row
+        self.col = col
+
+    def load_yaml(self, yaml_file):
         """
         读取 yaml 格式配置文件
         """
         if self.error:
             return
-        if not os.path.isfile(colloc_file):
-            print 'Not Found %s' % colloc_file
+        if not os.path.isfile(yaml_file):
+            print 'Not Found %s' % yaml_file
             self.error = True
             return
 
+        self.yaml_file = yaml_file
         try:
-            with open(colloc_file, 'r') as stream:
+            with open(yaml_file, 'r') as stream:
                 cfg = yaml.load(stream)
-
-            self.sat = cfg['INFO']['sat']
-            self.sensor = cfg['INFO']['sensor']
-            self.ymd = cfg['INFO']['ymd']
 
             self.ifile = cfg['PATH']['ipath']
             self.pfile = cfg['PATH']['ppath']
             self.ofile = cfg['PATH']['opath']
 
-            self.res = cfg['PROJ']['res']
-
-            half_res = deg2meter(self.res) / 2.
-            self.cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
-
-            self.col = cfg['PROJ']['col']
-            self.row = cfg['PROJ']['row']
         except Exception as why:
             print why
-            log.error("Load colloc file error, please check it. : {}".format(colloc_file))
+            log.error("Load yaml file error, please check it. : {}".format(yaml_file))
             self.error = True
 
     def load_proj_data(self, hdf5_file):
@@ -144,13 +162,13 @@ class Combine(object):
         if self.error:
             return
         # 合成日数据
-        if self.ifile is None or self.ofile is None:
+        if pb_io.is_none(self.ifile, self.pfile, self.ofile):
             self.error = True
-            print "Is None: ifile or pfile: {}".format(self.ymd)
+            print "Is None: ifile or pfile or ofile: {}".format(self.yaml_file)
             return
         elif len(self.ifile) < 2:
             self.error = True
-            print "File count lower than 2: {}".format(self.ymd)
+            print "File count lower than 2: {}".format(self.yaml_file)
         fillvalue = -32767.
         for file_idx, in_file in enumerate(self.ifile):
             proj_file = self.pfile[file_idx]
@@ -226,9 +244,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：SAT+SENSOR
-        [参数2]：colloc 文件
-        [样例]： python ocrs_combine.py FY3B+MERSI 20171012.colloc
+        [参数1]：合成配置文件
+        [样例]： python 程序 合成配置文件
         """
     if "-h" in args:
         print help_info
@@ -254,14 +271,16 @@ if __name__ == "__main__":
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 2:
+    if not len(args) == 1:
         print help_info
     else:
-        sat_sensor = args[0]
-        file_path = args[1]
+        FILE_PATH = args[0]
+        SAT = inCfg["PATH"]["sat"]
+        SENSOR = inCfg["PATH"]["sensor"]
+        SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("All combine time:", switch=TIME_TEST):
-            run(sat_sensor, file_path)
+            run(SAT_SENSOR, SAT_SENSOR)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
         # pool.join()

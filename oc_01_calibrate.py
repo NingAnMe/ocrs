@@ -467,8 +467,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：L1 数据的完整路径
-        [样例]： python oc_calibrate.py /FY3/FY3B/MERSI/L1/1000M/2017/20170101/FY3B_MERSI_GBAL_L1_20170101_0045_1000M_MS.HDF
+        [参数1]：L1文件
+        [样例]： python 程序 L1文件
         """
     if "-h" in args:
         print help_info

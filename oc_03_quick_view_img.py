@@ -90,8 +90,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：HDF5 文件路径
-        [样例]: python oc_quick_view_img_dev.py /storage-space/disk3/Granule/out_del_cloudmask/2017/201701/20170101/20170101_0045_1000M/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20170101_0045_1000M_COMBINE_TEST.HDF
+        [参数1]：HDF5文件
+        [样例]: python 程序 HDF5文件
         """
     if "-h" in args:
         print help_info

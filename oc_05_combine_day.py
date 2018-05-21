@@ -244,8 +244,8 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：配置文件
-        [样例]： python ocrs_combine.py 20171012.yaml
+        [参数1]：合成配置文件
+        [样例]： python 程序 合成配置文件
         """
     if "-h" in args:
         print help_info

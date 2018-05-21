@@ -11,13 +11,12 @@ import os
 import sys
 
 import h5py
-import yaml
 import numpy as np
 from configobj import ConfigObj
 
 from DP.dp_prj_new import prj_core
 from DV import dv_map
-from PB import pb_io
+from PB import pb_io, pb_time
 from PB.pb_time import time_block
 from PB.pb_space import deg2meter
 from PB.CSC.pb_csc_console import LogServer
@@ -26,7 +25,7 @@ from PB.CSC.pb_csc_console import LogServer
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, colloc_file):
+def run(pair, in_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -37,78 +36,60 @@ def run(pair, colloc_file):
     else:
         # 加载配置信息
         try:
-            DRAW_INFO = proj_cfg['project'][pair]['draw']
-        except ValueError:
+            RES = proj_cfg['project'][pair]['res']
+            half_res = deg2meter(RES) / 2.
+            CMD = proj_cfg['project'][pair]['cmd'] % (half_res, half_res)
+            ROW = proj_cfg['project'][pair]['row']
+            COL = proj_cfg['project'][pair]['col']
+            MESH_SIZE = proj_cfg['project'][pair]['mesh_zise']
+            if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
+                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                return
+        except Exception as why:
+            print why
             log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
             return
 
     ######################### 开始处理 ###########################
-    # 加载 colloc 文件内容
-    if not os.path.isfile(colloc_file):
-        log.error("File is not exist: {}".format(colloc_file))
+    if not os.path.isfile(in_file):
+        log.error("File is not exist: {}".format(in_file))
         return
     else:
+        print "-" * 100
         try:
-            with open(colloc_file, 'r') as stream:
-                cfg = yaml.load(stream)
-                ifile = cfg['PATH']['ipath']
-                pfile = cfg['PATH']['ppath']
-
-                res = cfg['PROJ']['res']
-
-                half_res = deg2meter(res) / 2.
-                cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
-
-                col = cfg['PROJ']['col']
-                row = cfg['PROJ']['row']
-                if ifile is None or pfile is None:
-                    log.error("Is None: ifile or pfile".format(colloc_file))
-                    return
+            with time_block("One project time:", switch=TIME_TEST):
+                # 获取年月和时次
+                ymd = pb_time.get_ymd(in_file)
+                hms = pb_time.get_hm(in_file)
+                out_name = "{}_ORBT_L2_ASO_MLT_NUL_{}_{}_{}.HDF".format(pair, ymd, hms, MESH_SIZE.upper())
+                out_path = pb_io.path_replace_ymd(OUT_PATH, ymd)
+                out_file = os.path.join(out_path, out_name)
+                projection = Projection(cmd=CMD, row=ROW, col=COL, res=RES)
+                projection.project(in_file, out_file)
         except Exception as why:
             print why
-            log.error("Load colloc file error, please check it. : {}".format(colloc_file))
+            log.error("Projection had some errors: {}".format(in_file))
             return
-
-    # 创建查找表
-    lookup_table = prj_core(cmd, res, unit="deg", row=row, col=col)
-
-    # 对数据列表进行循环处理
-    for idx_file, in_file in enumerate(ifile):
-        print "-" * 100
-
-        if not os.path.isfile(in_file):
-            log.error("File is not exist: {}".format(in_file))
-            continue
-        else:
-            print "Input file: {}".format(in_file)
-        with time_block("One project time:", switch=TIME_TEST):
-            out_file = pfile[idx_file]
-            projection = Projection()
-            projection.load_yaml_config(colloc_file)
-            projection.project(in_file, out_file, lookup_table)
-
-        with time_block("Draw one projection picture time:", switch=TIME_TEST):
-            if DRAW_INFO is not None:
-                for info in DRAW_INFO:
-                    dataset_name = info[0]
-                    projection.draw(in_file, out_file, dataset_name)
 
         print "-" * 100
 
 
 class Projection(object):
 
-    def __init__(self):
+    def __init__(self, cmd=None, row=None, col=None, res=None, pair=None, ymd=None):
         self.error = False
 
-        self.sat = None
-        self.sensor = None
-        self.ymd = None
+        if pair is not None:
+            self.sat, self.sensor = pair.split("+")
+        else:
+            self.sat = self.sensor = None
 
-        self.cmd = None
-        self.col = None
-        self.row = None
-        self.res = None
+        self.ymd = ymd if ymd is not None else None
+
+        self.cmd = cmd
+        self.row = row
+        self.col = col
+        self.res = res
 
         self.in_data = {}
         self.attrs = {}
@@ -117,41 +98,12 @@ class Projection(object):
         self.lons = None
         self.lats = None
 
-        self.lookup_table = None
-
-        self.ii = None
-        self.jj = None
-        self.index = None
-        self.lut_ii = None
-        self.lut_jj = None
-        self.data_ii = None
-        self.data_jj = None
-
-    def load_yaml_config(self, in_proj_cfg):
-        """
-        读取 yaml 格式配置文件
-        """
-        if self.error:
-            return
-        if not os.path.isfile(in_proj_cfg):
-            print 'Not Found %s' % in_proj_cfg
-            self.error = True
-            return
-
-        with open(in_proj_cfg, 'r') as stream:
-            cfg = yaml.load(stream)
-
-        self.sat = cfg['INFO']['sat']
-        self.sensor = cfg['INFO']['sensor']
-        self.ymd = cfg['INFO']['ymd']
-
-        self.res = cfg['PROJ']['res']
-
-        half_res = deg2meter(self.res) / 2.
-        self.cmd = cfg['PROJ']['cmd'] % (half_res, half_res)
-
-        self.col = cfg['PROJ']['col']
-        self.row = cfg['PROJ']['row']
+        self.ii = None  # 查找表行矩阵
+        self.jj = None  # 查找表列矩阵
+        self.lut_ii = None  # 查找表行索引信息
+        self.lut_jj = None  # 查找表列索引信息
+        self.data_ii = None  # 数据行索引信息
+        self.data_jj = None  # 数据列索引信息
 
     def _load_lons_lats(self, in_file):
         if self.error:
@@ -172,9 +124,11 @@ class Projection(object):
             self.error = True
             return
 
-    def _create_lut(self, lookup_table):
+    def _create_lut(self):
         if self.error:
             return
+        # 创建查找表
+        lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
         # 通过查找表和经纬度数据生成数据在全球的行列信息
         lookup_table.create_lut(self.lons, self.lats)
         self.ii = lookup_table.lut_i
@@ -184,12 +138,13 @@ class Projection(object):
         if self.error:
             return
         # 获取数据的索引信息
-        self.index = np.logical_and(self.ii >= 0, self.jj >= 0)
-        self.index = np.where(self.index)  # 全球投影的行列索引信息
-        self.lut_ii = self.index[0].T
-        self.lut_jj = self.index[1].T
-        self.data_ii = self.ii[self.index]  # 数据行索引信息
-        self.data_jj = self.jj[self.index]  # 数据列索引信息
+        idx = np.logical_and(self.ii >= 0, self.jj >= 0)  # 行列 >= 0 说明投在地图上面
+        idx = np.where(idx)  # 全球投影的行列索引信息
+        print len(idx[0])
+        self.lut_ii = idx[0].T
+        self.lut_jj = idx[1].T
+        self.data_ii = self.ii[idx]  # 数据行索引信息
+        self.data_jj = self.jj[idx]  # 数据列索引信息
 
     def _write(self, out_file):
         if self.error:
@@ -216,13 +171,13 @@ class Projection(object):
                               shuffle=True)
         print "Output file: {}".format(out_file)
 
-    def project(self, in_file, out_file, lookup_table):
+    def project(self, in_file, out_file):
         with time_block("Load lons and lats time:", switch=TIME_TEST):
             # 加载经纬度数据
             self._load_lons_lats(in_file)
         with time_block("Create lut time:", switch=TIME_TEST):
             # 使用查找表生成经纬度对应的行列信息
-            self._create_lut(lookup_table)
+            self._create_lut()
         with time_block("Get index time:", switch=TIME_TEST):
             # 使用生成的行列信息生成数据的索引信息
             self._get_index()
@@ -323,27 +278,14 @@ class Projection(object):
         print "Output picture: {}".format(out_png)
 
 
-def attrs2dict(attrs):
-    """
-    将一个 <class 'h5py._hl.attrs.AttributeManager'> 转换为字典
-    :param attrs:
-    :return:
-    """
-    attrs_dict = {}
-    for key, value in attrs.items():
-        attrs_dict[key] = value
-    return attrs_dict
-
-
 ######################### 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
     args = sys.argv[1:]
     help_info = \
         u"""
-        [参数1]：SAT+SENSOR
-        [参数2]：colloc 文件
-        [样例]： python ocrs_projection.py FY3B+MERSI 20171012.colloc
+        [参数1]：HDF5文件
+        [样例]： python 程序 HDF5文件
         """
     if "-h" in args:
         print help_info
@@ -369,14 +311,17 @@ if __name__ == "__main__":
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 2:
+    if not len(args) == 1:
         print help_info
     else:
-        sat_sensor = args[0]
-        file_path = args[1]
+        FILE_PATH = args[0]
+        SAT = inCfg["PATH"]["sat"]
+        SENSOR = inCfg["PATH"]["sensor"]
+        SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
+        OUT_PATH = inCfg["PATH"]["MID"]["projection"]
 
         with time_block("Project time:", switch=TIME_TEST):
-            run(sat_sensor, file_path)
+            run(SAT_SENSOR, FILE_PATH)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
         # pool.join()
