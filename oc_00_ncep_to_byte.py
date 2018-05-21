@@ -107,7 +107,10 @@ class Ncep2Byte(object):
             name = _name.replace("_c", "") + self.suffix
             self.out_file = os.path.join(out_path, name)
             if not os.path.isdir(os.path.dirname(self.out_file)):
-                os.makedirs(os.path.dirname(self.out_file))
+                try:
+                    os.makedirs(os.path.dirname(self.out_file))
+                except OSError as why:
+                    print why
         else:
             self.error = False
             return
