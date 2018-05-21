@@ -1,5 +1,6 @@
 # coding:utf-8
 import os
+import re
 import sys
 from configobj import ConfigObj
 
@@ -95,6 +96,10 @@ class Ncep2Byte(object):
             self.error = True
             return
 
+    def _get_hm(self):
+        result = re.match(r".*_(\d{2})_(\d{2})", self.in_file)
+        self.hm = result.groups()[0] + result.groups()[1]
+
     def _get_out_file(self):
         """
         通过输入的文件名和输出路径获取输出文件的完整路径
@@ -129,9 +134,12 @@ class Ncep2Byte(object):
         self._get_ncep_table()
         self._get_out_file()
         self._remove_file()  # 如果已经存在文件，删除文件后重新处理
+        self._get_hm()
+        ymdhm_int = int(self.ymd + self.hm)
         for ncep_type in self.ncep_table:
             self._get_cmd(ncep_type)
-            if int(self.ymd[0:4]) < 2015:
+            # 201501221200 是两个命令的时间节点
+            if ymdhm_int < 201501221200:
                 os.system(self.cmd1)
             else:
                 os.system(self.cmd2)
