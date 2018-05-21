@@ -47,7 +47,6 @@ plt_quick_view:
 plt_combine:
   FY3B+MERSI:
     legend_range:
-    - ["Combin_Land_Ocean_AOD_550", "1.20", "0.00"]
     - ["Ocean_Aod_443", "1.20", "0.00"]
     - ["Ocean_Aod_490", "1.20", "0.00"]
     - ["Ocean_Aod_550", "1.20", "0.00"]

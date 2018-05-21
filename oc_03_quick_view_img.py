@@ -94,7 +94,7 @@ if __name__ == "__main__":
     # 获取程序参数接口
     args = sys.argv[1:]
     help_info = \
-        u"""
+        """
         [参数1]：HDF5文件
         [样例]: python 程序 HDF5文件
         """
@@ -109,7 +109,7 @@ if __name__ == "__main__":
 
     # 配置不存在预警
     if not os.path.isfile(config_file):
-        print (u"配置文件不存在 %s" % config_file)
+        print ("配置文件不存在 %s" % config_file)
         sys.exit(-1)
 
     # 载入配置文件

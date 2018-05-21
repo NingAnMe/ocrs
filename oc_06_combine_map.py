@@ -8,7 +8,7 @@ import numpy as np
 from configobj import ConfigObj
 
 from DV import dv_map
-from PB import pb_io
+from PB import pb_io, pb_time
 from PB.pb_time import time_block
 from PB.CSC.pb_csc_console import LogServer
 
@@ -53,7 +53,8 @@ def run(sat_sensor, in_file):
         vmax = float(legend[1])  # color bar 范围 最大值
         vmin = float(legend[2])  # color bar 范围 最小值
         dir_path = os.path.dirname(in_file)
-        pic_name = os.path.join(dir_path, "pictures/{}_{}_AOAD.png".format(sat_sensor, dataset_name))
+        ymd = pb_time.get_ymd(in_file)
+        pic_name = os.path.join(dir_path, "pictures/{}_{}_{}_AOAD.png".format(sat_sensor, dataset_name, ymd))
 
         # 如果输出文件已经存在，跳过
         if os.path.isfile(pic_name):
@@ -141,7 +142,7 @@ if __name__ == "__main__":
     # 获取程序参数接口
     args = sys.argv[1:]
     help_info = \
-        u"""
+        """
         [参数1]：HDF5文件
         [样例]：python 程序 HDF5文件
         """
@@ -156,7 +157,7 @@ if __name__ == "__main__":
 
     # 配置不存在预警
     if not os.path.isfile(config_file):
-        print (u"配置文件不存在 %s" % config_file)
+        print ("配置文件不存在 %s" % config_file)
         sys.exit(-1)
 
     # 载入配置文件
@@ -169,7 +170,7 @@ if __name__ == "__main__":
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 2:
+    if not len(args) == 1:
         print help_info
     else:
         FILE_PATH = args[0]
