@@ -48,6 +48,11 @@ def run(pair, hdf5_file):
     file_name = os.path.splitext(hdf5_file)[0]
     out_pic = "{}_{}.{}".format(file_name, filename_suffix, "png")
 
+    # 如果文件已经存在，跳过
+    if os.path.isfile(out_pic):
+        print "File is already exist, skip it: {}".format(out_pic)
+        return
+
     try:
         with h5py.File(hdf5_file, 'r') as h5:
             if len(datasets) == 3:

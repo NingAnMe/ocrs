@@ -25,7 +25,7 @@ from PB.CSC.pb_csc_console import LogServer
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, in_file):
+def run(sat_sensor, in_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -36,12 +36,12 @@ def run(pair, in_file):
     else:
         # 加载配置信息
         try:
-            RES = proj_cfg['project'][pair]['res']
+            RES = proj_cfg['project'][sat_sensor]['res']
             half_res = deg2meter(RES) / 2.
-            CMD = proj_cfg['project'][pair]['cmd'] % (half_res, half_res)
-            ROW = proj_cfg['project'][pair]['row']
-            COL = proj_cfg['project'][pair]['col']
-            MESH_SIZE = proj_cfg['project'][pair]['mesh_zise']
+            CMD = proj_cfg['project'][sat_sensor]['cmd'] % (half_res, half_res)
+            ROW = proj_cfg['project'][sat_sensor]['row']
+            COL = proj_cfg['project'][sat_sensor]['col']
+            MESH_SIZE = proj_cfg['project'][sat_sensor]['mesh_zise']
             if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
                 log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
@@ -58,13 +58,21 @@ def run(pair, in_file):
         print "-" * 100
         try:
             with time_block("One project time:", switch=TIME_TEST):
-                # 获取年月和时次
+                # 生成输出文件的文件名
                 ymd = pb_time.get_ymd(in_file)
                 hms = pb_time.get_hm(in_file)
-                out_name = "{}_ORBT_L2_ASO_MLT_NUL_{}_{}_{}.HDF".format(pair, ymd, hms, MESH_SIZE.upper())
+                sat, sensor = sat_sensor.split('+')
+                out_name = "{}_{}_ORBT_L2_ASO_MLT_NUL_{}_{}_{}.HDF".format(sat, sensor, ymd, hms, MESH_SIZE.upper())
                 out_path = pb_io.path_replace_ymd(OUT_PATH, ymd)
                 out_file = os.path.join(out_path, out_name)
+
+                # 如果输出文件已经存在，跳过
+                if os.path.isfile(out_file):
+                    print "File is already exist, skip it: {}".format(out_file)
+                    return
+
                 projection = Projection(cmd=CMD, row=ROW, col=COL, res=RES)
+                # 开始创建投影查找表
                 projection.project(in_file, out_file)
         except Exception as why:
             print why
@@ -76,11 +84,11 @@ def run(pair, in_file):
 
 class Projection(object):
 
-    def __init__(self, cmd=None, row=None, col=None, res=None, pair=None, ymd=None):
+    def __init__(self, cmd=None, row=None, col=None, res=None, sat_sensor=None, ymd=None):
         self.error = False
 
-        if pair is not None:
-            self.sat, self.sensor = pair.split("+")
+        if sat_sensor is not None:
+            self.sat, self.sensor = sat_sensor.split("+")
         else:
             self.sat = self.sensor = None
 

@@ -104,9 +104,8 @@ class Combine(object):
         """
         if self.error:
             return
+        self.cmd = cmd
         self.res = res
-        half_res = deg2meter(self.res) / 2.
-        self.cmd = cmd % (half_res, half_res)
         self.row = row
         self.col = col
 
@@ -161,14 +160,20 @@ class Combine(object):
     def combine(self):
         if self.error:
             return
+
+        # 如果输出文件已经存在，跳过
+        elif os.path.isfile(self.ofile):
+            log.error("File is already exist, skip it: {}".format(self.ofile))
+            return
         # 合成日数据
-        if pb_io.is_none(self.ifile, self.pfile, self.ofile):
+        elif pb_io.is_none(self.ifile, self.pfile, self.ofile):
             self.error = True
-            print "Is None: ifile or pfile or ofile: {}".format(self.yaml_file)
+            log.error("Is None: ifile or pfile or ofile: {}".format(self.yaml_file))
             return
         elif len(self.ifile) < 2:
             self.error = True
-            print "File count lower than 2: {}".format(self.yaml_file)
+            log.error("File count lower than 2: {}".format(self.yaml_file))
+
         fillvalue = -32767.
         for file_idx, in_file in enumerate(self.ifile):
             proj_file = self.pfile[file_idx]
@@ -176,8 +181,7 @@ class Combine(object):
                 print "Start combining file:"
                 print in_file, "\n", proj_file
             else:
-                print "File is not exist:"
-                print in_file, "\n", proj_file
+                print "File is not exist: {} OR {}".format(in_file, proj_file)
                 continue
 
             # 加载 proj 数据
@@ -280,7 +284,7 @@ if __name__ == "__main__":
         SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("All combine time:", switch=TIME_TEST):
-            run(SAT_SENSOR, SAT_SENSOR)
+            run(SAT_SENSOR, FILE_PATH)
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
         # pool.join()
