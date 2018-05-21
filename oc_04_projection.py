@@ -129,6 +129,10 @@ class Projection(object):
             return
         # 创建查找表
         lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
+        print self.cmd
+        print self.res
+        print self.row
+        print self.col
         # 通过查找表和经纬度数据生成数据在全球的行列信息
         lookup_table.create_lut(self.lons, self.lats)
         self.ii = lookup_table.lut_i
@@ -139,6 +143,8 @@ class Projection(object):
             return
         # 获取数据的索引信息
         idx = np.logical_and(self.ii >= 0, self.jj >= 0)  # 行列 >= 0 说明投在地图上面
+        print self.ii.max()
+        print self.ii.min()
         idx = np.where(idx)  # 全球投影的行列索引信息
         self.lut_ii = idx[0].T
         self.lut_jj = idx[1].T
