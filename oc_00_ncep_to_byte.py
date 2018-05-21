@@ -101,28 +101,37 @@ class Ncep2Byte(object):
         :return:
         """
         if isinstance(self.in_file, str):
-            ymd = pb_time.get_ymd(self.in_file)
-            out_path = pb_io.path_replace_ymd(self.out_path, ymd)
-            _, _name = os.path.split(self.in_file)
-            name = _name + self.suffix
+            self.ymd = pb_time.get_ymd(self.in_file)
+            out_path = pb_io.path_replace_ymd(self.out_path, self.ymd)
+            _name = os.path.basename(self.in_file)
+            name = _name.replace("_c", "") + self.suffix
             self.out_file = os.path.join(out_path, name)
             if not os.path.isdir(os.path.dirname(self.out_file)):
-                os.makedirs(self.out_file)
+                os.makedirs(os.path.dirname(self.out_file))
         else:
             self.error = False
             return
+
+    def _remove_file(self):
+        """
+        如果文件存在，删除原来的文件
+        :return:
+        """
+        if os.path.isfile(self.out_file):
+            os.remove(self.out_file)
 
     def ncep2byte(self):
         if self.error:
             return
         self._get_ncep_table()
         self._get_out_file()
+        self._remove_file()  # 如果已经存在文件，删除文件后重新处理
         for ncep_type in self.ncep_table:
             self._get_cmd(ncep_type)
-            tem_output = os.popen(self.cmd2).read()
-            if len(tem_output) == 0:
-                tem_output = os.popen(self.cmd1).read()
-            print tem_output
+            if int(self.ymd[0:4]) < 2015:
+                os.system(self.cmd1)
+            else:
+                os.system(self.cmd2)
         print self.out_file
 
 
@@ -162,14 +171,15 @@ if __name__ == "__main__":
     if not len(args) == 1:
         print help_info
     else:
-        IN_FILE = args[0]
+        FILE_PATH = args[0]
+
         OUT_PATH = inCfg["PATH"]["MID"]["ncep"]  # 文件输出路径
         SAT = inCfg["PATH"]["sat"]
         SENSOR = inCfg["PATH"]["sensor"]
         SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("Ncep to byte time:", switch=TIME_TEST):
-            run(IN_FILE)
+            run(FILE_PATH)
 
         # pool.apply_async(run, (sat_sensor, file_path))
         # pool.close()
