@@ -8,7 +8,6 @@ import yaml
 import numpy as np
 from configobj import ConfigObj
 
-from DP.dp_prj_new import prj_core
 from PB import pb_io
 from PB.pb_time import time_block
 from PB.pb_space import deg2meter
@@ -18,7 +17,7 @@ from PB.CSC.pb_csc_console import LogServer
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, yaml_file):
+def run(sat_sensor, yaml_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -29,12 +28,12 @@ def run(pair, yaml_file):
     else:
         # 加载配置信息
         try:
-            RES = proj_cfg['project'][pair]['res']
+            RES = proj_cfg['project'][sat_sensor]['res']
             half_res = deg2meter(RES) / 2.
-            CMD = proj_cfg['project'][pair]['cmd'] % (half_res, half_res)
-            ROW = proj_cfg['project'][pair]['row']
-            COL = proj_cfg['project'][pair]['col']
-            MESH_SIZE = proj_cfg['project'][pair]['mesh_zise']
+            CMD = proj_cfg['project'][sat_sensor]['cmd'] % (half_res, half_res)
+            ROW = proj_cfg['project'][sat_sensor]['row']
+            COL = proj_cfg['project'][sat_sensor]['col']
+            MESH_SIZE = proj_cfg['project'][sat_sensor]['mesh_zise']
             if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
                 log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
@@ -49,14 +48,13 @@ def run(pair, yaml_file):
         log.error("File is not exist: {}".format(yaml_file))
         return
     else:
-        with time_block("All combine time:", switch=TIME_TEST):
-            combine = Combine()  # 初始化一个投影实例
-            combine.load_yaml(yaml_file)  # 加载 yaml 文件
+        combine = Combine()  # 初始化一个投影实例
+        combine.load_yaml(yaml_file)  # 加载 yaml 文件
 
-            with time_block("One combine time:", switch=TIME_TEST):
-                combine.combine()
-            with time_block("One write time:", switch=TIME_TEST):
-                combine.write()
+        with time_block("One combine time:", switch=TIME_TEST):
+            combine.combine()
+        with time_block("One write time:", switch=TIME_TEST):
+            combine.write()
 
 
 class Combine(object):
@@ -105,9 +103,14 @@ class Combine(object):
         """
         fill_value = -32767
         for k, counter in self.counter.items():
-            idx = np.greater(counter, 0)
+            idx = np.where(counter > 0)
+            print k
+            print idx
+            print self.out_data[k][idx]
+            print counter[idx]
             self.out_data[k][idx] = self.out_data[k][idx] / counter[idx]
-            idx = ~idx
+            print self.out_data[k][idx]
+            idx = np.less_equal(self.out_data[k], 0)
             self.out_data[k][idx] = fill_value
 
     def combine(self):
@@ -127,7 +130,7 @@ class Combine(object):
             self.error = True
             log.error("File count lower than 1: {}".format(self.yaml_file))
 
-        for in_file in enumerate(self.ifile):
+        for in_file in self.ifile:
             if os.path.isfile(in_file):
                 print "Start combining file: {}".format(in_file)
             else:
@@ -148,18 +151,35 @@ class Combine(object):
                                 else:
                                     self.out_data[k] = np.full(shape, 0, dtype='i2')
                                     self.counter[k] = np.full(shape, 0, dtype='i2')
-                            else:  # 进行合并
-                                if k == "Longitude" or k == "Latitude":
-                                    continue
-                                elif k == "Ocean_Flag":
-                                    value = h5.get(k)[:]
-                                    idx = np.where(value > 0)  # TODO 判断保留那些值，或者哪些值可以覆盖其他值
-                                    self.out_data[k][idx] = value[idx]
-                                else:
-                                    value = h5.get(k)[:]
-                                    idx = np.where(value > 0)
-                                    self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
-                                    self.counter[k][idx] += 1
+                            if k == "Longitude" or k == "Latitude":
+                                continue
+                            elif k == "Ocean_Flag":
+                                value = h5.get(k)[:]
+                                idx = np.where(value > 0)  # TODO 判断保留那些值，或者哪些值可以覆盖其他值
+                                self.out_data[k][idx] = value[idx]
+                            else:
+                                print '*' * 20
+                                print k
+                                value = h5.get(k)[:]
+                                idx_test = np.logical_and(self.out_data[k] > 0, value > 0)
+                                idx_test = np.where(idx_test)
+                                print idx_test
+                                if len(idx_test[0]) != 0:
+                                    print idx_test[0][0], idx_test[1][0]
+                                    print self.out_data[k][idx_test[0][0], idx_test[1][0]]
+                                    print value[idx_test[0][0], idx_test[1][0]]
+                                print '*' * 20
+                                print '-' * 20
+                                idx = np.where(value > 0)
+                                print k
+                                print self.out_data[k][idx]
+                                print value[idx]
+                                self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
+                                print self.out_data[k][idx]
+                                print self.counter[k][idx]
+                                self.counter[k][idx] += 1
+                                print self.counter[k][idx]
+                                print '-' * 20
 
                             # 记录属性信息
                             if k not in self.attrs.keys():
@@ -171,7 +191,8 @@ class Combine(object):
                     print "Can't combine file, some error exist: {}".format(in_file)
 
         # 计算数据的平均值
-        self._data_calculate()
+        with time_block("Calculate mean time:"):
+            self._data_calculate()
 
         # 输出数据集有效数据的数量
         for k, v in self.out_data.items():
