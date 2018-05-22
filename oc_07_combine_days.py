@@ -51,7 +51,6 @@ def run(pair, yaml_file):
     else:
         with time_block("All combine time:", switch=TIME_TEST):
             combine = Combine()  # 初始化一个投影实例
-            combine.load_cmd_info(cmd=CMD, res=RES, row=ROW, col=COL)
             combine.load_yaml(yaml_file)  # 加载 yaml 文件
 
             with time_block("One combine time:", switch=TIME_TEST):
@@ -65,49 +64,15 @@ class Combine(object):
     def __init__(self):
         self.error = False
 
-        self.res = None
-        self.cmd = None
-        self.col = None
-        self.row = None
-
         self.yaml_file = None
 
         self.ifile = None
-        self.pfile = None
         self.ofile = None
 
         self.in_data = {}
         self.attrs = {}
         self.out_data = {}
-
-        self.lons = None
-        self.lats = None
-
-        self.lookup_table = None
-
-        self.ii = None
-        self.jj = None
-
-        self.lut_ii = None
-        self.lut_jj = None
-        self.data_ii = None
-        self.data_jj = None
-
-    def load_cmd_info(self, cmd=None, res=None, row=None, col=None):
-        """
-        获取拼接投影命令的参数信息
-        :param cmd: 
-        :param res: 
-        :param row: 
-        :param col: 
-        :return: 
-        """
-        if self.error:
-            return
-        self.cmd = cmd
-        self.res = res
-        self.row = row
-        self.col = col
+        self.counter = {}
 
     def load_yaml(self, yaml_file):
         """
@@ -126,7 +91,6 @@ class Combine(object):
                 cfg = yaml.load(stream)
 
             self.ifile = cfg['PATH']['ipath']
-            self.pfile = cfg['PATH']['ppath']
             self.ofile = cfg['PATH']['opath']
 
         except Exception as why:
@@ -134,28 +98,17 @@ class Combine(object):
             log.error("Load yaml file error, please check it. : {}".format(yaml_file))
             self.error = True
 
-    def load_proj_data(self, hdf5_file):
-        if self.error:
-            return
-        # 加载数据
-        if os.path.isfile(hdf5_file):
-            try:
-                with h5py.File(hdf5_file, 'r') as h5:
-                    self.lut_ii = h5.get("lut_ii")[:]
-                    self.lut_jj = h5.get("lut_jj")[:]
-                    self.data_ii = h5.get("data_ii")[:]
-                    self.data_jj = h5.get("data_jj")[:]
-
-            except Exception as why:
-                print why
-                print "Can't open file: {}".format(hdf5_file)
-                self.error = True
-                return
-        else:
-            print "File does not exist: {}".format(hdf5_file)
-            self.error = True
-            return
-        return
+    def _data_calculate(self):
+        """
+        计算数据的平均值
+        :return:
+        """
+        fill_value = -32767
+        for k, counter in self.counter.items():
+            idx = np.greater(counter, 0)
+            self.out_data[k][idx] = self.out_data[k][idx] / counter[idx]
+            idx = ~idx
+            self.out_data[k][idx] = fill_value
 
     def combine(self):
         if self.error:
@@ -166,7 +119,7 @@ class Combine(object):
             log.error("File is already exist, skip it: {}".format(self.ofile))
             return
         # 合成日数据
-        elif pb_io.is_none(self.ifile, self.pfile, self.ofile):
+        elif pb_io.is_none(self.ifile, self.ofile):
             self.error = True
             log.error("Is None: ifile or pfile or ofile: {}".format(self.yaml_file))
             return
@@ -174,33 +127,39 @@ class Combine(object):
             self.error = True
             log.error("File count lower than 1: {}".format(self.yaml_file))
 
-        fill_value = -32767.
-        for file_idx, in_file in enumerate(self.ifile):
-            proj_file = self.pfile[file_idx]
-            if os.path.isfile(in_file) and os.path.isfile(proj_file):
-                print "Start combining file:"
-                print in_file, "\n", proj_file
+        for in_file in enumerate(self.ifile):
+            if os.path.isfile(in_file):
+                print "Start combining file: {}".format(in_file)
             else:
-                print "File is not exist: {} OR {}".format(in_file, proj_file)
+                log.error("File is not exist: {}".format(in_file))
                 continue
 
-            # 加载 proj 数据
-            self.load_proj_data(proj_file)
             # 日合成
             with time_block("One combine time:", switch=TIME_TEST):
                 try:
                     with h5py.File(in_file, 'r') as h5:
                         for k in h5.keys():
-                            if k == "Longitude" or k == "Latitude":
-                                continue
-                            elif k not in self.out_data.keys():
+                            if k not in self.out_data.keys():  # 创建输出数据集和计数器
+                                shape = h5.get(k).shape
                                 if k == "Ocean_Flag":
-                                    self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='i4')
+                                    self.out_data[k] = np.full(shape, 0, dtype='i4')
+                                elif k == "Longitude" or k == "Latitude":
+                                    self.out_data[k] = h5.get(k)[:]
                                 else:
-                                    self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='i2')
-                            # 合并一个数据
-                            proj_data = h5.get(k)[:]
-                            self.out_data[k][self.lut_ii, self.lut_jj] = proj_data[self.data_ii, self.data_jj]
+                                    self.out_data[k] = np.full(shape, 0, dtype='i2')
+                                    self.counter[k] = np.full(shape, 0, dtype='i2')
+                            else:  # 进行合并
+                                if k == "Longitude" or k == "Latitude":
+                                    continue
+                                elif k == "Ocean_Flag":
+                                    value = h5.get(k)[:]
+                                    idx = np.where(value > 0)  # TODO 判断保留那些值，或者哪些值可以覆盖其他值
+                                    self.out_data[k][idx] = value[idx]
+                                else:
+                                    value = h5.get(k)[:]
+                                    idx = np.where(value > 0)
+                                    self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
+                                    self.counter[k][idx] += 1
 
                             # 记录属性信息
                             if k not in self.attrs.keys():
@@ -211,12 +170,8 @@ class Combine(object):
                     print why
                     print "Can't combine file, some error exist: {}".format(in_file)
 
-        with time_block("Grid to lons and lats time:", switch=TIME_TEST):
-            if "Longitude" not in self.out_data.keys():
-                lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
-                lookup_table.grid_lonslats()
-                self.out_data["Longitude"] = lookup_table.lons
-                self.out_data["Latitude"] = lookup_table.lats
+        # 计算数据的平均值
+        self._data_calculate()
 
         # 输出数据集有效数据的数量
         for k, v in self.out_data.items():
