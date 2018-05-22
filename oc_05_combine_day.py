@@ -49,15 +49,16 @@ def run(pair, yaml_file):
         log.error("File is not exist: {}".format(yaml_file))
         return
     else:
-        with time_block("All combine time:", switch=TIME_TEST):
+        with time_block("Combine init time:", switch=TIME_TEST):
             combine = Combine()  # 初始化一个投影实例
             combine.load_cmd_info(cmd=CMD, res=RES, row=ROW, col=COL)
             combine.load_yaml(yaml_file)  # 加载 yaml 文件
 
-            with time_block("One combine time:", switch=TIME_TEST):
-                combine.combine()
-            with time_block("One write time:", switch=TIME_TEST):
-                combine.write()
+        with time_block("One combine time:", switch=TIME_TEST):
+            combine.combine()
+
+        with time_block("One write time:", switch=TIME_TEST):
+            combine.write()
 
 
 class Combine(object):
