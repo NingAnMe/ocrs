@@ -175,7 +175,7 @@ class Combine(object):
             self.error = True
             log.error("File count lower than 1: {}".format(self.yaml_file))
 
-        fill_value = -32767.
+        fill_value = -32767
         for file_idx, in_file in enumerate(self.ifile):
             proj_file = self.pfile[file_idx]
             if os.path.isfile(in_file) and os.path.isfile(proj_file):
