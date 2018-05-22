@@ -194,8 +194,10 @@ class Combine(object):
                             if k == "Longitude" or k == "Latitude":
                                 continue
                             elif k not in self.out_data.keys():
-                                self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='f4')
-
+                                if k == "Ocean_Flag":
+                                    self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='i4')
+                                else:
+                                    self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='i2')
                             # 合并一个数据
                             proj_data = h5.get(k)[:]
                             self.out_data[k][self.lut_ii, self.lut_jj] = proj_data[self.data_ii, self.data_jj]
@@ -229,10 +231,22 @@ class Combine(object):
         with h5py.File(self.ofile, 'w') as h5:
             for k in self.out_data.keys():
                 # 创建数据集
-                h5.create_dataset(k, dtype='f4',
-                                  data=self.out_data[k],
-                                  compression='gzip', compression_opts=5,
-                                  shuffle=True)
+                if k == "Longitude" or k == "Latitude":
+                    h5.create_dataset(k, dtype='f4',
+                                      data=self.out_data[k],
+                                      compression='gzip', compression_opts=5,
+                                      shuffle=True)
+                elif k == "Ocean_Flag":
+                    h5.create_dataset(k, dtype='i4',
+                                      data=self.out_data[k],
+                                      compression='gzip', compression_opts=5,
+                                      shuffle=True)
+                else:
+                    h5.create_dataset(k, dtype='i2',
+                                      data=self.out_data[k],
+                                      compression='gzip', compression_opts=5,
+                                      shuffle=True)
+
                 # 复制属性
                 if k == "Longitude" or k == "Latitude":
                     continue
