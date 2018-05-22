@@ -18,7 +18,7 @@ from PB.CSC.pb_csc_console import LogServer
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, yaml_file):
+def run(sat_sensor, yaml_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -29,12 +29,12 @@ def run(pair, yaml_file):
     else:
         # 加载配置信息
         try:
-            RES = proj_cfg['project'][pair]['res']
+            RES = proj_cfg['project'][sat_sensor]['res']
             half_res = deg2meter(RES) / 2.
-            CMD = proj_cfg['project'][pair]['cmd'] % (half_res, half_res)
-            ROW = proj_cfg['project'][pair]['row']
-            COL = proj_cfg['project'][pair]['col']
-            MESH_SIZE = proj_cfg['project'][pair]['mesh_zise']
+            CMD = proj_cfg['project'][sat_sensor]['cmd'] % (half_res, half_res)
+            ROW = proj_cfg['project'][sat_sensor]['row']
+            COL = proj_cfg['project'][sat_sensor]['col']
+            MESH_SIZE = proj_cfg['project'][sat_sensor]['mesh_zise']
             if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
                 log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
@@ -49,10 +49,9 @@ def run(pair, yaml_file):
         log.error("File is not exist: {}".format(yaml_file))
         return
     else:
-        with time_block("Combine init time:", switch=TIME_TEST):
-            combine = Combine()  # 初始化一个投影实例
-            combine.load_cmd_info(cmd=CMD, res=RES, row=ROW, col=COL)
-            combine.load_yaml(yaml_file)  # 加载 yaml 文件
+        combine = Combine()  # 初始化一个投影实例
+        combine.load_cmd_info(cmd=CMD, res=RES, row=ROW, col=COL)
+        combine.load_yaml(yaml_file)  # 加载 yaml 文件
 
         with time_block("One combine time:", switch=TIME_TEST):
             combine.combine()

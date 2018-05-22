@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 TIME_TEST = True  # 时间测试
 
 
-def run(pair, hdf5_file):
+def run(sat_sensor, hdf5_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(main_path, "global.yaml")
@@ -29,8 +29,8 @@ def run(pair, hdf5_file):
     else:
         # 加载配置信息
         try:
-            datasets = proj_cfg["plt_quick_view"][pair].get("datasets")
-            filename_suffix = proj_cfg["plt_quick_view"][pair].get("filename_suffix")
+            datasets = proj_cfg["plt_quick_view"][sat_sensor].get("datasets")
+            filename_suffix = proj_cfg["plt_quick_view"][sat_sensor].get("filename_suffix")
             if pb_io.is_none(datasets, filename_suffix):
                 log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
