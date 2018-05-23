@@ -2,7 +2,7 @@
 """
 将多个日合成后的 HDF5 文件合成为一个 HDF5 文件
 ~~~~~~~~~~~~~~~~~~~
-creation time : 2018 5 16
+creation time : 2018 5 21
 author : anning
 ~~~~~~~~~~~~~~~~~~~
 """
