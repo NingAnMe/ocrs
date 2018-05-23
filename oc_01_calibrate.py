@@ -25,10 +25,10 @@ TIME_TEST = True  # 时间测试
 def run(sat_sensor, m1000_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
-    proj_cfg_file = os.path.join(main_path, "global.yaml")
+    proj_cfg_file = os.path.join(MAIN_PATH, "global.yaml")
     proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
-        log.error("File is not exist: {}".format(proj_cfg_file))
+        LOG.error("File is not exist: {}".format(proj_cfg_file))
         return
     else:
         # 加载配置信息
@@ -37,10 +37,10 @@ def run(sat_sensor, m1000_file):
             PROBE_M1000 = proj_cfg['calibrate'][sat_sensor]['probe_m1000']
             LAUNCH_DATE = proj_cfg['lanch_date'][sat_sensor.split('+')[0]]
             if pb_io.is_none(PROBE_M250, PROBE_M1000, LAUNCH_DATE):
-                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                LOG.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
         except ValueError:
-            log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
+            LOG.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
             return
 
     ######################### MERSI L1 定标处理 ###########################
@@ -51,10 +51,10 @@ def run(sat_sensor, m1000_file):
     m1000 = m1000_file
     obc = get_obc_file(m1000, L1_PATH, OBC_PATH)
     if not os.path.isfile(m1000):
-        log.error("File is not exist: {}".format(m1000))
+        LOG.error("File is not exist: {}".format(m1000))
         return
     elif not os.path.isfile(obc):
-        log.error("File is not exist: {}".format(obc))
+        LOG.error("File is not exist: {}".format(obc))
         return
     else:
         print m1000
@@ -76,7 +76,7 @@ def run(sat_sensor, m1000_file):
     # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
     coeffs_path = os.path.join(COEFF_PATH, '{}.txt'.format(ymd[0:4]))
     if not os.path.isfile(coeffs_path):
-        log.error("File is not exist: {}".format(coeffs_path))
+        LOG.error("File is not exist: {}".format(coeffs_path))
         return
     else:
         print coeffs_path
@@ -464,47 +464,46 @@ def get_obc_file(m1000_file, m1000_path, obc_path):
 ######################### 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
-    args = sys.argv[1:]
-    help_info = \
+    ARGS = sys.argv[1:]
+    HELP_INFO = \
+        u"""
+        [arg1]：hdf_file
+        [example]： python app.py arg1
         """
-        [参数1]：L1文件
-        [样例]： python 程序 L1文件
-        """
-    if "-h" in args:
-        print help_info
+    if "-h" in ARGS:
+        print HELP_INFO
         sys.exit(-1)
 
     # 获取程序所在位置，拼接配置文件
-    main_path, main_file = os.path.split(os.path.realpath(__file__))
-    project_path = main_path
-    config_file = os.path.join(project_path, "global.cfg")
+    MAIN_PATH = os.path.dirname(os.path.realpath(__file__))
+    CONFIG_FILE = os.path.join(MAIN_PATH, "global.cfg")
 
     # 配置不存在预警
-    if not os.path.isfile(config_file):
-        print ("配置文件不存在 %s" % config_file)
+    if not os.path.isfile(CONFIG_FILE):
+        print "File is not exist: {}".format(CONFIG_FILE)
         sys.exit(-1)
 
     # 载入配置文件
-    inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
-    log = LogServer(LOG_PATH)
+    IN_CFG = ConfigObj(CONFIG_FILE)
+    LOG_PATH = IN_CFG["PATH"]["OUT"]["log"]
+    LOG = LogServer(LOG_PATH)
 
     # 开启进程池
-    # thread_number = inCfg["CROND"]["threads"]
+    # thread_number = IN_CFG["CROND"]["threads"]
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 1:
-        print help_info
+    if not len(ARGS) == 1:
+        print HELP_INFO
     else:
-        FILE_PATH = args[0]
+        FILE_PATH = ARGS[0]
 
-        L1_PATH = inCfg["PATH"]["IN"]["l1"]  # L1 数据文件路径
-        OBC_PATH = inCfg["PATH"]["IN"]["obc"]  # OBC 数据文件路径
-        COEFF_PATH = inCfg["PATH"]["IN"]["coeff"]  # 系数文件
-        OUT_PATH = inCfg["PATH"]["MID"]["calibrate"]  # 预处理文件输出路径
-        SAT = inCfg["PATH"]["sat"]
-        SENSOR = inCfg["PATH"]["sensor"]
+        L1_PATH = IN_CFG["PATH"]["IN"]["l1"]  # L1 数据文件路径
+        OBC_PATH = IN_CFG["PATH"]["IN"]["obc"]  # OBC 数据文件路径
+        COEFF_PATH = IN_CFG["PATH"]["IN"]["coeff"]  # 系数文件
+        OUT_PATH = IN_CFG["PATH"]["MID"]["calibrate"]  # 预处理文件输出路径
+        SAT = IN_CFG["PATH"]["sat"]
+        SENSOR = IN_CFG["PATH"]["sensor"]
         SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("Calibrate time:", switch=TIME_TEST):

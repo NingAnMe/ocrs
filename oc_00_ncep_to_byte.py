@@ -14,10 +14,10 @@ TIME_TEST = True  # 时间测试
 def run(in_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
-    proj_cfg_file = os.path.join(main_path, "global.yaml")
+    proj_cfg_file = os.path.join(MAIN_PATH, "global.yaml")
     proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
-        log.error("File is not exist: {}".format(proj_cfg_file))
+        LOG.error("File is not exist: {}".format(proj_cfg_file))
         return
     else:
         # 加载配置信息
@@ -26,15 +26,15 @@ def run(in_file):
             WGRIB2 = proj_cfg['ncep2byte']['wgrib2']
             FILENAME_SUFFIX = proj_cfg['ncep2byte']['filename_suffix']
             if pb_io.is_none(WGRIB1, WGRIB2, FILENAME_SUFFIX):
-                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                LOG.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
         except ValueError:
-            log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
+            LOG.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
             return
 
     ######################### 开始处理 ###########################
     if not os.path.isfile(in_file):
-        log.error("File is not exist: {}".format(in_file))
+        LOG.error("File is not exist: {}".format(in_file))
         return
     else:
         print "-" * 100
@@ -149,44 +149,43 @@ class Ncep2Byte(object):
 ######################### 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
-    args = sys.argv[1:]
-    help_info = \
+    ARGS = sys.argv[1:]
+    HELP_INFO = \
+        u"""
+        [arg1]：ncep_file
+        [example]： python app.py arg1
         """
-        [参数1]： NCEP文件
-        [样例]： python 程序 NCEP文件
-        """
-    if "-h" in args:
-        print help_info
+    if "-h" in ARGS:
+        print HELP_INFO
         sys.exit(-1)
 
     # 获取程序所在位置，拼接配置文件
-    main_path, main_file = os.path.split(os.path.realpath(__file__))
-    project_path = main_path
-    config_file = os.path.join(project_path, "global.cfg")
+    MAIN_PATH = os.path.dirname(os.path.realpath(__file__))
+    CONFIG_FILE = os.path.join(MAIN_PATH, "global.cfg")
 
     # 配置不存在预警
-    if not os.path.isfile(config_file):
-        print ("配置文件不存在 %s" % config_file)
+    if not os.path.isfile(CONFIG_FILE):
+        print "File is not exist: {}".format(CONFIG_FILE)
         sys.exit(-1)
 
     # 载入配置文件
-    inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
-    log = LogServer(LOG_PATH)
+    IN_CFG = ConfigObj(CONFIG_FILE)
+    LOG_PATH = IN_CFG["PATH"]["OUT"]["log"]
+    LOG = LogServer(LOG_PATH)
 
     # 开启进程池
-    # thread_number = inCfg["CROND"]["threads"]
+    # thread_number = IN_CFG["CROND"]["threads"]
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 1:
-        print help_info
+    if not len(ARGS) == 1:
+        print HELP_INFO
     else:
-        FILE_PATH = args[0]
+        FILE_PATH = ARGS[0]
 
-        OUT_PATH = inCfg["PATH"]["MID"]["ncep"]  # 文件输出路径
-        SAT = inCfg["PATH"]["sat"]
-        SENSOR = inCfg["PATH"]["sensor"]
+        OUT_PATH = IN_CFG["PATH"]["MID"]["ncep"]  # 文件输出路径
+        SAT = IN_CFG["PATH"]["sat"]
+        SENSOR = IN_CFG["PATH"]["sensor"]
         SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("Ncep to byte time:", switch=TIME_TEST):

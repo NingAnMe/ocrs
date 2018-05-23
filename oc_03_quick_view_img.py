@@ -21,10 +21,10 @@ TIME_TEST = True  # 时间测试
 def run(sat_sensor, hdf5_file):
     ######################### 初始化 ###########################
     # 加载程序配置文件
-    proj_cfg_file = os.path.join(main_path, "global.yaml")
+    proj_cfg_file = os.path.join(MAIN_PATH, "global.yaml")
     proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
-        log.error("Not find the config file: {}".format(proj_cfg_file))
+        LOG.error("Not find the config file: {}".format(proj_cfg_file))
         return
     else:
         # 加载配置信息
@@ -32,17 +32,17 @@ def run(sat_sensor, hdf5_file):
             datasets = proj_cfg["plt_quick_view"][sat_sensor].get("datasets")
             filename_suffix = proj_cfg["plt_quick_view"][sat_sensor].get("filename_suffix")
             if pb_io.is_none(datasets, filename_suffix):
-                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                LOG.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
         except Exception as why:
             print why
-            log.error("Please check the yaml plt_gray args")
+            LOG.error("Please check the yaml plt_gray args")
             return
     ######################### 开始处理 ###########################
     print '-' * 100
     print "Start plot quick view picture."
     if not os.path.isfile(hdf5_file):
-        log.error("File not exist: {}".format(hdf5_file))
+        LOG.error("File not exist: {}".format(hdf5_file))
         return
 
     file_name = os.path.splitext(hdf5_file)[0]
@@ -69,7 +69,7 @@ def run(sat_sensor, hdf5_file):
                     height = 5. * h / w
                     fig = plt.figure(figsize=(wight, height))
 
-                    plt.imshow(data, cmap=plt.cm.gray)
+                    plt.imshow(data, cmap=plt.get_cmap("gray"))
                     plt.axis('off')
                     plt.tight_layout()
                     fig.subplots_adjust(bottom=0, top=1, left=0, right=1)
@@ -78,11 +78,11 @@ def run(sat_sensor, hdf5_file):
                     fig.clear()
                     plt.close()
             else:
-                log.error("datasets must be 1 or 3")
+                LOG.error("datasets must be 1 or 3")
                 return
     except Exception as why:
         print why
-        log.error("Plot quick view picture error: {}".format(hdf5_file))
+        LOG.error("Plot quick view picture error: {}".format(hdf5_file))
         return
 
     print "Output picture: {}".format(out_pic)
@@ -92,42 +92,41 @@ def run(sat_sensor, hdf5_file):
 ######################### 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
-    args = sys.argv[1:]
-    help_info = \
+    ARGS = sys.argv[1:]
+    HELP_INFO = \
+        u"""
+        [arg1]：hdf_file
+        [example]： python app.py arg1
         """
-        [参数1]：HDF5文件
-        [样例]: python 程序 HDF5文件
-        """
-    if "-h" in args:
-        print help_info
+    if "-h" in ARGS:
+        print HELP_INFO
         sys.exit(-1)
 
     # 获取程序所在位置，拼接配置文件
-    main_path, main_file = os.path.split(os.path.realpath(__file__))
-    project_path = main_path
-    config_file = os.path.join(project_path, "global.cfg")
+    MAIN_PATH = os.path.dirname(os.path.realpath(__file__))
+    CONFIG_FILE = os.path.join(MAIN_PATH, "global.cfg")
 
     # 配置不存在预警
-    if not os.path.isfile(config_file):
-        print ("配置文件不存在 %s" % config_file)
+    if not os.path.isfile(CONFIG_FILE):
+        print "File is not exist: {}".format(CONFIG_FILE)
         sys.exit(-1)
 
     # 载入配置文件
-    inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
-    log = LogServer(LOG_PATH)
+    IN_CFG = ConfigObj(CONFIG_FILE)
+    LOG_PATH = IN_CFG["PATH"]["OUT"]["log"]
+    LOG = LogServer(LOG_PATH)
 
     # 开启进程池
-    # thread_number = inCfg["CROND"]["threads"]
+    # thread_number = IN_CFG["CROND"]["threads"]
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
-    if not len(args) == 1:
-        print help_info
+    if not len(ARGS) == 1:
+        print HELP_INFO
     else:
-        FILE_PATH = args[0]
-        SAT = inCfg["PATH"]["sat"]
-        SENSOR = inCfg["PATH"]["sensor"]
+        FILE_PATH = ARGS[0]
+        SAT = IN_CFG["PATH"]["sat"]
+        SENSOR = IN_CFG["PATH"]["sensor"]
         SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("Plot quick view time:", switch=TIME_TEST):
