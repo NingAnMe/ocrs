@@ -1,5 +1,11 @@
 # coding:utf-8
-
+"""
+水色产品的全球分布图绘制
+~~~~~~~~~~~~~~~~~~~
+creation time : 2018 5 16
+author : anning
+~~~~~~~~~~~~~~~~~~~
+"""
 import os
 import sys
 

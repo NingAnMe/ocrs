@@ -1,7 +1,7 @@
 # coding:utf-8
 """
-ocrs_projection.py
 将水色产品在全球进行投影，获取投影后的位置信息和数据的位置查找表信息
+存储在 HDF5 文件
 ~~~~~~~~~~~~~~~~~~~
 creation time : 2018 5 9
 author : anning

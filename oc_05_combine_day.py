@@ -1,5 +1,11 @@
 # coding:utf-8
-
+"""
+水色产品的日合成程序：将一天多个时次的数据合成为一天的数据
+~~~~~~~~~~~~~~~~~~~
+creation time : 2018 5 11
+author : anning
+~~~~~~~~~~~~~~~~~~~
+"""
 import os
 import sys
 

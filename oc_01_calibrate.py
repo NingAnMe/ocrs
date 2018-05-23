@@ -1,6 +1,5 @@
 # coding:utf-8
 """
-ocrs_calibrate.py
 提取 OBC 文件的 SV 数据，使用矫正系数对 MERSI L1 的产品进行定标预处理
 ~~~~~~~~~~~~~~~~~~~
 creation time : 2018 1 24

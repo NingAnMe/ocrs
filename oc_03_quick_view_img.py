@@ -1,4 +1,11 @@
 # coding:utf-8
+"""
+绘制 HDF5.dataset 的快视图。支持真彩图和灰度图
+~~~~~~~~~~~~~~~~~~~
+creation time : 2018 5 5
+author : anning
+~~~~~~~~~~~~~~~~~~~
+"""
 import os
 import sys
 
