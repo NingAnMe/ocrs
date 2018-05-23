@@ -23,7 +23,7 @@ def run(sat_sensor, yaml_file):
     proj_cfg_file = os.path.join(main_path, "global.yaml")
     proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
     if proj_cfg is None:
-        log.error("File is not exist: {}".format(proj_cfg_file))
+        LOG.error("File is not exist: {}".format(proj_cfg_file))
         return
     else:
         # 加载配置信息
@@ -35,17 +35,17 @@ def run(sat_sensor, yaml_file):
             COL = proj_cfg['project'][sat_sensor]['col']
             MESH_SIZE = proj_cfg['project'][sat_sensor]['mesh_zise']
             if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
-                log.error("Yaml args is not completion. : {}".format(proj_cfg_file))
+                LOG.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
         except Exception as why:
             print why
-            log.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
+            LOG.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
             return
 
     ######################### 开始处理 ###########################
     # 判断 yaml 文件是否存在
     if not os.path.isfile(yaml_file):
-        log.error("File is not exist: {}".format(yaml_file))
+        LOG.error("File is not exist: {}".format(yaml_file))
         return
     else:
         combine = Combine()  # 初始化一个投影实例
@@ -93,7 +93,7 @@ class Combine(object):
 
         except Exception as why:
             print why
-            log.error("Load yaml file error, please check it. : {}".format(yaml_file))
+            LOG.error("Load yaml file error, please check it. : {}".format(yaml_file))
             self.error = True
 
     def _data_calculate(self):
@@ -104,14 +104,9 @@ class Combine(object):
         fill_value = -32767
         for k, counter in self.counter.items():
             idx = np.where(counter > 0)
-            print k
-            print idx
-            print self.out_data[k][idx]
-            print counter[idx]
             self.out_data[k][idx] = self.out_data[k][idx] / counter[idx]
-            print self.out_data[k][idx]
-            idx = np.less_equal(self.out_data[k], 0)
-            self.out_data[k][idx] = fill_value
+            idx_fill = np.less_equal(self.out_data[k], 0)
+            self.out_data[k][idx_fill] = fill_value
 
     def combine(self):
         if self.error:
@@ -119,22 +114,22 @@ class Combine(object):
 
         # 如果输出文件已经存在，跳过
         elif os.path.isfile(self.ofile):
-            log.error("File is already exist, skip it: {}".format(self.ofile))
+            LOG.error("File is already exist, skip it: {}".format(self.ofile))
             return
         # 合成日数据
         elif pb_io.is_none(self.ifile, self.ofile):
             self.error = True
-            log.error("Is None: ifile or pfile or ofile: {}".format(self.yaml_file))
+            LOG.error("Is None: ifile or ofile: {}".format(self.yaml_file))
             return
         elif len(self.ifile) < 1:
             self.error = True
-            log.error("File count lower than 1: {}".format(self.yaml_file))
+            LOG.error("File count lower than 1: {}".format(self.yaml_file))
 
         for in_file in self.ifile:
             if os.path.isfile(in_file):
                 print "Start combining file: {}".format(in_file)
             else:
-                log.error("File is not exist: {}".format(in_file))
+                LOG.error("File is not exist: {}".format(in_file))
                 continue
 
             # 日合成
@@ -145,41 +140,19 @@ class Combine(object):
                             if k not in self.out_data.keys():  # 创建输出数据集和计数器
                                 shape = h5.get(k).shape
                                 if k == "Ocean_Flag":
-                                    self.out_data[k] = np.full(shape, 0, dtype='i4')
+                                    continue
                                 elif k == "Longitude" or k == "Latitude":
                                     self.out_data[k] = h5.get(k)[:]
                                 else:
-                                    self.out_data[k] = np.full(shape, 0, dtype='i2')
-                                    self.counter[k] = np.full(shape, 0, dtype='i2')
-                            if k == "Longitude" or k == "Latitude":
+                                    self.out_data[k] = np.zeros(shape, dtype='i2')
+                                    self.counter[k] = np.zeros(shape, dtype='i2')
+                            if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
                                 continue
-                            elif k == "Ocean_Flag":
-                                value = h5.get(k)[:]
-                                idx = np.where(value > 0)  # TODO 判断保留那些值，或者哪些值可以覆盖其他值
-                                self.out_data[k][idx] = value[idx]
                             else:
-                                print '*' * 20
-                                print k
                                 value = h5.get(k)[:]
-                                idx_test = np.logical_and(self.out_data[k] > 0, value > 0)
-                                idx_test = np.where(idx_test)
-                                print idx_test
-                                if len(idx_test[0]) != 0:
-                                    print idx_test[0][0], idx_test[1][0]
-                                    print self.out_data[k][idx_test[0][0], idx_test[1][0]]
-                                    print value[idx_test[0][0], idx_test[1][0]]
-                                print '*' * 20
-                                print '-' * 20
                                 idx = np.where(value > 0)
-                                print k
-                                print self.out_data[k][idx]
-                                print value[idx]
                                 self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
-                                print self.out_data[k][idx]
-                                print self.counter[k][idx]
                                 self.counter[k][idx] += 1
-                                print self.counter[k][idx]
-                                print '-' * 20
 
                             # 记录属性信息
                             if k not in self.attrs.keys():
@@ -213,10 +186,7 @@ class Combine(object):
                                       compression='gzip', compression_opts=5,
                                       shuffle=True)
                 elif k == "Ocean_Flag":
-                    h5.create_dataset(k, dtype='i4',
-                                      data=self.out_data[k],
-                                      compression='gzip', compression_opts=5,
-                                      shuffle=True)
+                    continue
                 else:
                     h5.create_dataset(k, dtype='i2',
                                       data=self.out_data[k],
@@ -224,7 +194,7 @@ class Combine(object):
                                       shuffle=True)
 
                 # 复制属性
-                if k == "Longitude" or k == "Latitude":
+                if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
                     continue
                 attrs = self.attrs[k]
                 for key, value in attrs.items():
@@ -237,7 +207,7 @@ if __name__ == "__main__":
     # 获取程序参数接口
     args = sys.argv[1:]
     help_info = \
-        """
+        u"""
         [参数1]：合成配置文件
         [样例]： python 程序 合成配置文件
         """
@@ -252,16 +222,16 @@ if __name__ == "__main__":
 
     # 配置不存在预警
     if not os.path.isfile(config_file):
-        print ("配置文件不存在 %s" % config_file)
+        print "配置文件不存在 %s" % config_file
         sys.exit(-1)
 
     # 载入配置文件
-    inCfg = ConfigObj(config_file)
-    LOG_PATH = inCfg["PATH"]["OUT"]["log"]
-    log = LogServer(LOG_PATH)
+    IN_CFG = ConfigObj(config_file)
+    LOG_PATH = IN_CFG["PATH"]["OUT"]["log"]
+    LOG = LogServer(LOG_PATH)
 
     # 开启进程池
-    # thread_number = inCfg["CROND"]["threads"]
+    # thread_number = IN_CFG["CROND"]["threads"]
     # thread_number = 1
     # pool = Pool(processes=int(thread_number))
 
@@ -269,8 +239,8 @@ if __name__ == "__main__":
         print help_info
     else:
         FILE_PATH = args[0]
-        SAT = inCfg["PATH"]["sat"]
-        SENSOR = inCfg["PATH"]["sensor"]
+        SAT = IN_CFG["PATH"]["sat"]
+        SENSOR = IN_CFG["PATH"]["sensor"]
         SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
 
         with time_block("All combine time:", switch=TIME_TEST):
