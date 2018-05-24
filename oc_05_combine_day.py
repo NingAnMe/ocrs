@@ -225,9 +225,14 @@ class Combine(object):
                 self.out_data["Latitude"] = lookup_table.lats
 
         # 输出数据集有效数据的数量
-        for k, v in self.out_data.items():
-            idx = np.where(v > 0)
-            print len(idx[0]), k
+        keys = self.out_data.keys()
+        keys.sort()
+        for k in keys:
+            if self.out_data[k] is None:
+                print k
+                continue
+            idx = np.where(self.out_data[k] > 0)
+            print "{:30} : {}".format(k, len(idx[0]))
 
     def write(self):
         if self.error:
