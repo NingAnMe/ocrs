@@ -6,6 +6,7 @@ creation time : 2018 5 21
 author : anning
 ~~~~~~~~~~~~~~~~~~~
 """
+import gc
 import os
 import sys
 
@@ -76,7 +77,6 @@ class Combine(object):
         self.in_data = {}
         self.attrs = {}
         self.out_data = {}
-        self.counter = {}
 
     def load_yaml(self, yaml_file):
         """
@@ -108,11 +108,18 @@ class Combine(object):
         :return:
         """
         fill_value = -32767
-        for k, counter in self.counter.items():
-            idx = np.where(counter > 0)
-            self.out_data[k][idx] = self.out_data[k][idx] / counter[idx]
-            idx_fill = np.less_equal(self.out_data[k], 0)
-            self.out_data[k][idx_fill] = fill_value
+        for k in self.out_data:
+            if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
+                continue
+            data = self.out_data[k]
+            del self.out_data[k]
+            gc.collect()
+
+            data = np.ma.masked_equal(data, fill_value)
+            data = np.mean(data, axis=2).astype(np.int16)
+            self.out_data[k] = np.ma.filled(data, fill_value)
+            del data
+            gc.collect()
 
     def combine(self):
         if self.error:
@@ -143,25 +150,28 @@ class Combine(object):
                 try:
                     with h5py.File(in_file, 'r') as h5:
                         for k in h5.keys():
+                            shape = h5.get(k).shape
+                            reshape = (shape[0], shape[1], 1)
                             if k not in self.out_data.keys():  # 创建输出数据集和计数器
-                                shape = h5.get(k).shape
                                 if k == "Ocean_Flag":
                                     continue
                                 elif k == "Longitude" or k == "Latitude":
                                     self.out_data[k] = h5.get(k)[:]
                                 else:
-                                    self.out_data[k] = np.zeros(shape, dtype='i2')
-                                    self.counter[k] = np.zeros(shape, dtype='i2')
-                            if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
-                                continue
+                                    data = h5.get(k)[:].reshape(reshape)
+                                    self.out_data[k] = data
+
                             else:
-                                value = h5.get(k)[:]
-                                idx = np.where(value > 0)
-                                self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
-                                self.counter[k][idx] += 1
+                                if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
+                                    continue
+                                else:
+                                    data = h5.get(k)[:].reshape(reshape)
+                                    self.out_data[k] = np.concatenate((self.out_data[k], data), axis=2)
 
                             # 记录属性信息
-                            if k not in self.attrs.keys():
+                            if k in self.attrs.keys():
+                                continue
+                            else:
                                 self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
                     print '-' * 100
 
@@ -174,9 +184,14 @@ class Combine(object):
             self._data_calculate()
 
         # 输出数据集有效数据的数量
-        for k, v in self.out_data.items():
-            idx = np.where(v > 0)
-            print len(idx[0]), k
+        keys = self.out_data.keys()
+        keys.sort()
+        for k in keys:
+            if self.out_data[k] is None:
+                print k
+                continue
+            idx = np.where(self.out_data[k] > 0)
+            print "{:30} : {}".format(k, len(idx[0]))
 
     def write(self):
         if self.error:
