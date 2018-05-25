@@ -77,6 +77,7 @@ class Combine(object):
         self.in_data = {}
         self.attrs = {}
         self.out_data = {}
+        self.counter = {}
 
     def load_yaml(self, yaml_file):
         """
@@ -109,7 +110,6 @@ class Combine(object):
         """
         if self.error:
             return
-        print "Start calculate."
         fill_value = -32767
         for k in self.out_data:
             if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
@@ -162,9 +162,54 @@ class Combine(object):
             print why
             print "Can't combine file, some error exist: {}".format(self.in_file)
 
-        # 计算数据的平均值
-        with time_block("Calculate mean time:"):
-            self._3d_data_calculate()
+    def _2d_data_calculate(self):
+        """
+        计算数据的平均值
+        :return:
+        """
+        if self.error:
+            return
+        fill_value = -32767
+        for k, counter in self.counter.items():
+            idx = np.where(counter > 0)
+            self.out_data[k][idx] = self.out_data[k][idx] / counter[idx]
+            idx_fill = np.less_equal(self.out_data[k], 0)
+            self.out_data[k][idx_fill] = fill_value
+
+    def _combine_2d(self):
+        """
+        将日数据合成为2维数据，然后计算均值
+        """
+        if self.error:
+            return
+        try:
+            with h5py.File(self.in_file, 'r') as h5:
+                for k in h5.keys():
+                    if k not in self.out_data.keys():  # 创建输出数据集和计数器
+                        shape = h5.get(k).shape
+                        if k == "Ocean_Flag":
+                            continue
+                        elif k == "Longitude" or k == "Latitude":
+                            self.out_data[k] = h5.get(k)[:]
+                        else:
+                            self.out_data[k] = np.zeros(shape, dtype='i2')
+                            self.counter[k] = np.zeros(shape, dtype='i2')
+                    if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
+                        continue
+                    else:
+                        value = h5.get(k)[:]
+                        idx = np.where(value > 0)
+                        self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
+                        self.counter[k][idx] += 1
+
+                    # 记录属性信息
+                    if k not in self.attrs.keys():
+                        self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
+            print '-' * 100
+
+        except Exception as why:
+            print why
+            print "Can't combine file, some error exist: {}".format(self.in_file)
 
     def _print_data_count(self):
         """
@@ -205,7 +250,12 @@ class Combine(object):
             self.in_file = in_file
             # 日合成
             with time_block("One combine time:", switch=TIME_TEST):
-                self._combine_3d()
+                self._combine_2d()
+
+        # 计算数据的平均值
+        with time_block("Calculate mean time:", switch=TIME_TEST):
+            print "Start calculate."
+            self._2d_data_calculate()
 
         # 输出数据集有效数据的数量
         self._print_data_count()
