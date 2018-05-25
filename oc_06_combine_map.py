@@ -65,7 +65,7 @@ def run(sat_sensor, in_file):
         # 如果输出文件已经存在，跳过
         if os.path.isfile(pic_name):
             print "File is already exist, skip it: {}".format(pic_name)
-            return
+            continue
 
         with time_block("Draw combine time:", switch=TIME_TEST):
             draw_combine(in_file, dataset_name, pic_name, vmin=vmin, vmax=vmax, area_range=AREA_RANGE)
