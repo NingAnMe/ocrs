@@ -102,11 +102,14 @@ class Combine(object):
             LOG.error("Load yaml file error, please check it. : {}".format(yaml_file))
             self.error = True
 
-    def _data_calculate(self):
+    def _3d_data_calculate(self):
         """
         计算数据的平均值
         :return:
         """
+        if self.error:
+            return
+        print "Start calculate."
         fill_value = -32767
         for k in self.out_data:
             if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
@@ -120,6 +123,61 @@ class Combine(object):
             self.out_data[k] = np.ma.filled(data, fill_value)
             del data
             gc.collect()
+    
+    def _combine_3d(self):
+        """
+        将二维数据合成三维数据
+        """
+        if self.error:
+            return
+        try:
+            with h5py.File(self.in_file, 'r') as h5:
+                for k in h5.keys():
+                    shape = h5.get(k).shape
+                    reshape = (shape[0], shape[1], 1)
+                    if k not in self.out_data.keys():  # 创建输出数据集和计数器
+                        if k == "Ocean_Flag":
+                            continue
+                        elif k == "Longitude" or k == "Latitude":
+                            self.out_data[k] = h5.get(k)[:]
+                        else:
+                            data = h5.get(k)[:].reshape(reshape)
+                            self.out_data[k] = data
+
+                    else:
+                        if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
+                            continue
+                        else:
+                            data = h5.get(k)[:].reshape(reshape)
+                            self.out_data[k] = np.concatenate((self.out_data[k], data), axis=2)
+
+                    # 记录属性信息
+                    if k in self.attrs.keys():
+                        continue
+                    else:
+                        self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
+            print '-' * 100
+
+        except Exception as why:
+            print why
+            print "Can't combine file, some error exist: {}".format(self.in_file)
+
+        # 计算数据的平均值
+        with time_block("Calculate mean time:"):
+            self._3d_data_calculate()
+
+    def _print_data_count(self):
+        """
+        打印有效数据的数量
+        """
+        keys = self.out_data.keys()
+        keys.sort()
+        for k in keys:
+            if self.out_data[k] is None:
+                print k
+                continue
+            idx = np.where(self.out_data[k] > 0)
+            print "{:30} : {}".format(k, len(idx[0]))
 
     def combine(self):
         if self.error:
@@ -133,7 +191,7 @@ class Combine(object):
         elif pb_io.is_none(self.ifile, self.ofile):
             self.error = True
             LOG.error("Is None: ifile or ofile: {}".format(self.yaml_file))
-            return
+            return  
         elif len(self.ifile) < 1:
             self.error = True
             LOG.error("File count lower than 1: {}".format(self.yaml_file))
@@ -144,54 +202,13 @@ class Combine(object):
             else:
                 LOG.error("File is not exist: {}".format(in_file))
                 continue
-
+            self.in_file = in_file
             # 日合成
             with time_block("One combine time:", switch=TIME_TEST):
-                try:
-                    with h5py.File(in_file, 'r') as h5:
-                        for k in h5.keys():
-                            shape = h5.get(k).shape
-                            reshape = (shape[0], shape[1], 1)
-                            if k not in self.out_data.keys():  # 创建输出数据集和计数器
-                                if k == "Ocean_Flag":
-                                    continue
-                                elif k == "Longitude" or k == "Latitude":
-                                    self.out_data[k] = h5.get(k)[:]
-                                else:
-                                    data = h5.get(k)[:].reshape(reshape)
-                                    self.out_data[k] = data
-
-                            else:
-                                if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
-                                    continue
-                                else:
-                                    data = h5.get(k)[:].reshape(reshape)
-                                    self.out_data[k] = np.concatenate((self.out_data[k], data), axis=2)
-
-                            # 记录属性信息
-                            if k in self.attrs.keys():
-                                continue
-                            else:
-                                self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
-                    print '-' * 100
-
-                except Exception as why:
-                    print why
-                    print "Can't combine file, some error exist: {}".format(in_file)
-
-        # 计算数据的平均值
-        with time_block("Calculate mean time:"):
-            self._data_calculate()
+                self._combine_3d()
 
         # 输出数据集有效数据的数量
-        keys = self.out_data.keys()
-        keys.sort()
-        for k in keys:
-            if self.out_data[k] is None:
-                print k
-                continue
-            idx = np.where(self.out_data[k] > 0)
-            print "{:30} : {}".format(k, len(idx[0]))
+        self._print_data_count()
 
     def write(self):
         if self.error:
