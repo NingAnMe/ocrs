@@ -65,8 +65,9 @@ def run(sat_sensor, hdf5_file):
             if len(datasets) == 3:
                 datas = []
                 for set_name in datasets:
-                    datas.append(h5.get(set_name)[:])
-                dv_rgb(datas[0], datas[1], datas[2], out_pic)
+                    data = h5.get(set_name)[:]
+                    datas.append(data)
+                dv_rgb(datas[2], datas[1], datas[0], out_pic)
             elif len(datasets) == 1:
                 for set_name in datasets:
                     data = h5.get(set_name)[:]
