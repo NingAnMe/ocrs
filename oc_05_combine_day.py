@@ -169,6 +169,7 @@ class Combine(object):
 
         # 如果输出文件已经存在，跳过
         elif os.path.isfile(self.ofile):
+            self.error = True
             LOG.error("File is already exist, skip it: {}".format(self.ofile))
             return
         # 合成日数据
