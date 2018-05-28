@@ -117,8 +117,7 @@ class Combine(object):
             data = self.out_data[k]
             del self.out_data[k]
             gc.collect()
-
-            data = np.ma.masked_equal(data, fill_value)
+            data = np.ma.masked_less_equal(data, 0)
             data = np.mean(data, axis=2).astype(np.int16)
             self.out_data[k] = np.ma.filled(data, fill_value)
             del data
