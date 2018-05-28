@@ -153,18 +153,6 @@ def calibration_before(m1000, sv_1000m, sv_250m, coeffs, dsl):
                                      coeffs_new, dsl, sv_250m_tem)
         dataset_250.append(arof)
 
-    # 将无效值填充为 65535
-    dataset_1km = np.array(dataset_1km)
-    dataset_250 = np.array(dataset_250)
-    dataset_1km[np.isnan(dataset_1km)] = 65535
-    dataset_250[np.isnan(dataset_250)] = 65535
-
-    # 将结果中的负值填充为 65535
-    idx = np.where(dataset_1km < 0)
-    dataset_1km[idx] = 65535
-    idx = np.where(dataset_250 < 0)
-    dataset_250[idx] = 65535
-
     return dataset_1km, dataset_250
 
 
@@ -226,18 +214,6 @@ def calibration_after(m1000, sv_1000m, sv_250m, coeffs, dsl):
 
         dataset_250.append(arof)
 
-    # 将无效值填充为 65535
-    dataset_1km = np.array(dataset_1km)
-    dataset_250 = np.array(dataset_250)
-    dataset_1km[np.isnan(dataset_1km)] = 65535
-    dataset_250[np.isnan(dataset_250)] = 65535
-
-    # 将结果中的负值填充为 65535
-    idx = np.where(dataset_1km < 0)
-    dataset_1km[idx] = 65535
-    idx = np.where(dataset_250 < 0)
-    dataset_250[idx] = 65535
-
     return dataset_1km, dataset_250
 
 
@@ -248,19 +224,13 @@ def calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs, dsl, sv_tem):
     """
     k0, k1, k2 = coeffs
 
-    # 除去有效范围外的 dn 值
-    dn_ev_new = np.zeros_like(dn_ev, dtype='f')
-    dn_ev_new[dn_ev_new == 0] = np.nan
-
-    idx = np.logical_and(dn_ev > 0, dn_ev <= 10000)
-    dn_ev_new[idx] = dn_ev[idx]
-
     # 除去 sv 数据中 0 对应的 dn 值
-    dn_ev = np.zeros_like(dn_ev_new, dtype='f')
-    dn_ev[dn_ev == 0] = np.nan
+    idx = np.where(sv_tem == 0)
+    dn_ev[idx, :] = 0
 
-    idx = np.where(sv_tem != 0)
-    dn_ev[idx, :] = dn_ev_new[idx, :]
+    # 除去有效范围外的 dn 值
+    dn_ev = np.ma.masked_less_equal(dn_ev, 0)
+    dn_ev = np.ma.masked_greater_equal(dn_ev, 4096)
 
     # 进行计算
     dn_new = dn_ev * slope_ev + intercept_ev
@@ -268,6 +238,11 @@ def calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs, dsl, sv_tem):
     dn_new = dn_new - sv_tem
     arof = dn_new * slope * 100
 
+    # 除去有效范围外的 dn 值
+    arof = np.ma.masked_less_equal(arof, 0)
+    arof = np.ma.masked_greater(arof, 4095)
+    arof.filled(0)
+    arof = arof.astype(np.uint16)
     return arof
 
 
@@ -279,19 +254,13 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeff
     k0, k1, k2 = coeffs_new
     k0_old, k1_old, k2_old = coeffs_old
 
-    # 除去范围外的值
-    dn_ev_new = np.zeros_like(dn_ev, dtype='f')
-    dn_ev_new[dn_ev_new == 0] = np.nan
-
-    idx = np.logical_and(dn_ev > 0, dn_ev <= 10000)
-    dn_ev_new[idx] = dn_ev[idx]
-
     # 除去 sv 数据中 0 对应的 dn 值
-    dn_ev = np.zeros_like(dn_ev_new, dtype='f')
-    dn_ev[dn_ev == 0] = np.nan
+    idx = np.where(sv_tem == 0)
+    dn_ev[idx, :] = 0
 
-    idx = np.where(sv_tem != 0)
-    dn_ev[idx, :] = dn_ev_new[idx, :]
+    # 除去有效范围外的 dn 值
+    dn_ev = np.ma.masked_less_equal(dn_ev, 0)
+    dn_ev = np.ma.masked_greater_equal(dn_ev, 10000)
 
     # 进行计算
     dn_new = dn_ev * slope_ev + intercept_ev
@@ -301,6 +270,12 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeff
     dn_new = dn_new - sv_tem
     arof = dn_new * slope * 100
 
+    # 除去有效范围外的 dn 值
+    arof = np.ma.masked_less_equal(arof, 0)
+    arof = np.ma.masked_greater(arof, 10000)
+    arof.filled(0)
+    arof = arof.astype(np.uint16)
+    print "-" * 100
     return arof
 
 
