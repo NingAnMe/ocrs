@@ -56,9 +56,9 @@ def run(sat_sensor, hdf5_file):
     out_pic = "{}_{}.{}".format(file_name, filename_suffix, "png")
 
     # 如果文件已经存在，跳过
-    if os.path.isfile(out_pic):
-        print "File is already exist, skip it: {}".format(out_pic)
-        return
+    # if os.path.isfile(out_pic):
+    #     print "File is already exist, skip it: {}".format(out_pic)
+    #     return
 
     try:
         with h5py.File(hdf5_file, 'r') as h5:
@@ -68,23 +68,34 @@ def run(sat_sensor, hdf5_file):
                     data = h5.get(set_name)[:]
                     datas.append(data)
                 dv_rgb(datas[2], datas[1], datas[0], out_pic)
-            elif len(datasets) == 1:
-                for set_name in datasets:
-                    data = h5.get(set_name)[:]
-                    # 计算宽和高
-                    h, w = data.shape
-                    wight = 5. * w / w
-                    height = 5. * h / w
-                    fig = plt.figure(figsize=(wight, height))
 
-                    plt.imshow(data, cmap=plt.get_cmap("gray"))
-                    plt.axis('off')
-                    plt.tight_layout()
-                    fig.subplots_adjust(bottom=0, top=1, left=0, right=1)
-                    pb_io.make_sure_path_exists(os.path.dirname(out_pic))
-                    fig.savefig(out_pic, dpi=200)
-                    fig.clear()
-                    plt.close()
+                print "Output picture: {}".format(out_pic)
+                print '-' * 100
+
+            for set_name in h5.keys():
+                out_pic_one = out_pic.replace(filename_suffix, set_name)
+                # 如果文件已经存在，跳过
+                # if os.path.isfile(out_pic_one):
+                #     print "File is already exist, skip it: {}".format(out_pic)
+                #     return
+                data = h5.get(set_name)[:]
+                # 计算宽和高
+                h, w = data.shape
+                wight = 5. * w / w
+                height = 5. * h / w
+                fig = plt.figure(figsize=(wight, height))
+
+                plt.imshow(data, cmap=plt.get_cmap("gray"))
+                plt.axis('off')
+                plt.tight_layout()
+                fig.subplots_adjust(bottom=0, top=1, left=0, right=1)
+                pb_io.make_sure_path_exists(os.path.dirname(out_pic))
+                fig.savefig(out_pic_one, dpi=200)
+                fig.clear()
+                plt.close()
+
+                print "Output picture: {}".format(out_pic_one)
+                print '-' * 100
             else:
                 LOG.error("datasets must be 1 or 3")
                 return
@@ -93,8 +104,6 @@ def run(sat_sensor, hdf5_file):
         LOG.error("Plot quick view picture error: {}".format(hdf5_file))
         return
 
-    print "Output picture: {}".format(out_pic)
-    print '-' * 100
 
 
 ######################### 程序全局入口 ##############################
