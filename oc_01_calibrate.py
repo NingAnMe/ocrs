@@ -230,7 +230,7 @@ def calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs, dsl, sv_tem):
 
     # 除去有效范围外的 dn 值
     dn_ev = np.ma.masked_less_equal(dn_ev, 0)
-    dn_ev = np.ma.masked_greater_equal(dn_ev, 4096)
+    dn_ev = np.ma.masked_greater(dn_ev, 4095)
 
     # 进行计算
     dn_new = dn_ev * slope_ev + intercept_ev
@@ -240,7 +240,6 @@ def calculate_arof_before(intercept_ev, slope_ev, dn_ev, coeffs, dsl, sv_tem):
 
     # 除去有效范围外的 dn 值
     arof = np.ma.masked_less_equal(arof, 0)
-    arof = np.ma.masked_greater(arof, 4095)
     arof.filled(0)
     arof = arof.astype(np.uint16)
     return arof
@@ -260,7 +259,7 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeff
 
     # 除去有效范围外的 dn 值
     dn_ev = np.ma.masked_less_equal(dn_ev, 0)
-    dn_ev = np.ma.masked_greater_equal(dn_ev, 10000)
+    dn_ev = np.ma.masked_greater(dn_ev, 10000)
 
     # 进行计算
     dn_new = dn_ev * slope_ev + intercept_ev
@@ -272,10 +271,8 @@ def calculate_arof_after(intercept_ev, slope_ev, dn_ev, dn_sv, coeffs_old, coeff
 
     # 除去有效范围外的 dn 值
     arof = np.ma.masked_less_equal(arof, 0)
-    arof = np.ma.masked_greater(arof, 10000)
     arof.filled(0)
     arof = arof.astype(np.uint16)
-    print "-" * 100
     return arof
 
 
