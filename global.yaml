@@ -14,11 +14,9 @@ ncep2byte:
 ################################ 数据预处理配置 ####################################
 calibrate:
   FY3B+MERSI:
-    obc: "/FY3/FY3B/MERSI/L1/OBC/"                                   # FY3B_MERSI_GBAL_L1_20180105_0000_OBCXX_MS.HDF
-    m1000: "/FY3/FY3B/MERSI/L1/1000M/"                                # FY3B_MERSI_GBAL_L1_20180105_0005_1000M_MS.HDF
-    out: "/storage-space/disk1_w/ocrs_data/SupportData/FY3B+MERSI/L1/1000M/"
-    probe_m250: [19, 20, 38, 40]                                        # 250m 4 个通道选取的探元 id，取值范围(1~40)
-    probe_m1000: [8, 7, 6, 8, 5, 10, 7, 10, 10, 9, 9, 5, 5, 6, 4]       # 1000m 4 个通道选取的探元 id，取值范围(1~40)
+    # 19 个通道选取的探元 id，前 4 个通道取值范围（1-40），后 15 个通道取值范围（1-10）
+    probe: [19, 20, 38, 40, 8, 7, 6, 8, 5, 10, 7, 10, 10, 9, 9, 5, 5, 6, 4]
+    plot: on
 
 ################################ 投影程序配置#################################
 project:
@@ -38,8 +36,8 @@ compress:
 ################################ 快视图配置 ######################################
 plt_quick_view:
   FY3B+MERSI:
-    datasets: ["Ocean_Rw_412", "Ocean_Rw_443", "Ocean_Rw_490"]  # R G B 数据，按顺序
-    filename_suffix: "Rw412_Rw443_Rw490"  # 在文件名的基础上增加的后缀
+    datasets: ["Ocean_Rw_650", "Ocean_Rw_565", "Ocean_Rw_490"]  # R G B 数据，按顺序
+    filename_suffix: "Rw650_Rw565_Rw490"  # 在文件名的基础上增加的后缀
 #    datasets: ["Ocean_Aod_550"]  # 一个数据集的灰度图
 #    filename_suffix: "Aod550"  # 在文件名的基础上增加的后缀
 
@@ -72,7 +70,7 @@ plt_combine:
     - ["Ocean_Aod_2130", "1.20", "0.00"]
     - ["Ocean_Aod_Angstrom", "1.20", "0.00"]
     - ["Ocean_Aod_Angstrom_520865", "1.20", "0.00"]
-    - ["Land_Aod_Angstrom", "2.00", "0.00"]
+    - ["Land_Aod_Angstrom", "2.00", "0.00"] 
 
     area_range:
       lat_s: "90"
