@@ -16,6 +16,7 @@ import numpy as np
 from PB.CSC.pb_csc_console import LogServer
 from PB import pb_io, pb_time, pb_calculate
 from PB.pb_time import time_block
+from DV.dv_img import dv_rgb
 
 TIME_TEST = True  # 时间测试
 
@@ -79,8 +80,8 @@ def main(sat_sensor, in_file):
         return
 
     # 初始化一个预处理实例
-    calibrate = Calibrate(l1_1000m=l1_1000m, obc_1000m=obc_1000m, coeff_file=coeff_file, out_file=out_file,
-                          launch_date=LAUNCH_DATE)
+    calibrate = Calibrate(l1_1000m=l1_1000m, obc_1000m=obc_1000m, coeff_file=coeff_file,
+                          out_file=out_file, launch_date=LAUNCH_DATE)
 
     # 对 OBC 文件进行 SV 提取
     calibrate.sv_extract(PROBE)
@@ -92,8 +93,8 @@ def main(sat_sensor, in_file):
     calibrate.write()
 
     # 绘图
-    # if PLOT == "on":
-    #     calibrate.plot()
+    if PLOT == "on":
+        calibrate.plot()
 
     print("Success")
     print '-' * 100
@@ -262,8 +263,8 @@ class Calibrate(object):
 
                 with h5py.File(self.l1_1000m, "r") as h5:
                     ev_dn_l1 = h5.get(ev_name)[:][k]
-                    ev_slope = h5.get(ev_name).attrs["Slope"][k]
-                    ev_intercept = h5.get(ev_name).attrs["Intercept"][k]
+                    ev_slope = h5.get(ev_name).attrs.get("Slope")[k]
+                    ev_intercept = h5.get(ev_name).attrs.get("Intercept")[k]
 
                 sv_dn_obc = self.sv_extract_obc[i]
 
@@ -309,8 +310,8 @@ class Calibrate(object):
 
                 with h5py.File(self.l1_1000m, "r") as h5:
                     ev_ref_l1 = h5.get(ev_name)[:][k]
-                    ev_slope = h5.get(ev_name).attrs["Slope"][k]
-                    ev_intercept = h5.get(ev_name).attrs["Intercept"][k]
+                    ev_slope = h5.get(ev_name).attrs.get("Slope")[k]
+                    ev_intercept = h5.get(ev_name).attrs.get("Intercept")[k]
                     sv_dn_l1 = h5.get(sv_name)[:][k]
                     coeff_old = h5.get('RSB_Cal_Cor_Coeff')[:]
 
@@ -344,7 +345,7 @@ class Calibrate(object):
                     self.ev_250m_ref.append(ref_new)
                 else:
                     self.ev_1000m_ref.append(ref_new)
-    
+
     def write(self):
         """
         将处理后的数据写入 HDF5 文件
@@ -365,30 +366,30 @@ class Calibrate(object):
                     dataset_obc = ['SV_1km', 'SV_250m_REFL']
 
                     # 创建输出文件的数据集
-                    out_hdf5.create_dataset('EV_250_Aggr.1KM_RefSB', dtype='u2', data=self.ev_250m_ref,
+                    out_hdf5.create_dataset('EV_250_Aggr.1KM_RefSB', data=self.ev_250m_ref, dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('EV_1KM_RefSB', dtype='u2', data=self.ev_1000m_ref,
+                    out_hdf5.create_dataset('EV_1KM_RefSB', data=self.ev_1000m_ref, dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SV_1km', dtype='u2', data=self.sv_extract_obc[0:4],
+                    out_hdf5.create_dataset('SV_1km', data=self.sv_extract_obc[0:4], dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SV_250m_REFL', dtype='u2', data=self.sv_extract_obc[4:19],
+                    out_hdf5.create_dataset('SV_250m_REFL', data=self.sv_extract_obc[4:19], dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('RSB_Cal_Cor_Coeff', dtype='f4', data=self.coeff,
+                    out_hdf5.create_dataset('RSB_Cal_Cor_Coeff', data=self.coeff, dtype='f4',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    
-                    out_hdf5.create_dataset('LandSeaMask', dtype='u1', data=m1000.get('LandSeaMask')[:],
+
+                    out_hdf5.create_dataset('LandSeaMask', data=m1000.get('LandSeaMask')[:], dtype='u1',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('Latitude', dtype='f4', data=m1000.get('Latitude')[:],
+                    out_hdf5.create_dataset('Latitude', data=m1000.get('Latitude')[:], dtype='f4',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('Longitude', dtype='f4', data=m1000.get('Longitude')[:],
+                    out_hdf5.create_dataset('Longitude', data=m1000.get('Longitude')[:], dtype='f4',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SolarZenith', dtype='i2', data=m1000.get('SolarZenith')[:],
+                    out_hdf5.create_dataset('SolarZenith', data=m1000.get('SolarZenith')[:], dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SolarAzimuth', dtype='i2', data=m1000.get('SolarAzimuth')[:],
+                    out_hdf5.create_dataset('SolarAzimuth', data=m1000.get('SolarAzimuth')[:], dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SensorZenith', dtype='i2', data=m1000.get('SensorZenith')[:],
+                    out_hdf5.create_dataset('SensorZenith', data=m1000.get('SensorZenith')[:], dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SensorAzimuth', dtype='i2', data=m1000.get('SensorAzimuth')[:],
+                    out_hdf5.create_dataset('SensorAzimuth', data=m1000.get('SensorAzimuth')[:], dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
 
                     coeff_attrs = {
@@ -425,6 +426,35 @@ class Calibrate(object):
                     # 添加文件属性
                     out_hdf5.attrs['dsl'] = self.dsl
         print "Output file: {}".format(self.out_file)
+    
+    def plot(self):
+        """
+        对原数据和处理后的数据各出一张真彩图
+        """
+        filename_suffix = "650_565_490"
+        file_name = os.path.splitext(self.out_file)[0]
+        out_pic_old = "{}_{}_old.{}".format(file_name, filename_suffix, "png")
+        out_pic_new = "{}_{}_new.{}".format(file_name, filename_suffix, "png")
+
+        if not os.path.isfile(out_pic_old):
+            with h5py.File(self.l1_1000m) as h5:
+                r = h5.get("EV_1KM_RefSB")[5] # 第 11 通道 650
+                g = h5.get("EV_1KM_RefSB")[4] # 第 10 通道 565
+                b = h5.get("EV_1KM_RefSB")[2] # 第 8 通道 490
+            dv_rgb(r, g, b, out_pic_old)
+            print "Plot picture: {}".format(out_pic_old)
+        else:
+            print "File is already exist, skip it: {}".format(out_file)
+
+        if not os.path.isfile(out_pic_new):
+            with h5py.File(self.out_file) as h5:
+                r = h5.get("EV_1KM_RefSB")[5] # 第 11 通道 650
+                g = h5.get("EV_1KM_RefSB")[4] # 第 10 通道 565
+                b = h5.get("EV_1KM_RefSB")[2] # 第 8 通道 490
+            dv_rgb(r, g, b, out_pic_new)
+            print "Plot picture: {}".format(out_pic_new)
+        else:
+            print "File is already exist, skip it: {}".format(out_pic_new)
 
 
 def get_obc_file(m1000_file, m1000_path, obc_path):
