@@ -20,7 +20,6 @@ from PB.pb_time import time_block
 from PB.pb_space import deg2meter
 from PB.CSC.pb_csc_console import LogServer
 
-
 TIME_TEST = True  # 时间测试
 
 
@@ -40,7 +39,7 @@ def run(sat_sensor, yaml_file):
             CMD = proj_cfg['project'][sat_sensor]['cmd'] % (half_res, half_res)
             ROW = proj_cfg['project'][sat_sensor]['row']
             COL = proj_cfg['project'][sat_sensor]['col']
-            MESH_SIZE = proj_cfg['project'][sat_sensor]['mesh_zise']
+            MESH_SIZE = proj_cfg['project'][sat_sensor]['mesh_size']
             if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
                 LOG.error("Yaml args is not completion. : {}".format(proj_cfg_file))
                 return
@@ -198,20 +197,24 @@ class Combine(object):
                 try:
                     with h5py.File(in_file, 'r') as h5:
                         for k in h5.keys():
+                            # 记录属性信息
+                            if k not in self.attrs.keys():
+                                self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
+
                             if k == "Longitude" or k == "Latitude":
                                 continue
                             elif k not in self.out_data.keys():
                                 if k == "Ocean_Flag":
-                                    self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='i4')
+                                    self.out_data[k] = np.full((self.row, self.col), fill_value,
+                                                               dtype='i4')
                                 else:
-                                    self.out_data[k] = np.full((self.row, self.col), fill_value, dtype='i2')
+                                    self.out_data[k] = np.full((self.row, self.col), fill_value,
+                                                               dtype='i2')
                             # 合并一个数据
                             proj_data = h5.get(k)[:]
-                            self.out_data[k][self.lut_ii, self.lut_jj] = proj_data[self.data_ii, self.data_jj]
+                            self.out_data[k][self.lut_ii, self.lut_jj] = proj_data[
+                                self.data_ii, self.data_jj]
 
-                            # 记录属性信息
-                            if k not in self.attrs.keys():
-                                self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
                     print '-' * 100
 
                 except Exception as why:
@@ -260,8 +263,6 @@ class Combine(object):
                                       shuffle=True)
 
                 # 复制属性
-                if k == "Longitude" or k == "Latitude":
-                    continue
                 attrs = self.attrs[k]
                 for key, value in attrs.items():
                     h5[k].attrs[key] = value
