@@ -22,6 +22,9 @@ TIME_TEST = True  # 时间测试
 
 
 def main(sat_sensor, in_file):
+    """
+    使用矫正系数对 MERSI L1 的产品进行定标预处理
+    """
     ######################### 初始化 ###########################
     # 加载程序配置文件
     proj_cfg_file = os.path.join(MAIN_PATH, "global.yaml")
@@ -99,21 +102,50 @@ def main(sat_sensor, in_file):
     print("Success")
     print '-' * 100
 
+
+def dataset_extract(dataset, probe_count, probe_id, slide_step=10):
+    """
+    提取数据集的数据, 将 x * x 的数据提取为 y * 1
+    :param slide_step: 滑动步长
+    :param dataset: 二维数据集
+    :param probe_count: (int) 探元总数量
+    :param probe_id: (int) 此通道对应的探元 id
+    :return:
+    """
+    # 筛选窗区内探元号对应的行
+    dataset_ext = pb_calculate.extract_lines(dataset, probe_count, probe_id)
+    # 滑动计算 avg 和 std
+    avg_std_list = pb_calculate.rolling_calculate_avg_std(dataset_ext, slide_step)
+    # 过滤标准差范围内的有效值
+    dataset_valid = pb_calculate.filter_valid_value(dataset_ext, avg_std_list, 2)
+    # 计算均值
+    dataset_avg = pb_calculate.calculate_avg(dataset_valid)
+    dataset_avg = np.array(dataset_avg).reshape(len(dataset_avg), 1)
+    # 将行数扩大 10 倍
+    dataset_avg = pb_calculate.expand_dataset_line(dataset_avg, 10)
+    # 对浮点数据数据进行四舍五入
+    dataset_new = np.rint(dataset_avg)
+    return dataset_new
+
+
 class Calibrate(object):
     """
     使用矫正系数对 MERSI L1 的产品进行定标预处理
     """
 
     def __init__(self, l1_1000m=None, obc_1000m=None, coeff_file=None, out_file=None,
-                launch_date=None, **kwargs):
+                 launch_date=None):
         """
         :param l1_1000m: L1 1000m 文件
         :param obc_1000m: OBC 1000m 文件
-        :param coeffs_file: 矫正系数文件，txt 格式，三列，分别为 k0 k1 k2
-        :param out_path: 输出文件
+        :param coeff_file: 矫正系数文件，txt 格式，三列，分别为 k0 k1 k2
+        :param out_file: 输出文件
         :param launch_date: 发星时间
         :return:
         """
+        self.sv_extract_obc = []
+        self.ev_1000m_ref = []
+        self.ev_250m_ref = []
         self.error = False
         if pb_io.is_none(l1_1000m, obc_1000m, coeff_file, launch_date):
             print "calibrate init args is error."
@@ -128,7 +160,6 @@ class Calibrate(object):
         self._get_ymd()
         self._get_coeff()
         self._get_dsl()
-
 
     def _get_ymd(self):
         if self.error:
@@ -172,9 +203,7 @@ class Calibrate(object):
         3: 然后按照 10 行滑动 从 200 * 6 变成 200 * 1
         4: 然后 10 行用 1 个 SV 均值，从 200 * 1 变成 2000 * 1
         5: 总共 19 * 2000 * 1(sv_2000)
-        :param obc: OBC 文件
-        :param probe_250m: (list)250m 每个通道选取的探元 id
-        :param probe_1000m: (list)1000m 每个通道选取的探元 id
+        :param probe:
         :return:
         """
         if self.error:
@@ -187,7 +216,6 @@ class Calibrate(object):
         setnames_obc = ['SV_1km', 'SV_250m_REFL']
         datasets_obc = pb_io.read_dataset_hdf5(self.obc_1000m, setnames_obc)
 
-        self.sv_extract_obc = []
         # 提取 SV_250m_REFL
         for i in xrange(4):
             dataset = datasets_obc['SV_250m_REFL'][i]
@@ -195,7 +223,7 @@ class Calibrate(object):
             probe_id = probe[i]  # 探元 id
             slide_step = 10  # 滑动的步长
 
-            sv_dataset = self.dataset_extract(dataset, probe_count, probe_id, slide_step)
+            sv_dataset = dataset_extract(dataset, probe_count, probe_id, slide_step)
             self.sv_extract_obc.append(sv_dataset)
         # 提取 SV_1km
         for i in xrange(15):
@@ -204,32 +232,8 @@ class Calibrate(object):
             probe_id = probe[i + 4]  # 探元 id
             slide_step = 10  # 滑动的步长
 
-            sv_dataset = self.dataset_extract(dataset, probe_count, probe_id, slide_step)
+            sv_dataset = dataset_extract(dataset, probe_count, probe_id, slide_step)
             self.sv_extract_obc.append(sv_dataset)
-
-
-    def dataset_extract(self, dataset, probe_count, probe_id, slide_step=10):
-        """
-        提取数据集的数据, 将 x * x 的数据提取为 y * 1
-        :param dataset: 二维数据集
-        :param probe_count: (int) 探元总数量
-        :param probe_id: (int) 此通道对应的探元 id
-        :return:
-        """
-        # 筛选探元号对应的行
-        dataset_ext = pb_calculate.extract_lines(dataset, probe_count, probe_id)
-        # 计算 avg 和 std
-        avg_std_list = pb_calculate.rolling_calculate_avg_std(dataset_ext, 10)
-        # 过滤有效值
-        dataset_valid = pb_calculate.filter_valid_value(dataset_ext, avg_std_list, 2)
-        # 计算均值
-        dataset_avg = pb_calculate.calculate_avg(dataset_valid)
-        dataset_avg = np.array(dataset_avg).reshape(len(dataset_avg), 1)
-        # 将行数扩大 10 倍
-        dataset_avg = pb_calculate.expand_dataset_line(dataset_avg, 10)
-        # 对浮点数据数据进行四舍五入
-        dataset_new = np.rint(dataset_avg)
-        return dataset_new
 
     def calibrate(self):
         """
@@ -251,8 +255,6 @@ class Calibrate(object):
         # 定标计算
         # 发星-2013 年
         if int(self.ymd[0:4]) <= 2013:
-            self.ev_250m_ref = []
-            self.ev_1000m_ref = []
             for i in xrange(19):
                 if i < 4:
                     ev_name = "EV_250_Aggr.1KM_RefSB"
@@ -280,7 +282,7 @@ class Calibrate(object):
 
                 # 进行计算
                 ev_dn_l1 = ev_dn_l1 * ev_slope + ev_intercept
-                slope = (self.dsl**2) * k2 + self.dsl * k1 + k0
+                slope = (self.dsl ** 2) * k2 + self.dsl * k1 + k0
                 dn_new = ev_dn_l1 - sv_dn_obc
                 ref_new = dn_new * slope * 100
 
@@ -296,8 +298,6 @@ class Calibrate(object):
 
         # 2014 年 - 今
         else:
-            self.ev_250m_ref = []
-            self.ev_1000m_ref = []
             for i in xrange(19):
                 if i < 4:
                     k = i
@@ -330,9 +330,9 @@ class Calibrate(object):
 
                 # 进行计算
                 ev_ref_l1 = ev_ref_l1 * ev_slope + ev_intercept
-                slope_old = (self.dsl**2) * k2_old + self.dsl * k1_old + k0_old
+                slope_old = (self.dsl ** 2) * k2_old + self.dsl * k1_old + k0_old
                 dn_new = ev_ref_l1 / slope_old + sv_dn_l1
-                slope_new = (self.dsl**2) * k2_new + self.dsl * k1_new + k0_new
+                slope_new = (self.dsl ** 2) * k2_new + self.dsl * k1_new + k0_new
                 dn_new = dn_new - sv_dn_obc
                 ref_new = dn_new * slope_new * 100
 
@@ -366,30 +366,37 @@ class Calibrate(object):
                     dataset_obc = ['SV_1km', 'SV_250m_REFL']
 
                     # 创建输出文件的数据集
-                    out_hdf5.create_dataset('EV_250_Aggr.1KM_RefSB', data=self.ev_250m_ref, dtype='u2',
+                    out_hdf5.create_dataset('EV_250_Aggr.1KM_RefSB', data=self.ev_250m_ref,
+                                            dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
                     out_hdf5.create_dataset('EV_1KM_RefSB', data=self.ev_1000m_ref, dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
                     out_hdf5.create_dataset('SV_1km', data=self.sv_extract_obc[0:4], dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SV_250m_REFL', data=self.sv_extract_obc[4:19], dtype='u2',
+                    out_hdf5.create_dataset('SV_250m_REFL', data=self.sv_extract_obc[4:19],
+                                            dtype='u2',
                                             compression='gzip', compression_opts=5, shuffle=True)
                     out_hdf5.create_dataset('RSB_Cal_Cor_Coeff', data=self.coeff, dtype='f4',
                                             compression='gzip', compression_opts=5, shuffle=True)
 
-                    out_hdf5.create_dataset('LandSeaMask', data=m1000.get('LandSeaMask')[:], dtype='u1',
+                    out_hdf5.create_dataset('LandSeaMask', data=m1000.get('LandSeaMask')[:],
+                                            dtype='u1',
                                             compression='gzip', compression_opts=5, shuffle=True)
                     out_hdf5.create_dataset('Latitude', data=m1000.get('Latitude')[:], dtype='f4',
                                             compression='gzip', compression_opts=5, shuffle=True)
                     out_hdf5.create_dataset('Longitude', data=m1000.get('Longitude')[:], dtype='f4',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SolarZenith', data=m1000.get('SolarZenith')[:], dtype='i2',
+                    out_hdf5.create_dataset('SolarZenith', data=m1000.get('SolarZenith')[:],
+                                            dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SolarAzimuth', data=m1000.get('SolarAzimuth')[:], dtype='i2',
+                    out_hdf5.create_dataset('SolarAzimuth', data=m1000.get('SolarAzimuth')[:],
+                                            dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SensorZenith', data=m1000.get('SensorZenith')[:], dtype='i2',
+                    out_hdf5.create_dataset('SensorZenith', data=m1000.get('SensorZenith')[:],
+                                            dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
-                    out_hdf5.create_dataset('SensorAzimuth', data=m1000.get('SensorAzimuth')[:], dtype='i2',
+                    out_hdf5.create_dataset('SensorAzimuth', data=m1000.get('SensorAzimuth')[:],
+                                            dtype='i2',
                                             compression='gzip', compression_opts=5, shuffle=True)
 
                     coeff_attrs = {
@@ -397,13 +404,16 @@ class Calibrate(object):
                         'Slope': [1.0],
                         '_FillValue': [-9999.0],
                         'band_name':
-                        "Calibration Model:Slope=k0+k1*DSL+k2*DSL*DSL;RefFacor=Slope*(EV-SV);Ref=RefFacor*d*d/100/cos(SolZ)",
+                            "Calibration Model:Slope=k0+k1*DSL+k2*DSL*DSL;RefFacor=Slope*("
+                            "EV-SV);Ref=RefFacor*d*d/100/cos(SolZ)",
                         'long_name':
-                        "Calibration Updating Model Coefficients for 19 Reflective Solar Bands (1-4, 6-20)",
+                            "Calibration Updating Model Coefficients for 19 Reflective Solar "
+                            "Bands (1-4, 6-20)",
                         'units':
-                        'NO',
+                            'NO',
                         'valid_range': [0.0, 1.0],
                     }
+
                     # 复制原来每个 dataset 的属性
                     for dataset_name in dataset_m1000:
                         if dataset_name == "RSB_Cal_Cor_Coeff":
@@ -426,7 +436,7 @@ class Calibrate(object):
                     # 添加文件属性
                     out_hdf5.attrs['dsl'] = self.dsl
         print "Output file: {}".format(self.out_file)
-    
+
     def plot(self):
         """
         对原数据和处理后的数据各出一张真彩图
@@ -438,19 +448,19 @@ class Calibrate(object):
 
         if not os.path.isfile(out_pic_old):
             with h5py.File(self.l1_1000m) as h5:
-                r = h5.get("EV_1KM_RefSB")[5] # 第 11 通道 650
-                g = h5.get("EV_1KM_RefSB")[4] # 第 10 通道 565
-                b = h5.get("EV_1KM_RefSB")[2] # 第 8 通道 490
+                r = h5.get("EV_1KM_RefSB")[5]  # 第 11 通道 650
+                g = h5.get("EV_1KM_RefSB")[4]  # 第 10 通道 565
+                b = h5.get("EV_1KM_RefSB")[2]  # 第 8 通道 490
             dv_rgb(r, g, b, out_pic_old)
             print "Plot picture: {}".format(out_pic_old)
         else:
-            print "File is already exist, skip it: {}".format(out_file)
+            print "File is already exist, skip it: {}".format(out_pic_old)
 
         if not os.path.isfile(out_pic_new):
             with h5py.File(self.out_file) as h5:
-                r = h5.get("EV_1KM_RefSB")[5] # 第 11 通道 650
-                g = h5.get("EV_1KM_RefSB")[4] # 第 10 通道 565
-                b = h5.get("EV_1KM_RefSB")[2] # 第 8 通道 490
+                r = h5.get("EV_1KM_RefSB")[5]  # 第 11 通道 650
+                g = h5.get("EV_1KM_RefSB")[4]  # 第 10 通道 565
+                b = h5.get("EV_1KM_RefSB")[2]  # 第 8 通道 490
             dv_rgb(r, g, b, out_pic_new)
             print "Plot picture: {}".format(out_pic_new)
         else:
