@@ -2,148 +2,185 @@
 import os
 import re
 import sys
-from configobj import ConfigObj
 
 from PB.CSC.pb_csc_console import LogServer
 from PB import pb_io, pb_time
 from PB.pb_time import time_block
+from PB.pb_io import Config
+
+from app.ncep_to_byte import Ncep2Byte
 
 TIME_TEST = True  # 时间测试
 
 
-def run(in_file):
+def main(sat_sensor, in_file):
+    """
+    :param sat_sensor: (str) 卫星对
+    :param in_file: (str) 输入文件
+    :return:
+    """
     ######################### 初始化 ###########################
-    # 加载程序配置文件
-    proj_cfg_file = os.path.join(MAIN_PATH, "global.yaml")
-    proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
-    if proj_cfg is None:
-        LOG.error("File is not exist: {}".format(proj_cfg_file))
-        return
-    else:
-        # 加载配置信息
-        try:
-            WGRIB1 = proj_cfg['ncep2byte']['wgrib1']
-            WGRIB2 = proj_cfg['ncep2byte']['wgrib2']
-            FILENAME_SUFFIX = proj_cfg['ncep2byte']['filename_suffix']
-            if pb_io.is_none(WGRIB1, WGRIB2, FILENAME_SUFFIX):
-                LOG.error("Yaml args is not completion. : {}".format(proj_cfg_file))
-                return
-        except ValueError:
-            LOG.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
-            return
+    # 获取程序所在位置，拼接配置文件
+    main_path = os.path.dirname(os.path.realpath(__file__))
+    config_path = os.path.join(main_path, "cfg")
+    global_config_file = os.path.join(config_path, "global.cfg")
+    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
+    sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
+
+    gc = GlobalConfig(global_config_file)
+    pc = PROJConfig(yaml_config_file)
+    sc = SatConfig(sat_config_file)
+
+    if pc.error or gc.error or sc.error:
+        print "Load config error"
+        sys.exit(-1)
+
+    log = LogServer(gc.log_path)
+
+    # 加载配置信息
+    suffix = sc.filename_suffix
+    ncep_table = sc.ncep_table
+    out_path = gc.out_path
 
     ######################### 开始处理 ###########################
     if not os.path.isfile(in_file):
-        LOG.error("File is not exist: {}".format(in_file))
+        log.error("File is not exist: {}".format(in_file))
         return
     else:
         print "-" * 100
         print "Start ncep to byte."
-        out_path = OUT_PATH
 
-        ncep2byte = Ncep2Byte(in_file, out_path, wgrib1=WGRIB1, wgrib2=WGRIB2, suffix=FILENAME_SUFFIX)
+        ymdhm = _get_ymdhm(in_file)
+        out_file = _get_out_file(in_file, out_path, suffix)
+
+        if int(ymdhm) >= 201501221200:
+            new = True
+        else:
+            new = False
+
+        if pb_io.is_none(in_file, out_file, ncep_table):
+            print "Error: {}".format(in_file)
+            return
+
+        ncep2byte = Ncep2Byte(in_file, out_file, new=new, ncep_table=ncep_table)
         ncep2byte.ncep2byte()
+
+        if not ncep2byte.error:
+            print "Success: {}".format(ncep2byte.out_file)
+        else:
+            print "Error: {}".format(in_file)
 
         print "-" * 100
 
 
-class Ncep2Byte(object):
-    def __init__(self, in_file, out_path, wgrib1=None, wgrib2=None, suffix=None):
-        self.error = False
+def _get_ymdhm(ncep_file):
+    """
+    从 ncep 文件的文件名中获取 ymdhm
+    :return:
+    """
+    try:
+        result = re.match(r".*_(\d{8})_(\d{2})_(\d{2})", ncep_file)
+        ymdhm = result.groups()[0] + result.groups()[1] + result.groups()[2]
+        return ymdhm
+    except Exception as why:
+        print why
+        return
 
-        self.in_file = in_file
-        self.out_path = out_path
 
-        self.ncep_table = None
+def _get_out_file(in_file, out_path, suffix):
+    """
+    通过输入的文件名和输出路径获取输出文件的完整路径
+    :return:
+    """
+    try:
+        if isinstance(in_file, str):
+            ymd = pb_time.get_ymd(in_file)
+            out_path = pb_io.path_replace_ymd(out_path, ymd)
+            _name = os.path.basename(in_file)
+            name = _name.replace("_c", "") + suffix
+            out_file = os.path.join(out_path, name)
+            if not os.path.isdir(os.path.dirname(out_file)):
+                try:
+                    os.makedirs(os.path.dirname(out_file))
+                except OSError as why:
+                    print why
+            return out_file
+    except Exception as why:
+        print why
+        return
 
-        self.wgrib1 = wgrib1
-        self.wgrib2 = wgrib2
-        self.suffix = suffix
 
-        self.cmd1 = None
-        self.cmd2 = None
+class GlobalConfig(Config):
+    """
+    加载全局配置文件
+    """
 
-        self.out_file = None
-
-    def _get_ncep_table(self):
+    def __init__(self, config_file):
         """
-        获取需要处理的 ncep 类型
-        :return:
+        初始化
         """
-        if self.error:
-            return
-        self.ncep_table = [
-            "PRES:sfc", "PWAT:atmos col", "UGRD:10 m above gnd", "VGRD:10 m above gnd", "TOZNE:atmos",
-            "TMP:1000 mb", "TMP:925 mb", "TMP:850 mb",
-            "TMP:700 mb", "TMP:500 mb", "TMP:400 mb", "TMP:300 mb", "TMP:250 mb", "TMP:200 mb",
-            "TMP:150 mb", "TMP:100 mb", "TMP:70 mb", "TMP:50 mb", "TMP:30 mb",
-            "TMP:20 mb", "TMP:10 mb", "RH:1000 mb", "RH:925 mb", "RH:850 mb",
-            "RH:700 mb", "RH:500 mb", "RH:400 mb", "RH:300 mb", "LAND:sfc", "TMP:sfc", "ICEC:sfc"]
+        Config.__init__(self, config_file)
 
-    def _get_cmd(self, ncep_type):
-        """
-        获取两个命令版本
-        :param ncep_type:
-        :return:
-        """
-        if self.error:
-            return
+        self.log_path = None  # 日志存放的文件夹路径
+        self.out_path = None  # 生成文件的输出文件夹路径
+
+        self.load_cfg_file()
+
         try:
-            self.cmd1 = self.wgrib1 % (self.in_file, ncep_type, self.in_file, self.out_file)
-            self.cmd2 = self.wgrib2 % (self.in_file, ncep_type, self.in_file, self.out_file)
+            # 添加需要的配置信息
+
+            # 日志存放的文件夹路径
+            self.log_path = self.config_data["PATH"]["OUT"]["log"]
+            # 生成文件的输出文件夹路径
+            self.out_path = self.config_data["PATH"]["MID"]["ncep"]
         except Exception as why:
             print why
             self.error = True
-            return
+            print "Load config file error.".format(self.config_file)
 
-    def _get_hm(self):
-        result = re.match(r".*_(\d{2})_(\d{2})", self.in_file)
-        self.hm = result.groups()[0] + result.groups()[1]
 
-    def _get_out_file(self):
+class PROJConfig(Config):
+    """
+    加载程序的配置文件
+    """
+    def __init__(self, config_file):
         """
-        通过输入的文件名和输出路径获取输出文件的完整路径
-        :return:
+        初始化
         """
-        if isinstance(self.in_file, str):
-            self.ymd = pb_time.get_ymd(self.in_file)
-            out_path = pb_io.path_replace_ymd(self.out_path, self.ymd)
-            _name = os.path.basename(self.in_file)
-            name = _name.replace("_c", "") + self.suffix
-            self.out_file = os.path.join(out_path, name)
-            if not os.path.isdir(os.path.dirname(self.out_file)):
-                try:
-                    os.makedirs(os.path.dirname(self.out_file))
-                except OSError as why:
-                    print why
-        else:
-            self.error = False
-            return
+        Config.__init__(self, config_file)
 
-    def _remove_file(self):
-        """
-        如果文件存在，删除原来的文件
-        :return:
-        """
-        if os.path.isfile(self.out_file):
-            os.remove(self.out_file)
+        self.load_yaml_file()
 
-    def ncep2byte(self):
-        if self.error:
-            return
-        self._get_ncep_table()
-        self._get_out_file()
-        self._remove_file()  # 如果已经存在文件，删除文件后重新处理
-        self._get_hm()
-        ymdhm_int = int(self.ymd + self.hm)
-        for ncep_type in self.ncep_table:
-            self._get_cmd(ncep_type)
-            # 201501221200 是两个命令的时间节点
-            if ymdhm_int < 201501221200:
-                os.system(self.cmd1)
-            else:
-                os.system(self.cmd2)
-        print self.out_file
+        try:
+            # 添加需要的配置信息
+            pass
+        except Exception as why:
+            print why
+            self.error = True
+            print "Load config file error.".format(self.config_file)
+
+
+class SatConfig(Config):
+    """
+    加载卫星的配置文件
+    """
+    def __init__(self, config_file):
+        """
+        初始化
+        """
+        Config.__init__(self, config_file)
+
+        self.load_yaml_file()
+
+        try:
+            # 生成的文件增加的后缀名
+            self.filename_suffix = self.config_data["ncep2byte"]['filename_suffix']
+            # 需要处理的 ncep 类型
+            self.ncep_table = self.config_data["ncep2byte"]['ncep_table']
+        except Exception as why:
+            print why
+            self.error = True
+            print "Load config file error.".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################
@@ -152,45 +189,20 @@ if __name__ == "__main__":
     ARGS = sys.argv[1:]
     HELP_INFO = \
         u"""
-        [arg1]：ncep_file
-        [example]： python app.py arg1
+        [arg1]：sat+sensor
+        [arg2]：ncep_file
+        [example]： python app.py arg1 arg2
         """
     if "-h" in ARGS:
         print HELP_INFO
         sys.exit(-1)
 
-    # 获取程序所在位置，拼接配置文件
-    MAIN_PATH = os.path.dirname(os.path.realpath(__file__))
-    CONFIG_FILE = os.path.join(MAIN_PATH, "global.cfg")
-
-    # 配置不存在预警
-    if not os.path.isfile(CONFIG_FILE):
-        print "File is not exist: {}".format(CONFIG_FILE)
-        sys.exit(-1)
-
-    # 载入配置文件
-    IN_CFG = ConfigObj(CONFIG_FILE)
-    LOG_PATH = IN_CFG["PATH"]["OUT"]["log"]
-    LOG = LogServer(LOG_PATH)
-
-    # 开启进程池
-    # thread_number = IN_CFG["CROND"]["threads"]
-    # thread_number = 1
-    # pool = Pool(processes=int(thread_number))
-
-    if not len(ARGS) == 1:
+    if len(ARGS) != 2:
         print HELP_INFO
+        sys.exit(-1)
     else:
-        FILE_PATH = ARGS[0]
-
-        OUT_PATH = IN_CFG["PATH"]["MID"]["ncep"]  # 文件输出路径
-        SAT = IN_CFG["PATH"]["sat"]
-        SENSOR = IN_CFG["PATH"]["sensor"]
-        SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
+        SAT_SENSOR = ARGS[0]
+        FILE_PATH = ARGS[1]
 
         with time_block("Ncep to byte time:", switch=TIME_TEST):
-            run(FILE_PATH)
-
-        # pool.apply_async(run, (sat_sensor, file_path))
-        # pool.close()
-        # pool.join()
+            main(SAT_SENSOR, FILE_PATH)
