@@ -69,8 +69,9 @@ def main(sat_sensor, in_file):
     r_set, g_set, b_set = DATASET
     rgb = RGB(in_file, r_set, g_set, b_set, out_picture)
     rgb.plot()
-    print "Output picture: {}".format(out_picture)
-    print '-' * 100
+    if not rgb.error:
+        print "Output picture: {}".format(out_picture)
+        print '-' * 100
 
     # 绘制热度图
     for legend in LEGEND_RANGE:
