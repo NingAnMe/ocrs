@@ -33,15 +33,17 @@ def main(sat_sensor, in_file):
 
     if pc.error or gc.error or sc.error:
         print "Load config error"
-        sys.exit(-1)
+        return
 
     log = LogServer(gc.log_path)
 
-    # 加载配置信息
+    # 加载全局配置信息
+    out_path = gc.out_path
+    # 加载程序配置信息
+
+    # 加载卫星配置信息
     suffix = sc.filename_suffix
     ncep_table = sc.ncep_table
-    out_path = gc.out_path
-
     ######################### 开始处理 ###########################
     if not os.path.isfile(in_file):
         log.error("File is not exist: {}".format(in_file))
@@ -53,13 +55,14 @@ def main(sat_sensor, in_file):
         ymdhm = _get_ymdhm(in_file)
         out_file = _get_out_file(in_file, out_path, suffix)
 
+        # 判断是否使用新命令进行处理
         if int(ymdhm) >= 201501221200:
             new = True
         else:
             new = False
 
         if pb_io.is_none(in_file, out_file, ncep_table):
-            print "Error: {}".format(in_file)
+            log.error("Error: {}".format(in_file))
             return
 
         ncep2byte = Ncep2Byte(in_file, out_file, new=new, ncep_table=ncep_table)
@@ -68,7 +71,7 @@ def main(sat_sensor, in_file):
         if not ncep2byte.error:
             print "Success: {}".format(ncep2byte.out_file)
         else:
-            print "Error: {}".format(in_file)
+            log.error("Error: {}".format(in_file))
 
         print "-" * 100
 
@@ -126,8 +129,8 @@ class GlobalConfig(Config):
 
         self.load_cfg_file()
 
+        # 添加需要的配置信息
         try:
-            # 添加需要的配置信息
 
             # 日志存放的文件夹路径
             self.log_path = self.config_data["PATH"]["OUT"]["log"]
@@ -136,7 +139,7 @@ class GlobalConfig(Config):
         except Exception as why:
             print why
             self.error = True
-            print "Load config file error.".format(self.config_file)
+            print "Load config file error: {}".format(self.config_file)
 
 
 class PROJConfig(Config):
@@ -151,13 +154,13 @@ class PROJConfig(Config):
 
         self.load_yaml_file()
 
+        # 添加需要的配置信息
         try:
-            # 添加需要的配置信息
             pass
         except Exception as why:
             print why
             self.error = True
-            print "Load config file error.".format(self.config_file)
+            print "Load config file error: {}".format(self.config_file)
 
 
 class SatConfig(Config):
@@ -172,6 +175,7 @@ class SatConfig(Config):
 
         self.load_yaml_file()
 
+        # 添加需要的配置信息
         try:
             # 生成的文件增加的后缀名
             self.filename_suffix = self.config_data["ncep2byte"]['filename_suffix']
@@ -180,7 +184,7 @@ class SatConfig(Config):
         except Exception as why:
             print why
             self.error = True
-            print "Load config file error.".format(self.config_file)
+            print "Load config file error: {}".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################
