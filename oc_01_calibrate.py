@@ -125,7 +125,7 @@ def main(sat_sensor, in_file):
                 return
             else:
                 _plot_rgb(in_file, out_pic_new)
-            if os.path.isfile(out_pic_old):
+            if os.path.isfile(out_pic_new):
                 print "File is already exist, skip it: {}".format(out_pic_new)
                 return
             else:
@@ -155,14 +155,16 @@ def _plot_rgb(l1_file, out_file):
     """
     对原数据和处理后的数据各出一张真彩图
     """
-    if not os.path.isfile(out_file):
+    try:
         with h5py.File(l1_file) as h5:
             r = h5.get("EV_1KM_RefSB")[5]  # 第 11 通道 650
             g = h5.get("EV_1KM_RefSB")[4]  # 第 10 通道 565
             b = h5.get("EV_1KM_RefSB")[2]  # 第 8 通道 490
         dv_rgb(r, g, b, out_file)
-    else:
-        print "File is already exist, skip it: {}".format(out_file)
+    except Exception as why:
+        print why
+        print "Error: plot RGB error".format(l1_file)
+        return
 
 
 def _get_obc_file(m1000_file, m1000_path, obc_path):
