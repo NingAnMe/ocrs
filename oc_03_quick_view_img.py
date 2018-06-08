@@ -17,6 +17,7 @@ from PB.pb_io import is_none
 from PB.pb_io import Config
 from PB.pb_time import time_block
 
+from app.config import GlobalConfig
 from app.quick_view_img import RGB, QuickView
 
 
@@ -32,10 +33,11 @@ def main(sat_sensor, in_file):
     """
     # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
+    sat, sensor = sat_sensor.split("+")
     main_path = os.path.dirname(os.path.realpath(__file__))
     config_path = os.path.join(main_path, "cfg")
     global_config_file = os.path.join(config_path, "global.cfg")
-    yaml_config_file = os.path.join(config_path, "quick_view_img.yaml")
+    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
     sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
 
     gc = GlobalConfig(global_config_file)
@@ -46,7 +48,17 @@ def main(sat_sensor, in_file):
         print "Load config error"
         return
 
-    log = LogServer(gc.log_path)
+    log = LogServer(gc.log_out_path)
+
+    # 加载全局配置信息
+
+    # 加载程序配置信息
+
+    # 加载卫星配置信息
+    dataset = sc.dataset
+    rgb_suffix = sc.rgb_suffix
+    colorbar_range = sc.colorbar_range
+
     # ######################## 开始处理 ###########################
     print '-' * 100
     print "Start plot quick view picture."
@@ -57,13 +69,13 @@ def main(sat_sensor, in_file):
     in_file_name = os.path.splitext(in_file)[0]
 
     # 绘制真彩图
-    out_picture = "{}_{}.{}".format(in_file_name, sc.suffix, "png")
+    out_picture = "{}_{}.{}".format(in_file_name, rgb_suffix, "png")
 
     # 如果文件已经存在，跳过
     # if os.path.isfile(out_picture):
     #     print "File is already exist, skip it: {}".format(out_picture)
     #     return
-    r_set, g_set, b_set = sc.dataset
+    r_set, g_set, b_set = dataset
     rgb = RGB(in_file, r_set, g_set, b_set, out_picture)
     rgb.plot()
     if not rgb.error:
@@ -71,7 +83,7 @@ def main(sat_sensor, in_file):
         print '-' * 100
 
     # 绘制热度图
-    for legend in sc.colorbar_range:
+    for legend in colorbar_range:
         dataset_name = legend[0]  # 数据集名称
         vmax = float(legend[1])  # color bar 范围 最大值
         vmin = float(legend[2])  # color bar 范围 最小值
@@ -150,40 +162,6 @@ def _get_lat_lon_text(lats, lons):
     return text
 
 
-class GlobalConfig(Config):
-    """
-    加载全局配置文件
-    """
-
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.log_path = None  # 日志存放的文件夹路径
-        self.out_path = None  # 生成文件的输出文件夹路径
-
-        self.load_cfg_file()
-
-        # 添加需要的配置信息
-        try:
-            # 日志存放的文件夹路径
-            self.log_path = self.config_data["PATH"]["OUT"]["log"]
-            # 生成文件的输出文件夹路径
-            self.out_path = self.config_data["PATH"]["MID"]["calibrate"]
-            # L1 数据文件路径
-            self.l1_path = self.config_data["PATH"]["IN"]["l1"]
-            # OBC 数据文件路径
-            self.obc_path = self.config_data["PATH"]["IN"]["obc"]
-            # 系数文件路径
-            self.coeff_path = self.config_data["PATH"]["IN"]["coeff"]
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
-
-
 class PROJConfig(Config):
     """
     加载程序的配置文件
@@ -219,11 +197,11 @@ class SatConfig(Config):
 
         # 添加需要的配置信息
         try:
-            # 发星时间
+            # R G B 数据，按顺序
             self.dataset = self.config_data['plt_quick_view']['rgb']['dataset']
-            # 19 个通道选取的探元
-            self.suffix = self.config_data["plt_quick_view"]['rgb']['suffix']
-            # 19 个通道的探元总数
+            # 在文件名的基础上增加的后缀
+            self.rgb_suffix = self.config_data["plt_quick_view"]['rgb']['suffix']
+            # 色标范围
             self.colorbar_range = self.config_data["plt_quick_view"]['img']['colorbar_range']
         except Exception as why:
             print why

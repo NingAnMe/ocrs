@@ -15,6 +15,7 @@ from PB.pb_time import time_block
 from PB.pb_io import Config
 from DV.dv_img import dv_rgb
 
+from app.config import GlobalConfig
 from app.calibrate import Calibrate
 
 TIME_TEST = True  # 时间测试
@@ -27,7 +28,7 @@ def main(sat_sensor, in_file):
     :param in_file: (str) 输入文件
     :return:
     """
-    ######################### 初始化 ###########################
+    # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
     main_path = os.path.dirname(os.path.realpath(__file__))
     config_path = os.path.join(main_path, "cfg")
@@ -43,15 +44,29 @@ def main(sat_sensor, in_file):
         print "Load config error"
         return
 
-    log = LogServer(gc.log_path)
+    log = LogServer(gc.log_out_path)
 
-    ######################### MERSI L1 定标处理 ###########################
+    # 全局配置接口
+    l1_path = gc.l1_in_path
+    obc_path = gc.obc_in_path
+    coeff_path = gc.coeff_in_path
+    out_path = gc.calibrate_mid_path
+    # 程序配置接口
+
+    # 卫星配置接口
+    launch_date = sc.launch_data
+    probe_count = sc.probe_count
+    probe = sc.probe
+    slide_step = sc.slide_step
+    plot = sc.plot
+
+    ######################### 开始处理 ###########################
     print '-' * 100
     print 'Start calibration'
 
     # 获取 M1000 文件和对应 OBC 文件
     l1_1000m = in_file
-    obc_1000m = _get_obc_file(l1_1000m, gc.l1_path, gc.obc_path)
+    obc_1000m = _get_obc_file(l1_1000m, l1_path, obc_path)
     if not os.path.isfile(l1_1000m):
         log.error("File is not exist: {}".format(l1_1000m))
         return
@@ -65,7 +80,7 @@ def main(sat_sensor, in_file):
     ymd = pb_time.get_ymd(l1_1000m)
 
     # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
-    coeff_file = os.path.join(gc.coeff_path, '{}.txt'.format(ymd[0:4]))
+    coeff_file = os.path.join(coeff_path, '{}.txt'.format(ymd[0:4]))
     if not os.path.isfile(coeff_file):
         log.error("File is not exist: {}".format(coeff_file))
         return
@@ -73,7 +88,7 @@ def main(sat_sensor, in_file):
         print coeff_file
 
     # 获取输出文件
-    out_path = pb_io.path_replace_ymd(gc.out_path, ymd)
+    out_path = pb_io.path_replace_ymd(out_path, ymd)
     _name = os.path.basename(l1_1000m)
     out_file = os.path.join(out_path, _name)
 
@@ -84,11 +99,11 @@ def main(sat_sensor, in_file):
 
     # 初始化一个预处理实例
     calibrate = Calibrate(l1_1000m=l1_1000m, obc_1000m=obc_1000m, coeff_file=coeff_file,
-                          out_file=out_file, launch_date=sc.launch_date)
+                          out_file=out_file, launch_date=launch_date)
 
     # 对 OBC 文件进行 SV 提取
-    calibrate.obc_sv_extract_fy3b(probe=sc.probe, probe_count=sc.probe_count,
-                                  slide_step=sc.slide_step)
+    calibrate.obc_sv_extract_fy3b(probe=probe, probe_count=probe_count,
+                                  slide_step=slide_step)
 
     # 重新定标 L1 数据
     calibrate.calibrate()
@@ -97,7 +112,7 @@ def main(sat_sensor, in_file):
     calibrate.write()
 
     # 对原数据和处理后的数据各出一张真彩图
-    if sc.plot == "on":
+    if plot == "on":
         if not calibrate.error:
             picture_suffix = "650_565_490"
             file_name = os.path.splitext(out_file)[0]
@@ -148,40 +163,6 @@ def _get_obc_file(m1000_file, m1000_path, obc_path):
     obc_file = obc_file.replace("_1000M", "_OBCXX")
 
     return obc_file
-
-
-class GlobalConfig(Config):
-    """
-    加载全局配置文件
-    """
-
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.log_path = None  # 日志存放的文件夹路径
-        self.out_path = None  # 生成文件的输出文件夹路径
-
-        self.load_cfg_file()
-
-        # 添加需要的配置信息
-        try:
-            # 日志存放的文件夹路径
-            self.log_path = self.config_data["PATH"]["OUT"]["log"]
-            # 生成文件的输出文件夹路径
-            self.out_path = self.config_data["PATH"]["MID"]["calibrate"]
-            # L1 数据文件路径
-            self.l1_path = self.config_data["PATH"]["IN"]["l1"]
-            # OBC 数据文件路径
-            self.obc_path = self.config_data["PATH"]["IN"]["obc"]
-            # 系数文件路径
-            self.coeff_path = self.config_data["PATH"]["IN"]["coeff"]
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
 
 
 class PROJConfig(Config):

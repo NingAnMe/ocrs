@@ -8,6 +8,7 @@ from PB import pb_io, pb_time
 from PB.pb_time import time_block
 from PB.pb_io import Config
 
+from app.config import GlobalConfig
 from app.ncep_to_byte import Ncep2Byte
 
 TIME_TEST = True  # 时间测试
@@ -19,7 +20,7 @@ def main(sat_sensor, in_file):
     :param in_file: (str) 输入文件
     :return:
     """
-    ######################### 初始化 ###########################
+    # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
     main_path = os.path.dirname(os.path.realpath(__file__))
     config_path = os.path.join(main_path, "cfg")
@@ -35,13 +36,13 @@ def main(sat_sensor, in_file):
         print "Load config error"
         return
 
-    log = LogServer(gc.log_path)
+    log = LogServer(gc.log_out_path)
 
-    # 加载全局配置信息
-    out_path = gc.out_path
-    # 加载程序配置信息
+    # 全局配置接口
+    out_path = gc.ncep_mid_path
+    # 程序配置接口
 
-    # 加载卫星配置信息
+    # 卫星配置接口
     suffix = sc.filename_suffix
     ncep_table = sc.ncep_table
     ######################### 开始处理 ###########################
@@ -111,35 +112,6 @@ def _get_out_file(in_file, out_path, suffix):
     except Exception as why:
         print why
         return
-
-
-class GlobalConfig(Config):
-    """
-    加载全局配置文件
-    """
-
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.log_path = None  # 日志存放的文件夹路径
-        self.out_path = None  # 生成文件的输出文件夹路径
-
-        self.load_cfg_file()
-
-        # 添加需要的配置信息
-        try:
-
-            # 日志存放的文件夹路径
-            self.log_path = self.config_data["PATH"]["OUT"]["log"]
-            # 生成文件的输出文件夹路径
-            self.out_path = self.config_data["PATH"]["MID"]["ncep"]
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
 
 
 class PROJConfig(Config):
