@@ -46,35 +46,36 @@ def main(sat_sensor, in_file):
     suffix = sc.filename_suffix
     ncep_table = sc.ncep_table
     ######################### 开始处理 ###########################
+    print "-" * 100
+    print "Start ncep to byte."
     if not os.path.isfile(in_file):
         log.error("File is not exist: {}".format(in_file))
         return
+
+    print "<<< {}".format(in_file)
+
+    ymdhm = _get_ymdhm(in_file)
+    out_file = _get_out_file(in_file, out_path, suffix)
+
+    # 判断是否使用新命令进行处理
+    if int(ymdhm) >= 201501221200:
+        new = True
     else:
-        print "-" * 100
-        print "Start ncep to byte."
+        new = False
 
-        ymdhm = _get_ymdhm(in_file)
-        out_file = _get_out_file(in_file, out_path, suffix)
+    if pb_io.is_none(in_file, out_file, ncep_table):
+        log.error("Error: {}".format(in_file))
+        return
 
-        # 判断是否使用新命令进行处理
-        if int(ymdhm) >= 201501221200:
-            new = True
-        else:
-            new = False
+    ncep2byte = Ncep2Byte(in_file, out_file, new=new, ncep_table=ncep_table)
+    ncep2byte.ncep2byte()
 
-        if pb_io.is_none(in_file, out_file, ncep_table):
-            log.error("Error: {}".format(in_file))
-            return
+    if not ncep2byte.error:
+        print ">>> {}".format(ncep2byte.out_file)
+    else:
+        log.error("Error: {}".format(in_file))
 
-        ncep2byte = Ncep2Byte(in_file, out_file, new=new, ncep_table=ncep_table)
-        ncep2byte.ncep2byte()
-
-        if not ncep2byte.error:
-            print "Success: {}".format(ncep2byte.out_file)
-        else:
-            log.error("Error: {}".format(in_file))
-
-        print "-" * 100
+    print "-" * 100
 
 
 def _get_ymdhm(ncep_file):

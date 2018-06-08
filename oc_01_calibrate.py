@@ -75,8 +75,8 @@ def main(sat_sensor, in_file):
         log.error("File is not exist: {}".format(obc_1000m))
         return
     else:
-        print l1_1000m
-        print obc_1000m
+        print "<<< {}".format(l1_1000m)
+        print "<<< {}".format(obc_1000m)
 
     ymd = _get_ymd(l1_1000m)
 
@@ -86,7 +86,7 @@ def main(sat_sensor, in_file):
         log.error("File is not exist: {}".format(coeff_file))
         return
     else:
-        print coeff_file
+        print "<<< {}".format(coeff_file)
 
     # 获取输出文件
     out_path = pb_io.path_replace_ymd(out_path, ymd)
@@ -112,6 +112,11 @@ def main(sat_sensor, in_file):
     # 将新数据写入 HDF5 文件
     calibrate.write()
 
+    if not calibrate.error:
+        print ">>> {}".format(calibrate.out_file)
+    else:
+        print "Error: Calibrate error".format(in_file)
+
     # 对原数据和处理后的数据各出一张真彩图
     if plot == "on":
         if not calibrate.error:
@@ -131,7 +136,6 @@ def main(sat_sensor, in_file):
             else:
                 _plot_rgb(out_file, out_pic_new)
 
-    print("Success")
     print '-' * 100
 
 
@@ -161,6 +165,7 @@ def _plot_rgb(l1_file, out_file):
             g = h5.get("EV_1KM_RefSB")[4]  # 第 10 通道 565
             b = h5.get("EV_1KM_RefSB")[2]  # 第 8 通道 490
         dv_rgb(r, g, b, out_file)
+        print ">>> {}".format(out_file)
     except Exception as why:
         print why
         print "Error: plot RGB error".format(l1_file)
