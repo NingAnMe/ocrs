@@ -124,7 +124,7 @@ def main(sat_sensor, in_file):
                 print "File is already exist, skip it: {}".format(out_pic_old)
                 return
             else:
-                _plot_rgb(in_file, out_pic_new)
+                _plot_rgb(in_file, out_pic_old)
             if os.path.isfile(out_pic_new):
                 print "File is already exist, skip it: {}".format(out_pic_new)
                 return
