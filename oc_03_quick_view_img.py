@@ -65,21 +65,24 @@ def main(sat_sensor, in_file):
         log.error("File not exist: {}".format(in_file))
         return
 
+    print "<<< {}".format(in_file)
     in_file_name = os.path.splitext(in_file)[0]
 
     # 绘制真彩图
     out_picture = "{}_{}.{}".format(in_file_name, rgb_suffix, "png")
 
     # 如果文件已经存在，跳过
-    # if os.path.isfile(out_picture):
-    #     print "File is already exist, skip it: {}".format(out_picture)
-    #     return
-    r_set, g_set, b_set = dataset
-    rgb = RGB(in_file, r_set, g_set, b_set, out_picture)
-    rgb.plot()
-    if not rgb.error:
-        print "Output picture: {}".format(out_picture)
-        print '-' * 100
+    if not os.path.isfile(out_picture):
+        r_set, g_set, b_set = dataset
+        rgb = RGB(in_file, r_set, g_set, b_set, out_picture)
+        rgb.plot()
+        if not rgb.error:
+            print ">>> {}".format(out_picture)
+            print '-' * 100
+        else:
+            print "Error: Plot RGB error: {}".format(in_file)
+    else:
+        print "File is already exist, skip it: {}".format(out_picture)
 
     # 绘制热度图
     for legend in colorbar_range:
@@ -89,9 +92,9 @@ def main(sat_sensor, in_file):
 
         out_picture = "{}_{}.{}".format(in_file_name, dataset_name, "png")
         # 如果文件已经存在，跳过
-        # if os.path.isfile(out_picture):
-        #     print "File is already exist, skip it: {}".format(out_picture)
-        #     return
+        if os.path.isfile(out_picture):
+            print "File is already exist, skip it: {}".format(out_picture)
+            continue
 
         heat_map = {
             "vmin": vmin,
@@ -116,10 +119,11 @@ def main(sat_sensor, in_file):
         quick_view = QuickView(in_file, dataset_name, out_picture, main_view=heat_map,
                                lat_lon_line=lat_lon_line)
         quick_view.plot()
+
         if not quick_view.error:
-            print "Output picture: {}".format(out_picture)
+            print ">>> {}".format(quick_view.out_picture)
         else:
-            print "Quick view error: {}".format(in_file)
+            print "Error: Plot heat view error: {}".format(in_file)
             print '-' * 100
 
 
