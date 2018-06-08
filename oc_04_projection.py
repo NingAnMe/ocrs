@@ -19,7 +19,7 @@ from PB.pb_io import Config
 from app.config import GlobalConfig
 from app.projection import Projection
 
-TIME_TEST = True  # 时间测试
+TIME_TEST = False  # 时间测试
 
 
 def main(sat_sensor, in_file):
@@ -60,34 +60,35 @@ def main(sat_sensor, in_file):
     mesh_size = sc.mesh_size
 
     # ######################## 开始处理 ###########################
+    print "-" * 100
+    print "Start projection."
+
     if not os.path.isfile(in_file):
         log.error("File is not exist: {}".format(in_file))
         return
-    else:
-        print "-" * 100
-        try:
-            with time_block("One project time:", switch=TIME_TEST):
-                # 生成输出文件的文件名
-                ymd = _get_ymd(in_file)
-                hm = _get_hm(in_file)
-                sat, sensor = sat_sensor.split('+')
-                out_name = "{}_{}_ORBT_L2_ASO_MLT_NUL_{}_{}_{}.HDF".format(sat, sensor, ymd, hm,
-                                                                           mesh_size.upper())
-                out_path = pb_io.path_replace_ymd(out_path, ymd)
-                out_file = os.path.join(out_path, out_name)
 
-                # 如果输出文件已经存在，跳过
-                if os.path.isfile(out_file):
-                    print "File is already exist, skip it: {}".format(out_file)
-                    return
+    print "<<< {}".format(in_file)
 
-                projection = Projection(cmd=cmd, row=row, col=col, res=res)
-                # 开始创建投影查找表
-                projection.project(in_file, out_file)
-        except Exception as why:
-            print why
-            log.error("Projection had some errors: {}".format(in_file))
+    with time_block("One project time:", switch=TIME_TEST):
+        # 生成输出文件的文件名
+        ymd = _get_ymd(in_file)
+        hm = _get_hm(in_file)
+        sat, sensor = sat_sensor.split('+')
+        out_name = "{}_{}_ORBT_L2_ASO_MLT_NUL_{}_{}_{}.HDF".format(sat, sensor, ymd, hm,
+                                                                   mesh_size.upper())
+        out_path = pb_io.path_replace_ymd(out_path, ymd)
+        out_file = os.path.join(out_path, out_name)
+
+        # 如果输出文件已经存在，跳过
+        if os.path.isfile(out_file):
+            print "File is already exist, skip it: {}".format(out_file)
             return
+
+        projection = Projection(cmd=cmd, row=row, col=col, res=res)
+        # 开始创建投影查找表
+        projection.project(in_file, out_file)
+        if not projection.error:
+            print ">>> {}".format(out_file)
 
         print "-" * 100
 
