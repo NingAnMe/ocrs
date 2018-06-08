@@ -55,7 +55,7 @@ def main(sat_sensor, in_file):
     # 程序配置接口
 
     # 卫星配置接口
-    launch_date = sc.launch_data
+    launch_date = sc.launch_date
     probe_count = sc.probe_count
     probe = sc.probe
     slide_step = sc.slide_step
