@@ -140,8 +140,9 @@ class CombineL2(object):
         for file_idx, in_file in enumerate(self.ifile):
             proj_file = self.pfile[file_idx]
             if os.path.isfile(in_file) and os.path.isfile(proj_file):
+                print "*" * 100
                 print "Start combining file:"
-                print in_file, "\n", proj_file
+                print "<<< {}\n<<< {}".format(in_file, proj_file)
             else:
                 print "File is not exist: {} OR {}".format(in_file, proj_file)
                 continue
@@ -170,8 +171,6 @@ class CombineL2(object):
                             proj_data = h5.get(k)[:]
                             self.out_data[k][self.lut_ii, self.lut_jj] = proj_data[
                                 self.data_ii, self.data_jj]
-
-                    print '-' * 100
 
                 except Exception as why:
                     print why
@@ -320,7 +319,6 @@ class CombineL3(object):
                         continue
                     else:
                         self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
-            print '-' * 100
 
         except Exception as why:
             print why
@@ -368,7 +366,6 @@ class CombineL3(object):
                     # 记录属性信息
                     if k not in self.attrs:
                         self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
-            print '-' * 100
 
         except Exception as why:
             print why
@@ -407,7 +404,7 @@ class CombineL3(object):
 
         for in_file in self.ifile:
             if os.path.isfile(in_file):
-                print "Start combining file: {}".format(in_file)
+                print "<<<: {}".format(in_file)
             else:
                 print "Warning: File is not exist: {}".format(in_file)
                 continue
@@ -451,4 +448,3 @@ class CombineL3(object):
                 attrs = self.attrs[k]
                 for key, value in attrs.items():
                     h5[k].attrs[key] = value
-        print "Output file: {}".format(self.ofile)

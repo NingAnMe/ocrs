@@ -10,7 +10,6 @@ import os
 import re
 import sys
 
-from PB import pb_io, pb_time
 from PB.pb_time import time_block
 from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config
@@ -18,7 +17,7 @@ from PB.pb_io import Config
 from app.config import GlobalConfig
 from app.plot import PlotMapL3
 
-TIME_TEST = True  # 时间测试
+TIME_TEST = False  # 时间测试
 
 
 def main(sat_sensor, in_file):
@@ -55,15 +54,17 @@ def main(sat_sensor, in_file):
     area_range = sc.area_range
 
     # ######################## 开始处理 ###########################
-    print '-' * 100
+    print "-" * 100
+    print "Start plot combine map."
 
-    if os.path.isfile(in_file):
-        print "Start draw combine picture: {}".format(in_file)
-    else:
+    if not os.path.isfile(in_file):
         log.error("File is not exist: {}".format(in_file))
         return
 
+    print "<<< {}".format(in_file)
+
     for legend in colorbar_range:
+        print "*" * 100
         dataset_name = legend[0]  # 数据集名称
         vmax = float(legend[1])  # color bar 范围 最大值
         vmin = float(legend[2])  # color bar 范围 最小值
@@ -74,9 +75,10 @@ def main(sat_sensor, in_file):
             sat_sensor, dataset_name, ymd, kind))
 
         # 如果输出文件已经存在，跳过
-        # if os.path.isfile(pic_name):
-        #     print "File is already exist, skip it: {}".format(pic_name)
-        #     continue
+        if os.path.isfile(pic_name):
+            print "File is already exist, skip it: {}".format(pic_name)
+            continue
+
         plot_map = {
             "title": "{}  {}".format(dataset_name, ymd),
             "legend": {"vmax": vmax, "vmin": vmin},
@@ -84,7 +86,13 @@ def main(sat_sensor, in_file):
         }
 
         with time_block("Draw combine time:", switch=TIME_TEST):
-            PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+            plot_map = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+            plot_map.draw_combine()
+
+        if not plot_map.error:
+            print ">>> {}".format(plot_map.out_file)
+        else:
+            print "Error: Combine day error: {}".format(in_file)
 
     print '-' * 100
 

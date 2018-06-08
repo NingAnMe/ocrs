@@ -84,11 +84,14 @@ def main(sat_sensor, in_file):
             print "File is already exist, skip it: {}".format(out_file)
             return
 
-        projection = Projection(cmd=cmd, row=row, col=col, res=res)
         # 开始创建投影查找表
+        projection = Projection(cmd=cmd, row=row, col=col, res=res)
         projection.project(in_file, out_file)
+
         if not projection.error:
             print ">>> {}".format(out_file)
+        else:
+            print "Error: Projection error: {}".format(in_file)
 
         print "-" * 100
 

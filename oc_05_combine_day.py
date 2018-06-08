@@ -17,7 +17,7 @@ from PB.pb_io import Config
 from app.config import GlobalConfig
 from app.combine import CombineL2
 
-TIME_TEST = True  # 时间测试
+TIME_TEST = False  # 时间测试
 
 
 def main(sat_sensor, in_file):
@@ -56,20 +56,31 @@ def main(sat_sensor, in_file):
     res = sc.res
 
     # ######################## 开始处理 ###########################
-    # 判断 yaml 文件是否存在
+    print "-" * 100
+    print "Start combine."
+
     if not os.path.isfile(in_file):
         log.error("File is not exist: {}".format(in_file))
         return
+
+    print "<<< {}".format(in_file)
+
+    combine = CombineL2()  # 初始化一个投影实例
+    combine.load_cmd_info(cmd=cmd, res=res, row=row, col=col)
+    combine.load_yaml(in_file)  # 加载 yaml 文件
+
+    with time_block("One combine time:", switch=TIME_TEST):
+        combine.combine()
+
+    with time_block("One write time:", switch=TIME_TEST):
+        combine.write()
+
+    if not combine.error:
+        print ">>> {}".format(combine.ofile)
     else:
-        combine = CombineL2()  # 初始化一个投影实例
-        combine.load_cmd_info(cmd=cmd, res=res, row=row, col=col)
-        combine.load_yaml(in_file)  # 加载 yaml 文件
+        print "Error: Combine day error: {}".format(in_file)
 
-        with time_block("One combine time:", switch=TIME_TEST):
-            combine.combine()
-
-        with time_block("One write time:", switch=TIME_TEST):
-            combine.write()
+    print "-" * 100
 
 
 class PROJConfig(Config):

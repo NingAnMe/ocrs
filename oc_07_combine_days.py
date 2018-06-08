@@ -51,18 +51,29 @@ def main(sat_sensor, in_file):
     # 加载卫星配置信息
 
     # ######################## 开始处理 ###########################
-    # 判断 yaml 文件是否存在
+    print "-" * 100
+    print "Start plot combine map."
+
     if not os.path.isfile(in_file):
         log.error("File is not exist: {}".format(in_file))
         return
-    else:
-        combine = CombineL3()  # 初始化一个合成实例
-        combine.load_yaml(in_file)  # 加载 yaml 文件
 
-        with time_block("One combine time:", switch=TIME_TEST):
-            combine.combine()
-        with time_block("One write time:", switch=TIME_TEST):
-            combine.write()
+    print "<<< {}".format(in_file)
+
+    combine = CombineL3()  # 初始化一个合成实例
+    combine.load_yaml(in_file)  # 加载 yaml 文件
+
+    with time_block("One combine time:", switch=TIME_TEST):
+        combine.combine()
+    with time_block("One write time:", switch=TIME_TEST):
+        combine.write()
+
+    if not combine.error:
+        print ">>> {}".format(combine.ofile)
+    else:
+        print "Error: Combine days error: {}".format(in_file)
+
+    print '-' * 100
 
 
 class PROJConfig(Config):

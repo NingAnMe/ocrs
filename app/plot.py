@@ -285,7 +285,7 @@ class PlotMapL3(object):
         self.out_file = out_file
         self.map = plot_map
 
-    def draw_combine(self, ):
+    def draw_combine(self):
         """
         通过日合成文件，画数据集的全球分布图
         文件中需要有 Latitude 和Longitude 两个数据集
@@ -375,4 +375,3 @@ class PlotMapL3(object):
                    marker='o')
         pb_io.make_sure_path_exists(os.path.dirname(self.out_file))
         p.savefig(self.out_file, dpi=300)
-        print "Output picture: {}".format(self.out_file)

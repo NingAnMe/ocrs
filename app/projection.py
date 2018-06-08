@@ -147,7 +147,6 @@ class Projection(object):
                 attrs = self.attrs[k]
                 for key, value in attrs.items():
                     h5[k].attrs[key] = value
-        print "Output file: {}".format(out_file)
 
     def draw(self, in_file, proj_file, dataset_name, vmin=None, vmax=None):
         if self.error:
