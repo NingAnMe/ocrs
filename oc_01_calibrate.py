@@ -5,6 +5,7 @@ creation time : 2018 1 24
 author : anning
 ~~~~~~~~~~~~~~~~~~~
 """
+import re
 import os
 import sys
 import h5py
@@ -77,7 +78,7 @@ def main(sat_sensor, in_file):
         print l1_1000m
         print obc_1000m
 
-    ymd = pb_time.get_ymd(l1_1000m)
+    ymd = _get_ymd(l1_1000m)
 
     # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
     coeff_file = os.path.join(coeff_path, '{}.txt'.format(ymd[0:4]))
@@ -132,6 +133,22 @@ def main(sat_sensor, in_file):
 
     print("Success")
     print '-' * 100
+
+
+def _get_ymd(l1_file):
+    """
+    从输入的L1文件中获取 ymd
+    :param l1_file:
+    :return:
+    """
+    if not isinstance(l1_file, str):
+        return
+    m = re.match(r".*_(\d{8})_", l1_file)
+
+    if m is None:
+        return
+    else:
+        return m.groups()[0]
 
 
 def _plot_rgb(l1_file, out_file):

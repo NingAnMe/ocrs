@@ -6,57 +6,58 @@ creation time : 2018 5 21
 author : anning
 ~~~~~~~~~~~~~~~~~~~
 """
-import gc
 import os
 import sys
 
-import h5py
-import yaml
-import numpy as np
-from configobj import ConfigObj
-
-from PB import pb_io
 from PB.pb_time import time_block
-from PB.pb_space import deg2meter
 from PB.CSC.pb_csc_console import LogServer
+from PB.pb_io import Config
 
+from app.config import GlobalConfig
+from app.combine import CombineL3
 
 TIME_TEST = True  # 时间测试
 
 
-def run(sat_sensor, yaml_file):
-    ######################### 初始化 ###########################
-    # 加载程序配置文件
-    proj_cfg_file = os.path.join(MAIN_PATH, "global.yaml")
-    proj_cfg = pb_io.load_yaml_config(proj_cfg_file)
-    if proj_cfg is None:
-        LOG.error("File is not exist: {}".format(proj_cfg_file))
-        return
-    else:
-        # 加载配置信息
-        try:
-            RES = proj_cfg['project'][sat_sensor]['res']
-            half_res = deg2meter(RES) / 2.
-            CMD = proj_cfg['project'][sat_sensor]['cmd'] % (half_res, half_res)
-            ROW = proj_cfg['project'][sat_sensor]['row']
-            COL = proj_cfg['project'][sat_sensor]['col']
-            MESH_SIZE = proj_cfg['project'][sat_sensor]['mesh_zise']
-            if pb_io.is_none(CMD, ROW, COL, RES, MESH_SIZE):
-                LOG.error("Yaml args is not completion. : {}".format(proj_cfg_file))
-                return
-        except Exception as why:
-            print why
-            LOG.error("Load yaml config file error, please check it. : {}".format(proj_cfg_file))
-            return
+def main(sat_sensor, in_file):
+    """
+    对L3数据进行合成
+    :param sat_sensor: 卫星+传感器
+    :param in_file: yaml 文件
+    :return:
+    """
+    # ######################## 初始化 ###########################
+    # 获取程序所在位置，拼接配置文件
+    main_path = os.path.dirname(os.path.realpath(__file__))
+    config_path = os.path.join(main_path, "cfg")
+    global_config_file = os.path.join(config_path, "global.cfg")
+    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
+    sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
 
-    ######################### 开始处理 ###########################
+    gc = GlobalConfig(global_config_file)
+    pc = PROJConfig(yaml_config_file)
+    sc = SatConfig(sat_config_file)
+
+    if pc.error or gc.error or sc.error:
+        print "Load config error"
+        return
+
+    log = LogServer(gc.log_out_path)
+
+    # 加载全局配置信息
+
+    # 加载程序配置信息
+
+    # 加载卫星配置信息
+
+    # ######################## 开始处理 ###########################
     # 判断 yaml 文件是否存在
-    if not os.path.isfile(yaml_file):
-        LOG.error("File is not exist: {}".format(yaml_file))
+    if not os.path.isfile(in_file):
+        log.error("File is not exist: {}".format(in_file))
         return
     else:
-        combine = Combine()  # 初始化一个投影实例
-        combine.load_yaml(yaml_file)  # 加载 yaml 文件
+        combine = CombineL3()  # 初始化一个合成实例
+        combine.load_yaml(in_file)  # 加载 yaml 文件
 
         with time_block("One combine time:", switch=TIME_TEST):
             combine.combine()
@@ -64,229 +65,46 @@ def run(sat_sensor, yaml_file):
             combine.write()
 
 
-class Combine(object):
-
-    def __init__(self):
-        self.error = False
-
-        self.yaml_file = None
-
-        self.ifile = None
-        self.ofile = None
-
-        self.in_data = {}
-        self.attrs = {}
-        self.out_data = {}
-        self.counter = {}
-
-    def load_yaml(self, yaml_file):
+class PROJConfig(Config):
+    """
+    加载程序的配置文件
+    """
+    def __init__(self, config_file):
         """
-        读取 yaml 格式配置文件
+        初始化
         """
-        if self.error:
-            return
-        if not os.path.isfile(yaml_file):
-            print 'Not Found %s' % yaml_file
-            self.error = True
-            return
+        Config.__init__(self, config_file)
 
-        self.yaml_file = yaml_file
+        self.load_yaml_file()
+
+        # 添加需要的配置信息
         try:
-            with open(yaml_file, 'r') as stream:
-                cfg = yaml.load(stream)
-
-            self.ifile = cfg['PATH']['ipath']
-            self.ofile = cfg['PATH']['opath']
-
+            pass
         except Exception as why:
             print why
-            LOG.error("Load yaml file error, please check it. : {}".format(yaml_file))
             self.error = True
+            print "Load config file error: {}".format(self.config_file)
 
-    def _3d_data_calculate(self):
+
+class SatConfig(Config):
+    """
+    加载卫星的配置文件
+    """
+    def __init__(self, config_file):
         """
-        计算数据的平均值
-        :return:
+        初始化
         """
-        if self.error:
-            return
-        fill_value = -32767
-        for k in self.out_data:
-            if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
-                continue
-            data = self.out_data[k]
-            del self.out_data[k]
-            gc.collect()
-            data = np.ma.masked_less_equal(data, 0)
-            data = np.mean(data, axis=2).astype(np.int16)
-            self.out_data[k] = np.ma.filled(data, fill_value)
-            del data
-            gc.collect()
-    
-    def _combine_3d(self):
-        """
-        将二维数据合成三维数据
-        """
-        if self.error:
-            return
+        Config.__init__(self, config_file)
+
+        self.load_yaml_file()
+
+        # 添加需要的配置信息
         try:
-            with h5py.File(self.in_file, 'r') as h5:
-                for k in h5.keys():
-                    shape = h5.get(k).shape
-                    reshape = (shape[0], shape[1], 1)
-                    if k not in self.out_data.keys():  # 创建输出数据集和计数器
-                        if k == "Ocean_Flag":
-                            continue
-                        elif k == "Longitude" or k == "Latitude":
-                            self.out_data[k] = h5.get(k)[:]
-                        else:
-                            data = h5.get(k)[:].reshape(reshape)
-                            self.out_data[k] = data
-
-                    else:
-                        if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
-                            continue
-                        else:
-                            data = h5.get(k)[:].reshape(reshape)
-                            self.out_data[k] = np.concatenate((self.out_data[k], data), axis=2)
-
-                    # 记录属性信息
-                    if k in self.attrs.keys():
-                        continue
-                    else:
-                        self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
-            print '-' * 100
-
+            pass
         except Exception as why:
             print why
-            print "Can't combine file, some error exist: {}".format(self.in_file)
-
-    def _2d_data_calculate(self):
-        """
-        计算数据的平均值
-        :return:
-        """
-        if self.error:
-            return
-        fill_value = -32767
-        for k, counter in self.counter.items():
-            idx = np.where(counter > 0)
-            self.out_data[k][idx] = self.out_data[k][idx] / counter[idx]
-            idx_fill = np.less_equal(self.out_data[k], 0)
-            self.out_data[k][idx_fill] = fill_value
-
-    def _combine_2d(self):
-        """
-        将日数据合成为2维数据，然后计算均值
-        """
-        if self.error:
-            return
-        try:
-            with h5py.File(self.in_file, 'r') as h5:
-                for k in h5.keys():
-                    if k not in self.out_data.keys():  # 创建输出数据集和计数器
-                        shape = h5.get(k).shape
-                        if k == "Ocean_Flag":
-                            continue
-                        elif k == "Longitude" or k == "Latitude":
-                            self.out_data[k] = h5.get(k)[:]
-                        else:
-                            self.out_data[k] = np.zeros(shape, dtype='i2')
-                            self.counter[k] = np.zeros(shape, dtype='i2')
-                    if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
-                        continue
-                    else:
-                        value = h5.get(k)[:]
-                        idx = np.where(value > 0)
-                        self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
-                        self.counter[k][idx] += 1
-
-                    # 记录属性信息
-                    if k not in self.attrs.keys():
-                        self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
-            print '-' * 100
-
-        except Exception as why:
-            print why
-            print "Can't combine file, some error exist: {}".format(self.in_file)
-
-    def _print_data_count(self):
-        """
-        打印有效数据的数量
-        """
-        keys = self.out_data.keys()
-        keys.sort()
-        for k in keys:
-            if self.out_data[k] is None:
-                print k
-                continue
-            idx = np.where(self.out_data[k] > 0)
-            print "{:30} : {}".format(k, len(idx[0]))
-
-    def combine(self):
-        if self.error:
-            return
-
-        # 如果输出文件已经存在，跳过
-        elif os.path.isfile(self.ofile):
-            LOG.error("File is already exist, skip it: {}".format(self.ofile))
-            return
-        # 合成日数据
-        elif pb_io.is_none(self.ifile, self.ofile):
             self.error = True
-            LOG.error("Is None: ifile or ofile: {}".format(self.yaml_file))
-            return  
-        elif len(self.ifile) < 1:
-            self.error = True
-            LOG.error("File count lower than 1: {}".format(self.yaml_file))
-
-        for in_file in self.ifile:
-            if os.path.isfile(in_file):
-                print "Start combining file: {}".format(in_file)
-            else:
-                LOG.error("File is not exist: {}".format(in_file))
-                continue
-            self.in_file = in_file
-            # 日合成
-            with time_block("One combine time:", switch=TIME_TEST):
-                self._combine_2d()
-
-        # 计算数据的平均值
-        with time_block("Calculate mean time:", switch=TIME_TEST):
-            print "Start calculate."
-            self._2d_data_calculate()
-
-        # 输出数据集有效数据的数量
-        self._print_data_count()
-
-    def write(self):
-        if self.error:
-            return
-        pb_io.make_sure_path_exists(os.path.dirname(self.ofile))
-        # 写入 HDF5 文件
-        with h5py.File(self.ofile, 'w') as h5:
-            for k in self.out_data.keys():
-                # 创建数据集
-                if k == "Longitude" or k == "Latitude":
-                    h5.create_dataset(k, dtype='f4',
-                                      data=self.out_data[k],
-                                      compression='gzip', compression_opts=5,
-                                      shuffle=True)
-                elif k == "Ocean_Flag":
-                    continue
-                else:
-                    h5.create_dataset(k, dtype='i2',
-                                      data=self.out_data[k],
-                                      compression='gzip', compression_opts=5,
-                                      shuffle=True)
-
-                # 复制属性
-                if k == "Longitude" or k == "Latitude" or k == "Ocean_Flag":
-                    continue
-                attrs = self.attrs[k]
-                for key, value in attrs.items():
-                    h5[k].attrs[key] = value
-        print "Output file: {}".format(self.ofile)
+            print "Load config file error: {}".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################
@@ -295,42 +113,20 @@ if __name__ == "__main__":
     ARGS = sys.argv[1:]
     HELP_INFO = \
         u"""
-        [arg1]：yaml_file
-        [example]： python app.py arg1
+        [arg1]：sat+sensor
+        [arg2]：yaml file
+        [example]： python app.py arg1 arg2
         """
     if "-h" in ARGS:
         print HELP_INFO
         sys.exit(-1)
 
-    # 获取程序所在位置，拼接配置文件
-    MAIN_PATH = os.path.dirname(os.path.realpath(__file__))
-    CONFIG_FILE = os.path.join(MAIN_PATH, "global.cfg")
-
-    # 配置不存在预警
-    if not os.path.isfile(CONFIG_FILE):
-        print "File is not exist: {}".format(CONFIG_FILE)
-        sys.exit(-1)
-
-    # 载入配置文件
-    IN_CFG = ConfigObj(CONFIG_FILE)
-    LOG_PATH = IN_CFG["PATH"]["OUT"]["log"]
-    LOG = LogServer(LOG_PATH)
-
-    # 开启进程池
-    # thread_number = IN_CFG["CROND"]["threads"]
-    # thread_number = 1
-    # pool = Pool(processes=int(thread_number))
-
-    if not len(ARGS) == 1:
+    if len(ARGS) != 2:
         print HELP_INFO
+        sys.exit(-1)
     else:
-        FILE_PATH = ARGS[0]
-        SAT = IN_CFG["PATH"]["sat"]
-        SENSOR = IN_CFG["PATH"]["sensor"]
-        SAT_SENSOR = "{}+{}".format(SAT, SENSOR)
+        SAT_SENSOR = ARGS[0]
+        FILE_PATH = ARGS[1]
 
-        with time_block("All combine time:", switch=TIME_TEST):
-            run(SAT_SENSOR, FILE_PATH)
-        # pool.apply_async(run, (sat_sensor, file_path))
-        # pool.close()
-        # pool.join()
+        with time_block("Calibrate time:", switch=TIME_TEST):
+            main(SAT_SENSOR, FILE_PATH)

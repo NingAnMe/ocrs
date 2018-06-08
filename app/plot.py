@@ -10,6 +10,7 @@ import h5py
 import numpy as np
 
 from PB import pb_io
+from DV import dv_map
 from DV.dv_img import dv_rgb
 from DV.dv_pub_3d import plt
 
@@ -75,13 +76,14 @@ class QuickView(object):
     绘制快视图
     """
 
-    def __init__(self, hdf5_file=None, dataset_name=None, out_picture=None, **kwargs):
+    def __init__(self, hdf5_file=None, dataset_name=None, out_picture=None, main_view=None,
+                 lat_lon_line=None):
         """
         初始化一个实例
         :param hdf5_file:
-        :param vmin: 热度范围最小值
-        :param vmax: 热度范围最大值
-        :param dataset: b 数据dataset的名字
+        :param main_view:
+        :param lat_lon_line:
+        :param dataset_name: b 数据dataset的名字
         :param out_picture: 输出的图片文件
         """
         self.error = False
@@ -90,11 +92,8 @@ class QuickView(object):
         self.dataset_name = dataset_name
         self.out_picture = out_picture
 
-        if kwargs is None:
-            kwargs = {}
-
-        self.main_view = kwargs.get("main_view", {})
-        self.lat_lon_line = kwargs.get("lat_lon_line", {})
+        self.main_view = main_view if main_view is not None else {}
+        self.lat_lon_line = lat_lon_line if lat_lon_line is not None else {}
 
         self.facecolor = self.main_view.get("facecolor", "white")  # 背景色
         self.picture_width = self.main_view.get("picture_width", 5.0)  # 图片宽度
@@ -272,3 +271,108 @@ class QuickView(object):
             print why
             self.error = True
             return
+
+
+class PlotMapL3(object):
+    """
+    绘制 L3 产品的全球投影绘图
+    """
+
+    def __init__(self, in_file, dataset_name, out_file, plot_map=None):
+        self.error = False
+        self.in_file = in_file
+        self.dataset_name = dataset_name
+        self.out_file = out_file
+        self.map = plot_map
+
+    def draw_combine(self, ):
+        """
+        通过日合成文件，画数据集的全球分布图
+        文件中需要有 Latitude 和Longitude 两个数据集
+        :return:
+        """
+        try:
+            with h5py.File(self.in_file, 'r') as h5:
+                dataset = h5.get(self.dataset_name)
+
+                value = dataset[:]
+                slope = dataset.attrs["Slope"]
+                intercept = dataset.attrs["Intercept"]
+                value = value * slope + intercept
+
+                lats = h5.get("Latitude")[:]
+                lons = h5.get("Longitude")[:]
+        except Exception as why:
+            print why
+            return
+
+        # 过滤有效范围外的值
+        idx = np.where(value > 0)  # 不计算小于 0 的无效值
+        if len(idx[0]) == 0:
+            print "Don't have enough valid value： {}  {}".format(self.dataset_name, len(idx[0]))
+            return
+        else:
+            print "{} valid value count: {}".format(self.dataset_name, len(idx[0]))
+
+        value = value[idx]
+        lats = lats[idx]
+        lons = lons[idx]
+
+        log_set = ["Ocean_CHL1", "Ocean_CHL2", "Ocean_PIG1", "Ocean_TSM", "Ocean_YS443", ]
+        if self.dataset_name in log_set:
+            print "-" * 100
+            print self.dataset_name
+            print value.min()
+            print value.max()
+            value = np.log10(value)
+            d = np.histogram(value, bins=[x * 0.05 for x in xrange(-40, 80)])
+            for i in xrange(len(d[0])):
+                print "{:10} :: {:10}".format(d[1][i], d[0][i])
+            print value.min()
+            print value.max()
+            print "-" * 100
+
+        p = dv_map.dv_map()
+        p.colorbar_fmt = "%0.2f"
+
+        if self.map is not None and "title" in self.map:
+            title = self.map["title"]
+        else:
+            title = self.dataset_name
+
+        # 绘制经纬度线
+        if self.map is not None and "lat_lon_line" in self.map:
+            lat_lon_line = self.map["lat_lon_line"]
+            delat = lat_lon_line["delat"]
+            delon = lat_lon_line["delon"]
+            p.delat = delat  # 30
+            p.delon = delon  # 30
+            p.show_line_of_latlon = True
+        else:
+            p.show_line_of_latlon = False
+
+        # 是否绘制某个区域
+        if self.map is not None and "area_range" in self.map:
+            area_range = self.map["area_range"]
+            lat_s = float(area_range.get("lat_s"))
+            lat_n = float(area_range.get("lat_n"))
+            lon_w = float(area_range.get("lon_w"))
+            lon_e = float(area_range.get("lon_e"))
+            box = [lat_s, lat_n, lon_w, lon_e]
+        else:
+            box = None
+
+        # 是否设置 colorbar 范围
+        if self.map is not None and "legend" in self.map:
+            legend = self.map["legend"]
+            vmin = legend["vmin"]
+            vmax = legend["vmax"]
+        else:
+            vmin = vmax = None
+
+        p.title = title
+        p.easyplot(lats, lons, value, ptype=None, vmin=vmin, vmax=vmax, box=box, markersize=0.05,
+                   marker='o')
+        pb_io.make_sure_path_exists(os.path.dirname(self.out_file))
+        p.savefig(self.out_file, dpi=300)
+        print "Output picture: {}".format(self.out_file)

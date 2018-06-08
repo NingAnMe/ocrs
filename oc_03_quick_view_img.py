@@ -18,7 +18,7 @@ from PB.pb_io import Config
 from PB.pb_time import time_block
 
 from app.config import GlobalConfig
-from app.quick_view_img import RGB, QuickView
+from app.plot import RGB, QuickView
 
 
 TIME_TEST = True  # 时间测试
@@ -33,7 +33,6 @@ def main(sat_sensor, in_file):
     """
     # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
-    sat, sensor = sat_sensor.split("+")
     main_path = os.path.dirname(os.path.realpath(__file__))
     config_path = os.path.join(main_path, "cfg")
     global_config_file = os.path.join(config_path, "global.cfg")
