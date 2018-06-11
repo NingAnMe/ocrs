@@ -13,10 +13,9 @@ import h5py
 from PB.CSC.pb_csc_console import LogServer
 from PB import pb_io, pb_time, pb_calculate
 from PB.pb_time import time_block
-from PB.pb_io import Config
 from DV.dv_img import dv_rgb
 
-from app.config import GlobalConfig
+from app.config import InitApp
 from app.calibrate import Calibrate
 
 TIME_TEST = True  # 时间测试
@@ -31,35 +30,29 @@ def main(sat_sensor, in_file):
     """
     # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
-    main_path = os.path.dirname(os.path.realpath(__file__))
-    config_path = os.path.join(main_path, "cfg")
-    global_config_file = os.path.join(config_path, "global.cfg")
-    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
-    sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
-
-    gc = GlobalConfig(global_config_file)
-    pc = PROJConfig(yaml_config_file)
-    sc = SatConfig(sat_config_file)
-
-    if pc.error or gc.error or sc.error:
-        print "Load config error"
+    app = InitApp(sat_sensor)
+    if app.error:
+        print "Load config file error."
         return
 
-    log = LogServer(gc.log_out_path)
+    gc = app.global_config
+    sc = app.sat_config
+
+    log = LogServer(gc.path_out_log)
 
     # 全局配置接口
-    l1_path = gc.l1_in_path
-    obc_path = gc.obc_in_path
-    coeff_path = gc.coeff_in_path
-    out_path = gc.calibrate_mid_path
+    l1_path = gc.path_in_l1
+    obc_path = gc.path_in_obc
+    coeff_path = gc.path_in_coeff
+    out_path = gc.path_mid_calibrate
     # 程序配置接口
 
     # 卫星配置接口
-    launch_date = sc.launch_date
-    probe_count = sc.probe_count
-    probe = sc.probe
-    slide_step = sc.slide_step
-    plot = sc.plot
+    launch_date = sc.calibrate_launch_date
+    probe_count = sc.calibrate_probe_count
+    probe = sc.calibrate_probe
+    slide_step = sc.calibrate_slide_step
+    plot = sc.calibrate_plot
 
     ######################### 开始处理 ###########################
     print '-' * 100
@@ -187,57 +180,6 @@ def _get_obc_file(m1000_file, m1000_path, obc_path):
     obc_file = obc_file.replace("_1000M", "_OBCXX")
 
     return obc_file
-
-
-class PROJConfig(Config):
-    """
-    加载程序的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            pass
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
-
-
-class SatConfig(Config):
-    """
-    加载卫星的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            # 发星时间
-            self.launch_date = self.config_data['launch_date']
-            # 19 个通道选取的探元
-            self.probe = self.config_data["calibrate"]['probe']
-            # 19 个通道的探元总数
-            self.probe_count = self.config_data["calibrate"]['probe_count']
-            # 19 个通道的滑动步长
-            self.slide_step = self.config_data["calibrate"]['slide_step']
-            # 是否开启画图 on or off
-            self.plot = self.config_data["calibrate"]['plot']
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################

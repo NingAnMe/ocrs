@@ -11,9 +11,8 @@ import sys
 
 from PB.pb_time import time_block
 from PB.CSC.pb_csc_console import LogServer
-from PB.pb_io import Config
 
-from app.config import GlobalConfig
+from app.config import InitApp
 from app.combine import CombineL3
 
 TIME_TEST = True  # 时间测试
@@ -28,21 +27,15 @@ def main(sat_sensor, in_file):
     """
     # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
-    main_path = os.path.dirname(os.path.realpath(__file__))
-    config_path = os.path.join(main_path, "cfg")
-    global_config_file = os.path.join(config_path, "global.cfg")
-    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
-    sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
-
-    gc = GlobalConfig(global_config_file)
-    pc = PROJConfig(yaml_config_file)
-    sc = SatConfig(sat_config_file)
-
-    if pc.error or gc.error or sc.error:
-        print "Load config error"
+    app = InitApp(sat_sensor)
+    if app.error:
+        print "Load config file error."
         return
 
-    log = LogServer(gc.log_out_path)
+    gc = app.global_config
+    sc = app.sat_config
+
+    log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
 
@@ -74,48 +67,6 @@ def main(sat_sensor, in_file):
         print "Error: Combine days error: {}".format(in_file)
 
     print '-' * 100
-
-
-class PROJConfig(Config):
-    """
-    加载程序的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            pass
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
-
-
-class SatConfig(Config):
-    """
-    加载卫星的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            pass
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################

@@ -6,9 +6,8 @@ import sys
 from PB.CSC.pb_csc_console import LogServer
 from PB import pb_io, pb_time
 from PB.pb_time import time_block
-from PB.pb_io import Config
 
-from app.config import GlobalConfig
+from app.config import InitApp
 from app.ncep_to_byte import Ncep2Byte
 
 TIME_TEST = True  # 时间测试
@@ -22,29 +21,23 @@ def main(sat_sensor, in_file):
     """
     # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
-    main_path = os.path.dirname(os.path.realpath(__file__))
-    config_path = os.path.join(main_path, "cfg")
-    global_config_file = os.path.join(config_path, "global.cfg")
-    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
-    sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
-
-    gc = GlobalConfig(global_config_file)
-    pc = PROJConfig(yaml_config_file)
-    sc = SatConfig(sat_config_file)
-
-    if pc.error or gc.error or sc.error:
-        print "Load config error"
+    app = InitApp(sat_sensor)
+    if app.error:
+        print "Load config file error."
         return
 
-    log = LogServer(gc.log_out_path)
+    gc = app.global_config
+    sc = app.sat_config
+
+    log = LogServer(gc.path_out_log)
 
     # 全局配置接口
-    out_path = gc.ncep_mid_path
+    out_path = gc.path_mid_projection
     # 程序配置接口
 
     # 卫星配置接口
-    suffix = sc.filename_suffix
-    ncep_table = sc.ncep_table
+    suffix = sc.ncep2byte_filename_suffix
+    ncep_table = sc.ncep2byte_ncep_table
     ######################### 开始处理 ###########################
     print "-" * 100
     print "Start ncep to byte."
@@ -113,51 +106,6 @@ def _get_out_file(in_file, out_path, suffix):
     except Exception as why:
         print why
         return
-
-
-class PROJConfig(Config):
-    """
-    加载程序的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            pass
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
-
-
-class SatConfig(Config):
-    """
-    加载卫星的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            # 生成的文件增加的后缀名
-            self.filename_suffix = self.config_data["ncep2byte"]['filename_suffix']
-            # 需要处理的 ncep 类型
-            self.ncep_table = self.config_data["ncep2byte"]['ncep_table']
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################

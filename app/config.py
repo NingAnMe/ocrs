@@ -5,48 +5,26 @@
 @Author  : AnNing
 """
 
+import os
 from PB.pb_io import Config
 
 
-class GlobalConfig(Config):
+class InitApp():
     """
     加载全局配置文件
     """
-
-    def __init__(self, config_file):
+    def __init__(self, sat_sensor):
         """
         初始化
         """
-        Config.__init__(self, config_file)
         self.error = False
 
-        self.load_cfg_file()
-        # 添加需要的配置信息
-        try:
-            # ###################IN#######################
-            # 原始文件路径
-            self.l1_in_path = self.config_data['PATH']['IN']['l1']
-            self.obc_in_path = self.config_data['PATH']['IN']['obc']
-            self.ncep_in_path = self.config_data['PATH']['IN']['ncep']
-            self.coeff_in_path = self.config_data['PATH']['IN']['coeff']
+        self.main_path = os.path.dirname(os.path.realpath(__file__))
+        self.config_path = os.path.join(self.main_path, "cfg")
+        self.global_config_file = os.path.join(self.config_path, "global.cfg")
+        self.sat_config_file = os.path.join(self.config_path, "{}.yaml".format(sat_sensor))
 
-            # ###################MID#######################
-            # 中间文件的储存路径
-            self.calibrate_mid_path = self.config_data['PATH']['MID']['calibrate']
-            self.incfg_mid_path = self.config_data['PATH']['MID']['incfg']
-            self.ncep_mid_path = self.config_data['PATH']['MID']['ncep']
-            self.granule_mid_path = self.config_data['PATH']['MID']['granule']
-            self.projection_mid_path = self.config_data['PATH']['MID']['projection']
-
-            # ###################OUT#######################
-            # 输出的产品的存放路径
-            self.daily_out_path = self.config_data['PATH']['OUT']['daily']
-            self.day_10_out_path = self.config_data['PATH']['OUT']['day_10']
-            self.monthly_out_path = self.config_data['PATH']['OUT']['monthly']
-            self.quarterly_out_path = self.config_data['PATH']['OUT']['quarterly']
-            self.yearly_out_path = self.config_data['PATH']['OUT']['yearly']
-            self.log_out_path = self.config_data['PATH']['OUT']['log']
-        except Exception as why:
-            print why
+        self.global_config = Config(self.global_config_file)
+        self.sat_config = Config(self.sat_config_file)
+        if len(self.global_config) == 0 or len(self.sat_config) == 0:
             self.error = True
-            print "Load config file error: {}".format(self.config_file)

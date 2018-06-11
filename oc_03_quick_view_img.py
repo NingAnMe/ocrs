@@ -14,10 +14,9 @@ import h5py
 from PB.CSC.pb_csc_console import LogServer
 
 from PB.pb_io import is_none
-from PB.pb_io import Config
 from PB.pb_time import time_block
 
-from app.config import GlobalConfig
+from app.config import InitApp
 from app.plot import RGB, QuickView
 
 
@@ -33,30 +32,25 @@ def main(sat_sensor, in_file):
     """
     # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
-    main_path = os.path.dirname(os.path.realpath(__file__))
-    config_path = os.path.join(main_path, "cfg")
-    global_config_file = os.path.join(config_path, "global.cfg")
-    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
-    sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
-
-    gc = GlobalConfig(global_config_file)
-    pc = PROJConfig(yaml_config_file)
-    sc = SatConfig(sat_config_file)
-
-    if pc.error or gc.error or sc.error:
-        print "Load config error"
+    app = InitApp(sat_sensor)
+    if app.error:
+        print "Load config file error."
         return
 
-    log = LogServer(gc.log_out_path)
+    gc = app.global_config
+    sc = app.sat_config
+
+    log = LogServer(gc.path_out_log)
+    log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
 
     # 加载程序配置信息
 
     # 加载卫星配置信息
-    dataset = sc.dataset
-    rgb_suffix = sc.rgb_suffix
-    colorbar_range = sc.colorbar_range
+    dataset = sc.plt_quick_view_rgb_dataset
+    rgb_suffix = sc.plt_quick_view_rgb_suffix
+    colorbar_range = sc.plt_quick_view_img_colorbar_range
 
     # ######################## 开始处理 ###########################
     print '-' * 100
@@ -163,53 +157,6 @@ def _get_lat_lon_text(lats, lons):
     }
 
     return text
-
-
-class PROJConfig(Config):
-    """
-    加载程序的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            pass
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
-
-
-class SatConfig(Config):
-    """
-    加载卫星的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            # R G B 数据，按顺序
-            self.dataset = self.config_data['plt_quick_view']['rgb']['dataset']
-            # 在文件名的基础上增加的后缀
-            self.rgb_suffix = self.config_data["plt_quick_view"]['rgb']['suffix']
-            # 色标范围
-            self.colorbar_range = self.config_data["plt_quick_view"]['img']['colorbar_range']
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################

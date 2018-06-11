@@ -13,10 +13,10 @@ import sys
 
 from PB import pb_io, pb_time
 from PB.pb_time import time_block
+from PB.pb_space import deg2meter
 from PB.CSC.pb_csc_console import LogServer
-from PB.pb_io import Config
 
-from app.config import GlobalConfig
+from app.config import InitApp
 from app.projection import Projection
 
 TIME_TEST = False  # 时间测试
@@ -31,21 +31,15 @@ def main(sat_sensor, in_file):
     """
     # ######################## 初始化 ###########################
     # 获取程序所在位置，拼接配置文件
-    main_path = os.path.dirname(os.path.realpath(__file__))
-    config_path = os.path.join(main_path, "cfg")
-    global_config_file = os.path.join(config_path, "global.cfg")
-    yaml_config_file = os.path.join(config_path, "ncep_to_byte.yaml")
-    sat_config_file = os.path.join(config_path, "{}.yaml".format(sat_sensor))
-
-    gc = GlobalConfig(global_config_file)
-    pc = PROJConfig(yaml_config_file)
-    sc = SatConfig(sat_config_file)
-
-    if pc.error or gc.error or sc.error:
-        print "Load config error"
+    app = InitApp(sat_sensor)
+    if app.error:
+        print "Load config file error."
         return
 
-    log = LogServer(gc.log_out_path)
+    gc = app.global_config
+    sc = app.sat_config
+
+    log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
     out_path = gc.projection_mid_path
@@ -53,11 +47,12 @@ def main(sat_sensor, in_file):
     # 加载程序配置信息
 
     # 加载卫星配置信息
-    cmd = sc.cmd
-    row = sc.row
-    col = sc.col
-    res = sc.res
-    mesh_size = sc.mesh_size
+    res = sc.project_res
+    half_res = deg2meter(res) / 2.
+    cmd = sc.project_cmd % (half_res, half_res)
+    row = sc.project_row
+    col = sc.project_col
+    mesh_size = sc.project_mesh_size
 
     # ######################## 开始处理 ###########################
     print "-" * 100
@@ -126,52 +121,6 @@ def _get_hm(l2_file):
         return
     else:
         return m.groups()[0]
-
-
-class PROJConfig(Config):
-    """
-    加载程序的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            pass
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
-
-
-class SatConfig(Config):
-    """
-    加载卫星的配置文件
-    """
-    def __init__(self, config_file):
-        """
-        初始化
-        """
-        Config.__init__(self, config_file)
-
-        self.load_yaml_file()
-
-        # 添加需要的配置信息
-        try:
-            self.cmd = self.config_data['project']['cmd']
-            self.row = self.config_data['project']['row']
-            self.col = self.config_data['project']['col']
-            self.res = self.config_data['project']['res']
-            self.mesh_size = self.config_data['project']['mesh_size']
-        except Exception as why:
-            print why
-            self.error = True
-            print "Load config file error: {}".format(self.config_file)
 
 
 ######################### 程序全局入口 ##############################
