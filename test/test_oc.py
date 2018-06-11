@@ -26,6 +26,7 @@ def main(test_id):
     file4 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Cfg/20130101.yaml"
     file5 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/2013/201301/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130101_AOAD_5000M.HDF"
     file6 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/test/test.yaml"
+    file7 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/test/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130131_AOAD_5000M.HDF"
     if test_id == 1:
         app = "oc_00_ncep_to_byte.py"
         arg2 = file1
@@ -53,6 +54,10 @@ def main(test_id):
     elif test_id == 7:
         app = "oc_07_combine_days.py"
         arg2 = file6
+        cmd = "{} {} {} {}".format(python, app, arg1, arg2)
+    elif test_id == 8:
+        app = "oc_06_combine_map.py"
+        arg2 = file7
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     else:
         return
