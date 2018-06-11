@@ -87,7 +87,6 @@ class Projection(object):
         # 获取数据的索引信息
         idx = np.logical_and(self.ii >= 0, self.jj >= 0)  # 行列 >= 0 说明投在地图上面
         idx = np.where(idx)  # 全球投影的行列索引信息
-        print len(idx[0])
         self.lut_ii = idx[0].T
         self.lut_jj = idx[1].T
         self.data_ii = self.ii[idx]  # 数据行索引信息
@@ -116,7 +115,6 @@ class Projection(object):
                               data=self.lut_jj,
                               compression='gzip', compression_opts=1,
                               shuffle=True)
-        print "Output file: {}".format(out_file)
 
     def project(self, in_file, out_file):
         with time_block("Load lons and lats time:", switch=TIME_TEST):
@@ -220,4 +218,3 @@ class Projection(object):
         out_png = os.path.join(out_png_path, '{}.png'.format(dataset_name))
         pb_io.make_sure_path_exists(os.path.dirname(out_png))
         p.savefig(out_png, dpi=300)
-        print "Output picture: {}".format(out_png)

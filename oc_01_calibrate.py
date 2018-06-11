@@ -18,7 +18,7 @@ from DV.dv_img import dv_rgb
 from app.config import InitApp
 from app.calibrate import Calibrate
 
-TIME_TEST = True  # 时间测试
+TIME_TEST = False  # 时间测试
 
 
 def main(sat_sensor, in_file):
@@ -48,7 +48,7 @@ def main(sat_sensor, in_file):
     # 程序配置接口
 
     # 卫星配置接口
-    launch_date = sc.calibrate_launch_date
+    launch_date = sc.launch_date
     probe_count = sc.calibrate_probe_count
     probe = sc.calibrate_probe
     slide_step = sc.calibrate_slide_step

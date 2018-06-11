@@ -84,5 +84,5 @@ if __name__ == "__main__":
     else:
         TEST_ID = int(ARGS[0])
 
-        with time_block("Ncep to byte time:", switch=TIME_TEST):
+        with time_block("test time", switch=TIME_TEST):
             main(TEST_ID)

@@ -20,7 +20,7 @@ from app.config import InitApp
 from app.plot import RGB, QuickView
 
 
-TIME_TEST = True  # 时间测试
+TIME_TEST = False  # 时间测试
 
 
 def main(sat_sensor, in_file):

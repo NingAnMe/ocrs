@@ -221,7 +221,6 @@ class CombineL2(object):
                 attrs = self.attrs[k]
                 for key, value in attrs.items():
                     h5[k].attrs[key] = value
-        print "Output file: {}".format(self.ofile)
 
 
 class CombineL3(object):
@@ -390,6 +389,7 @@ class CombineL3(object):
 
         # 如果输出文件已经存在，跳过
         elif os.path.isfile(self.ofile):
+            self.error = True
             print "Error: File is already exist, skip it: {}".format(self.ofile)
             return
         # 合成日数据
@@ -404,7 +404,7 @@ class CombineL3(object):
 
         for in_file in self.ifile:
             if os.path.isfile(in_file):
-                print "<<<: {}".format(in_file)
+                print "<<< {}".format(in_file)
             else:
                 print "Warning: File is not exist: {}".format(in_file)
                 continue

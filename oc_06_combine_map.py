@@ -12,9 +12,8 @@ import sys
 
 from PB.pb_time import time_block
 from PB.CSC.pb_csc_console import LogServer
-from PB.pb_io import Config
 
-from app.config import GlobalConfig
+from app.config import InitApp
 from app.plot import PlotMapL3
 
 TIME_TEST = False  # 时间测试

@@ -42,7 +42,7 @@ def main(sat_sensor, in_file):
     log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
-    out_path = gc.projection_mid_path
+    out_path = gc.path_mid_projection
 
     # 加载程序配置信息
 
@@ -144,5 +144,5 @@ if __name__ == "__main__":
         SAT_SENSOR = ARGS[0]
         FILE_PATH = ARGS[1]
 
-        with time_block("Calibrate time:", switch=TIME_TEST):
+        with time_block("Projection time:", switch=TIME_TEST):
             main(SAT_SENSOR, FILE_PATH)

@@ -15,7 +15,7 @@ from PB.CSC.pb_csc_console import LogServer
 from app.config import InitApp
 from app.combine import CombineL3
 
-TIME_TEST = True  # 时间测试
+TIME_TEST = False  # 时间测试
 
 
 def main(sat_sensor, in_file):
@@ -56,9 +56,9 @@ def main(sat_sensor, in_file):
     combine = CombineL3()  # 初始化一个合成实例
     combine.load_yaml(in_file)  # 加载 yaml 文件
 
-    with time_block("One combine time:", switch=TIME_TEST):
+    with time_block("One combine time", switch=TIME_TEST):
         combine.combine()
-    with time_block("One write time:", switch=TIME_TEST):
+    with time_block("One write time", switch=TIME_TEST):
         combine.write()
 
     if not combine.error:

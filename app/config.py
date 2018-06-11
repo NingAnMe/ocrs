@@ -19,12 +19,15 @@ class InitApp():
         """
         self.error = False
 
-        self.main_path = os.path.dirname(os.path.realpath(__file__))
+        # 初始化路径
+        self.app_path = os.path.dirname(os.path.realpath(__file__))
+        self.main_path = os.path.dirname(self.app_path)
         self.config_path = os.path.join(self.main_path, "cfg")
         self.global_config_file = os.path.join(self.config_path, "global.cfg")
         self.sat_config_file = os.path.join(self.config_path, "{}.yaml".format(sat_sensor))
 
+        # 读取配置文件
         self.global_config = Config(self.global_config_file)
         self.sat_config = Config(self.sat_config_file)
-        if len(self.global_config) == 0 or len(self.sat_config) == 0:
+        if self.global_config.error or self.sat_config.error:
             self.error = True
