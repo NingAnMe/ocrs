@@ -6,6 +6,7 @@ creation time : 2018 5 16
 author : anning
 ~~~~~~~~~~~~~~~~~~~
 """
+from datetime import datetime
 import os
 import re
 import sys
@@ -45,7 +46,11 @@ def main(sat_sensor, in_file):
     # 加载卫星配置信息
     colorbar_range = sc.plt_combine_colorbar_range
     area_range = sc.plt_combine_area_range
-
+    plot_global = sc.plt_combine_plot_global
+    plot_china = sc.plt_combine_plot_china
+    log10_ticks = sc.plt_combine_log10_ticks
+    log10_tick_labels = sc.plt_combine_log10_tick_label
+    log10_set = sc.plt_combine_log10_set
     # ######################## 开始处理 ###########################
     print "-" * 100
     print "Start plot combine map."
@@ -56,36 +61,86 @@ def main(sat_sensor, in_file):
 
     print "<<< {}".format(in_file)
 
+    sat, sensor = sat_sensor.split("+")
     for legend in colorbar_range:
         print "*" * 100
-        dataset_name = legend[0]  # 数据集名称
-        vmax = float(legend[1])  # color bar 范围 最大值
-        vmin = float(legend[2])  # color bar 范围 最小值
+        dataset_name, vmax, vmin, colorbar_label = legend
+        vmax = float(vmax)  # color bar 范围 最大值
+        vmin = float(vmin)  # color bar 范围 最小值
+
         dir_path = os.path.dirname(in_file)
         ymd = _get_ymd(in_file)
         kind = _get_kind(in_file)
-        pic_name = os.path.join(dir_path, "pictures/{}_{}_{}_{}.png".format(
-            sat_sensor, dataset_name, ymd, kind))
 
-        # 如果输出文件已经存在，跳过
-        if os.path.isfile(pic_name):
-            print "File is already exist, skip it: {}".format(pic_name)
-            continue
+        ymd_date = datetime.strptime(ymd, "%Y%m%d")
+        ymd_underline = ymd_date.strftime("%Y-%m-%d")
+        name = " ".join(dataset_name.split("_")[1:])
 
-        plot_map = {
-            "title": "{}  {}".format(dataset_name, ymd),
-            "legend": {"vmax": vmax, "vmin": vmin},
-            "area_range": area_range
-        }
-
-        with time_block("Draw combine time:", switch=TIME_TEST):
-            plot_map = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
-            plot_map.draw_combine()
-
-        if not plot_map.error:
-            print ">>> {}".format(plot_map.out_file)
+        if dataset_name in log10_set:
+            _ticks = log10_ticks
+            _tick_labels = log10_tick_labels
         else:
-            print "Error: Combine day error: {}".format(in_file)
+            _ticks = None
+            _tick_labels = None
+
+        # 画全球范围
+        if plot_global.lower() == "on":
+            pic_name = os.path.join(dir_path, "picture_global/{}_{}_{}_{}.png".format(
+                sat_sensor, dataset_name, ymd, kind))
+            # 如果输出文件已经存在，跳过
+            if os.path.isfile(pic_name):
+                print "File is already exist, skip it: {}".format(pic_name)
+            else:
+                plot_map = {
+                    "title": "{}/{} {} {}".format(sat, sensor, ymd_underline, name),
+                    "legend": {"vmax": vmax, "vmin": vmin, "label": colorbar_label, "ticks": _ticks,
+                               "tick_labels": _tick_labels},
+                    "area_range": area_range,
+                    "lat_lon_line": {"delat": 30, "delon": 30, },
+                }
+                if dataset_name in log10_set:
+                    plot_map["log10"] = True
+
+                with time_block("Draw combine time:", switch=TIME_TEST):
+                    plot_map = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+                    plot_map.draw_combine()
+
+                if not plot_map.error:
+                    print ">>> {}".format(plot_map.out_file)
+                else:
+                    print "Error: Plot global picture error: {}".format(in_file)
+
+        # 单画中国区域
+        if plot_china.lower() == "on":
+            pic_name = os.path.join(dir_path, "picture_china/{}_{}_{}_{}.png".format(
+                sat_sensor, dataset_name, ymd, kind))
+            # 如果输出文件已经存在，跳过
+            if os.path.isfile(pic_name):
+                print "File is already exist, skip it: {}".format(pic_name)
+            else:
+                area_range_china = {
+                    "lat_s": "56",
+                    "lat_n": "2",
+                    "lon_w": "65",
+                    "lon_e": "150",
+                }
+
+                plot_map = {
+                    "title": "{}/{} {} {}".format(sat, sensor, ymd_underline, name),
+                    "legend": {"vmax": vmax, "vmin": vmin, "label": colorbar_label, "ticks": _ticks,
+                               "tick_labels": _tick_labels},
+                    "area_range": area_range_china,
+                    "lat_lon_line": {"delat": 10, "delon": 10, },
+                }
+
+                with time_block("Draw combine time:", switch=TIME_TEST):
+                    plot_map = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+                    plot_map.draw_combine()
+
+                if not plot_map.error:
+                    print ">>> {}".format(plot_map.out_file)
+                else:
+                    print "Error: Plot china picture error: {}".format(in_file)
 
     print '-' * 100
 

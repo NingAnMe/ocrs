@@ -24,9 +24,11 @@ def main(test_id):
     file2 = "/FY3/FY3B/MERSI/L1/1000M/2013/20130101/FY3B_MERSI_GBAL_L1_20130101_0000_1000M_MS.HDF"
     file3 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Granule/2013/201301/20130101/FY3B_MERSI_ORBT_L2_ASO_MLT_NUL_20130101_0000_1000M.HDF"
     file4 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Cfg/20130101.yaml"
-    file5 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/2013/201301/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130101_AOAD_5000M.HDF"
+    # file5 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/test/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130101_AOAD_5000M.HDF"
+    file5 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/2013/201301/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130102_AOAD_5000M.HDF"
     file6 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/test/test.yaml"
     file7 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/test/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130131_AOAD_5000M.HDF"
+    file9 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/2017/201701/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20170102_AOAD_5000M.HDF"
     if test_id == 1:
         app = "oc_00_ncep_to_byte.py"
         arg2 = file1
@@ -58,6 +60,10 @@ def main(test_id):
     elif test_id == 8:
         app = "oc_06_combine_map.py"
         arg2 = file7
+        cmd = "{} {} {} {}".format(python, app, arg1, arg2)
+    elif test_id == 9:
+        app = "oc_06_combine_map.py"
+        arg2 = file9
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     else:
         return

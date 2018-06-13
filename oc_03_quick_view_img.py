@@ -51,6 +51,9 @@ def main(sat_sensor, in_file):
     dataset = sc.plt_quick_view_rgb_dataset
     rgb_suffix = sc.plt_quick_view_rgb_suffix
     colorbar_range = sc.plt_quick_view_img_colorbar_range
+    log10_set = sc.plt_quick_view_img_log10_set
+    log10_ticks = sc.plt_quick_view_img_log10_ticks
+    log10_tick_labels = sc.plt_quick_view_img_log10_tick_labels
 
     # ######################## 开始处理 ###########################
     print '-' * 100
@@ -86,9 +89,9 @@ def main(sat_sensor, in_file):
 
         out_picture = "{}_{}.{}".format(in_file_name, dataset_name, "png")
         # 如果文件已经存在，跳过
-        if os.path.isfile(out_picture):
-            print "File is already exist, skip it: {}".format(out_picture)
-            continue
+        # if os.path.isfile(out_picture):
+        #     print "File is already exist, skip it: {}".format(out_picture)
+        #     continue
 
         heat_map = {
             "vmin": vmin,
@@ -96,6 +99,9 @@ def main(sat_sensor, in_file):
             "cmap": "jet",
             "fill_value": -32767,
         }
+        if dataset_name in log10_set:
+            heat_map["colorbar_ticks"] = log10_ticks
+            heat_map["colorbar_tick_label"] = log10_tick_labels
 
         lats, lons = get_lats_lons(in_file)
         lat_lon_text = _get_lat_lon_text(lats, lons)

@@ -10,9 +10,12 @@ import h5py
 import numpy as np
 
 from PB import pb_io
-from DV import dv_map
+from DV import dv_map_oc
 from DV.dv_img import dv_rgb
 from DV.dv_pub_3d import plt
+
+
+DEBUG = True
 
 
 class RGB(object):
@@ -101,6 +104,8 @@ class QuickView(object):
         self.vmin = self.main_view.get("vmin", None)  # colorbar 最小值
         self.vmax = self.main_view.get("vmax", None)  # colorbar 最大值
         self.fill_value = self.main_view.get("fill_value", None)  # 填充值
+        self.colorbar_ticks = None
+        self.colorbar_tick_label = None
 
         self.lats = self.lat_lon_line.get("lats", None)  # 经度数据
         self.lons = self.lat_lon_line.get("lons", None)  # 维度数据
@@ -135,11 +140,16 @@ class QuickView(object):
                 if self.fill_value is not None:
                     self.data = np.ma.masked_equal(self.data, self.fill_value)
 
+                # ############对特殊数据集的值进行处理
+                # 有一些数据集的数据在绘图时需要取对数，否则无法区分
                 log_set = ["Ocean_CHL1", "Ocean_CHL2", "Ocean_PIG1", "Ocean_TSM", "Ocean_YS443", ]
                 if self.dataset_name in log_set:
                     idx = np.where(self.data > 0)
                     self.data[idx] = np.log10(self.data[idx])
-
+                # 有一些数据按照原来的 slope 不对，需要乘 10
+                if "Rw" in self.dataset_name:
+                    self.data = self.data * 10
+                # #################################
         except ValueError as why:
             print why
             self.error = True
@@ -262,6 +272,13 @@ class QuickView(object):
             cb = plt.colorbar(cax=colorbar_position, orientation='horizontal')
             cb.ax.tick_params(labelsize=8)
 
+            if self.main_view is not None and "colorbar_ticks" in self.main_view:
+                self.colorbar_ticks = self.main_view["colorbar_ticks"]
+                cb.set_ticks(self.colorbar_ticks)
+            if self.main_view is not None and "colorbar_tick_label" in self.main_view:
+                self.colorbar_tick_label = self.main_view["colorbar_tick_label"]
+                cb.set_ticklabels(self.colorbar_tick_label)
+
             pb_io.make_sure_path_exists(os.path.dirname(self.out_picture))
             fig.savefig(self.out_picture, dpi=200)
             fig.clear()
@@ -318,13 +335,19 @@ class PlotMapL3(object):
         lats = lats[idx]
         lons = lons[idx]
 
-        log_set = ["Ocean_CHL1", "Ocean_CHL2", "Ocean_PIG1", "Ocean_TSM", "Ocean_YS443", ]
-        if self.dataset_name in log_set:
+        # ############对特殊数据集的值进行处理
+        # 有一些数据集的数据在绘图时需要取对数，否则无法区分
+        if self.map is not None and "log10" in self.map:
+            if self.map["log10"]:
+                value = np.log10(value)
+        # 有一些数据按照原来的 slope 不对，需要乘 10
+        if "Rw" in self.dataset_name:
+            value = value * 10
+        # #################################
+
+        if DEBUG:
             print "-" * 100
             print self.dataset_name
-            print value.min()
-            print value.max()
-            value = np.log10(value)
             d = np.histogram(value, bins=[x * 0.05 for x in xrange(-40, 80)])
             for i in xrange(len(d[0])):
                 print "{:10} :: {:10}".format(d[1][i], d[0][i])
@@ -332,7 +355,8 @@ class PlotMapL3(object):
             print value.max()
             print "-" * 100
 
-        p = dv_map.dv_map()
+        p = dv_map_oc.dv_map()
+        p.show_bg_color = True
         p.colorbar_fmt = "%0.2f"
 
         if self.map is not None and "title" in self.map:
@@ -367,11 +391,19 @@ class PlotMapL3(object):
             legend = self.map["legend"]
             vmin = legend["vmin"]
             vmax = legend["vmax"]
+            # 是否填写 colorbar title
+            if "label" in legend:
+                colorbar_label = legend["label"]
+                p.colorbar_label = colorbar_label
+            if "ticks" in legend:
+                p.colorbar_ticks = legend["ticks"]
+            if "tick_labels" in legend:
+                p.colorbar_tick_labels = legend["tick_labels"]
         else:
             vmin = vmax = None
 
         p.title = title
-        p.easyplot(lats, lons, value, ptype=None, vmin=vmin, vmax=vmax, box=box, markersize=0.05,
+        p.easyplot(lats, lons, value, ptype=None, vmin=vmin, vmax=vmax, box=box, markersize=0.1,
                    marker='o')
         pb_io.make_sure_path_exists(os.path.dirname(self.out_file))
         p.savefig(self.out_file, dpi=300)
