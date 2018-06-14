@@ -7,6 +7,7 @@ author : anning
 ~~~~~~~~~~~~~~~~~~~
 """
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import os
 import re
 import sys
@@ -64,7 +65,7 @@ def main(sat_sensor, in_file):
     sat, sensor = sat_sensor.split("+")
     for legend in colorbar_range:
         print "*" * 100
-        dataset_name, vmax, vmin, colorbar_label = legend
+        dataset_name, name, vmax, vmin, colorbar_label = legend
         vmax = float(vmax)  # color bar 范围 最大值
         vmin = float(vmin)  # color bar 范围 最小值
 
@@ -73,47 +74,53 @@ def main(sat_sensor, in_file):
         kind = _get_kind(in_file)
 
         ymd_date = datetime.strptime(ymd, "%Y%m%d")
-        ymd_underline = ymd_date.strftime("%Y-%m-%d")
-        name = " ".join(dataset_name.split("_")[1:])
 
         if dataset_name in log10_set:
             _ticks = log10_ticks
             _tick_labels = log10_tick_labels
+            if dataset_name == "Ocean_TSM":
+                _ticks.append(2.00)
+                _tick_labels.append("100")
+            if dataset_name == "Ocean_YS443":
+                _ticks = _ticks[:-3]
+                _tick_labels = _tick_labels[:-3]
         else:
             _ticks = None
             _tick_labels = None
 
+        png = "{}_{}_{}_{}.png".format(sat_sensor, dataset_name.replace("Aod", "AOD"), ymd, kind)
+        title = _get_title(sat, sensor, name, kind, ymd_date)
+
+        plot_map = {
+            "title": title,
+            "legend": {"vmax": vmax, "vmin": vmin, "label": colorbar_label, "ticks": _ticks,
+                       "tick_labels": _tick_labels},
+            "area_range": area_range,
+            "lat_lon_line": {"delat": 30, "delon": 30, },
+        }
+
         # 画全球范围
         if plot_global.lower() == "on":
-            pic_name = os.path.join(dir_path, "picture_global/{}_{}_{}_{}.png".format(
-                sat_sensor, dataset_name, ymd, kind))
+            pic_name = os.path.join(dir_path, "picture_global", png)
             # 如果输出文件已经存在，跳过
             if os.path.isfile(pic_name):
                 print "File is already exist, skip it: {}".format(pic_name)
             else:
-                plot_map = {
-                    "title": "{}/{} {} {}".format(sat, sensor, ymd_underline, name),
-                    "legend": {"vmax": vmax, "vmin": vmin, "label": colorbar_label, "ticks": _ticks,
-                               "tick_labels": _tick_labels},
-                    "area_range": area_range,
-                    "lat_lon_line": {"delat": 30, "delon": 30, },
-                }
                 if dataset_name in log10_set:
                     plot_map["log10"] = True
 
                 with time_block("Draw combine time:", switch=TIME_TEST):
-                    plot_map = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
-                    plot_map.draw_combine()
+                    plot_map_global = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+                    plot_map_global.draw_combine()
 
-                if not plot_map.error:
-                    print ">>> {}".format(plot_map.out_file)
+                if not plot_map_global.error:
+                    print ">>> {}".format(plot_map_global.out_file)
                 else:
                     print "Error: Plot global picture error: {}".format(in_file)
 
         # 单画中国区域
         if plot_china.lower() == "on":
-            pic_name = os.path.join(dir_path, "picture_china/{}_{}_{}_{}.png".format(
-                sat_sensor, dataset_name, ymd, kind))
+            pic_name = os.path.join(dir_path, "picture_china", png)
             # 如果输出文件已经存在，跳过
             if os.path.isfile(pic_name):
                 print "File is already exist, skip it: {}".format(pic_name)
@@ -124,25 +131,42 @@ def main(sat_sensor, in_file):
                     "lon_w": "65",
                     "lon_e": "150",
                 }
-
-                plot_map = {
-                    "title": "{}/{} {} {}".format(sat, sensor, ymd_underline, name),
-                    "legend": {"vmax": vmax, "vmin": vmin, "label": colorbar_label, "ticks": _ticks,
-                               "tick_labels": _tick_labels},
-                    "area_range": area_range_china,
-                    "lat_lon_line": {"delat": 10, "delon": 10, },
-                }
+                lat_lon_line = {"delat": 10, "delon": 10, }
+                plot_map["area_range"] = area_range_china
+                plot_map["lat_lon_line"] = lat_lon_line
 
                 with time_block("Draw combine time:", switch=TIME_TEST):
-                    plot_map = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
-                    plot_map.draw_combine()
+                    plot_map_china = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+                    plot_map_china.draw_combine()
 
-                if not plot_map.error:
-                    print ">>> {}".format(plot_map.out_file)
+                if not plot_map_china.error:
+                    print ">>> {}".format(plot_map_china.out_file)
                 else:
                     print "Error: Plot china picture error: {}".format(in_file)
 
     print '-' * 100
+
+
+def _get_title(sat, sensor, name, kind, ymd_date):
+    """
+    根据不同时间的产品获取title
+    :param kind:
+    :return:
+    """
+    if kind == "AOAD":
+        ymd_dash = ymd_date.strftime("%Y-%m-%d")
+        title = "{}/{} daily Level-3 product {} {}".format(
+            sat, sensor, name, ymd_dash)
+    elif kind == "AOAM":
+        ymd_start_dash = ymd_date.strftime("%Y-%m-%d")
+        ymd_end_date = ymd_date + relativedelta(months=1) - relativedelta(days=1)
+        ymd_end_dash = ymd_end_date.strftime("%Y-%m-%d")
+        title = "{}/{} monthly Level-3 product {} {} to {}".format(
+            sat, sensor, name, ymd_start_dash, ymd_end_dash)
+    else:
+        title = "{}/{} Level-3 product {}".format(
+            sat, sensor, name)
+    return title
 
 
 def _get_ymd(l3_file):

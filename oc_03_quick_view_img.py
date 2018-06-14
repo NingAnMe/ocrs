@@ -87,7 +87,7 @@ def main(sat_sensor, in_file):
         vmax = float(legend[1])  # color bar 范围 最大值
         vmin = float(legend[2])  # color bar 范围 最小值
 
-        out_picture = "{}_{}.{}".format(in_file_name, dataset_name, "png")
+        out_picture = "{}_{}.{}".format(in_file_name, dataset_name.replace("Aod", "AOD"), "png")
         # 如果文件已经存在，跳过
         # if os.path.isfile(out_picture):
         #     print "File is already exist, skip it: {}".format(out_picture)
@@ -100,6 +100,12 @@ def main(sat_sensor, in_file):
             "fill_value": -32767,
         }
         if dataset_name in log10_set:
+            if dataset_name == "Ocean_TSM":
+                log10_ticks.append(2.00)
+                log10_tick_labels.append("100")
+            if dataset_name == "Ocean_YS443":
+                log10_ticks = log10_ticks[:-3]
+                log10_tick_labels = log10_tick_labels[:-3]
             heat_map["colorbar_ticks"] = log10_ticks
             heat_map["colorbar_tick_label"] = log10_tick_labels
 
