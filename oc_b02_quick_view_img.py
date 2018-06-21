@@ -89,9 +89,9 @@ def main(sat_sensor, in_file):
 
         out_picture = "{}_{}.{}".format(in_file_name, dataset_name.replace("Aod", "AOD"), "png")
         # 如果文件已经存在，跳过
-        # if os.path.isfile(out_picture):
-        #     print "File is already exist, skip it: {}".format(out_picture)
-        #     continue
+        if os.path.isfile(out_picture):
+            print "File is already exist, skip it: {}".format(out_picture)
+            continue
 
         heat_map = {
             "vmin": vmin,

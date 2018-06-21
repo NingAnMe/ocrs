@@ -151,7 +151,7 @@ class QuickView(object):
                     self.data = self.data * 10
                 # #################################
         except ValueError as why:
-            print why
+            print "_get_data: {}".format(why)
             self.error = True
 
     def _get_lat_lon_line(self):
@@ -164,11 +164,11 @@ class QuickView(object):
 
         try:
             if self.lats is not None and self.lons is not None:
-                lat_min = self.lats[0][-1]  # (0, 2047)
-                lat_max = self.lats[-1][0]  # (1999, 0)
+                lat_min = self.lats.min()
+                lat_max = self.lats.max()
 
-                lon_min = self.lons[0][-1]
-                lon_max = self.lons[-1][0]
+                lon_min = self.lons.min()
+                lon_max = self.lons.max()
 
                 lat = lat_min
                 lw = self.line_width
@@ -195,9 +195,8 @@ class QuickView(object):
                 self.line_lat = idx_line[0]
                 self.line_lon = idx_line[1]
         except Exception as why:
-            print why
+            print "_get_lat_lon_line: {}".format(why)
             self.error = True
-            return
 
     def _get_picture_size(self, picture_size):
         """
@@ -285,7 +284,7 @@ class QuickView(object):
             plt.close()
 
         except Exception as why:
-            print why
+            print "plot: {}".format(why)
             self.error = True
             return
 
