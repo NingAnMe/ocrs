@@ -13,6 +13,7 @@ class InitApp():
     """
     加载全局配置文件
     """
+
     def __init__(self, sat_sensor):
         """
         初始化
@@ -23,8 +24,9 @@ class InitApp():
         self.app_path = os.path.dirname(os.path.realpath(__file__))
         self.main_path = os.path.dirname(self.app_path)
         self.config_path = os.path.join(self.main_path, "cfg")
-        self.global_config_file = os.path.join(self.config_path, "global.cfg")
-        self.sat_config_file = os.path.join(self.config_path, "{}.yaml".format(sat_sensor))
+        self.global_config_file = os.path.join(self.config_path, "occ.cfg")
+        self.sat_config_file = os.path.join(
+            self.config_path, "{}.yaml".format(sat_sensor))
 
         # 读取配置文件
         self.global_config = Config(self.global_config_file)
