@@ -32,7 +32,7 @@ def main(sat_sensor, in_file):
     log = LogServer(gc.path_out_log)
 
     # 全局配置接口
-    out_path = gc.path_mid_projection
+    out_path = gc.path_mid_ncep
     # 程序配置接口
 
     # 卫星配置接口
