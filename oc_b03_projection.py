@@ -69,7 +69,7 @@ def main(sat_sensor, in_file):
         ymd = _get_ymd(in_file)
         hm = _get_hm(in_file)
         sat, sensor = sat_sensor.split('+')
-        out_name = "{}_{}_ORBT_L2_ASO_MLT_NUL_{}_{}_{}.HDF".format(sat, sensor, ymd, hm,
+        out_name = "{}_{}_ORBT_L2_OCC_MLT_NUL_{}_{}_{}.HDF".format(sat, sensor, ymd, hm,
                                                                    mesh_size.upper())
         out_path = pb_io.path_replace_ymd(out_path, ymd)
         out_file = os.path.join(out_path, out_name)
