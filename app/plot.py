@@ -10,12 +10,14 @@ import h5py
 import numpy as np
 
 from PB import pb_io
+from PB.pb_time import time_block
 from DV import dv_map_oc
 from DV.dv_img import dv_rgb
 from DV.dv_pub_3d import plt
 
 
-DEBUG = True
+DEBUG = False
+TIME_TEST = False
 
 
 class RGB(object):
@@ -402,7 +404,9 @@ class PlotMapL3(object):
             vmin = vmax = None
 
         p.title = title
-        p.easyplot(lats, lons, value, ptype=None, vmin=vmin, vmax=vmax, box=box, markersize=0.1,
-                   marker='o')
-        pb_io.make_sure_path_exists(os.path.dirname(self.out_file))
-        p.savefig(self.out_file, dpi=300)
+        with time_block("plot combine map", switch=TIME_TEST):
+            p.easyplot(lats, lons, value, ptype=None, vmin=vmin, vmax=vmax, box=box, markersize=0.1,
+                       marker='o')
+            # p.easyplot(lats, lons, value, ptype="pcolormesh", vmin=vmin, vmax=vmax, box=box)
+            pb_io.make_sure_path_exists(os.path.dirname(self.out_file))
+            p.savefig(self.out_file, dpi=300)

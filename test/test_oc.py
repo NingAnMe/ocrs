@@ -30,39 +30,39 @@ def main(test_id):
     file7 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/test/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20130131_AOAD_5000M.HDF"
     file9 = "/storage-space/disk3/OceanColor/FY3B+MERSI/Daily/2017/201701/FY3B_MERSI_GBAL_L3_ASO_MLT_GLL_20170102_AOAD_5000M.HDF"
     if test_id == 1:
-        app = "oc_00_ncep_to_byte.py"
+        app = "oc_a01_ncep_to_byte.py"
         arg2 = file1
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 2:
-        app = "oc_01_calibrate.py"
+        app = "oc_a02_calibrate.py"
         arg2 = file2
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 3:
-        app = "oc_03_quick_view_img.py"
+        app = "oc_b02_quick_view_img.py"
         arg2 =file3
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 4:
-        app = "oc_04_projection.py"
+        app = "oc_b03_projection.py"
         arg2 = file3
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 5:
-        app = "oc_05_combine_day.py"
+        app = "oc_b04_combine_day.py"
         arg2 = file4
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 6:
-        app = "oc_06_combine_map.py"
+        app = "oc_c01_combine_map.py"
         arg2 = file5
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 7:
-        app = "oc_07_combine_days.py"
+        app = "oc_b05_combine_days.py"
         arg2 = file6
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 8:
-        app = "oc_06_combine_map.py"
+        app = "oc_c01_combine_map.py"
         arg2 = file7
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     elif test_id == 9:
-        app = "oc_06_combine_map.py"
+        app = "oc_c01_combine_map.py"
         arg2 = file9
         cmd = "{} {} {} {}".format(python, app, arg1, arg2)
     else:
