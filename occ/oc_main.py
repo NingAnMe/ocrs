@@ -1,14 +1,15 @@
 # coding=utf-8
-import os
-import sys
-import re
-import yaml
 import getopt
+import os
+import re
 import shutil
+import sys
 import warnings
 
 from configobj import ConfigObj
 from dateutil.relativedelta import relativedelta
+import yaml
+
 from PB import pb_io, pb_time
 from PB.CSC.pb_csc_console import SocketServer
 
@@ -64,7 +65,8 @@ def usage():
 def main():
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hv:j:s:t:", ["version", "help", "job=", "sat=" "time="])
+        opts, args = getopt.getopt(
+            sys.argv[1:], "hv:j:s:t:", ["version", "help", "job=", "sat=" "time="])
     except getopt.GetoptError as err:
         # print help information and exit:
         print str(err)  # will print something like "option -a not recognized"
@@ -225,7 +227,8 @@ def create_05_combine_d(date_s, date_e):
     while date_s <= date_e:
         ymd = date_s.strftime('%Y%m%d')
 
-        com_filename = '%s_%s_GBAL_L3_ASO_MLT_GLL_%s_AOAD_5000M.HDF' % (inCfg['PATH']['sat'], inCfg['PATH']['sensor'], ymd)
+        com_filename = '%s_%s_GBAL_L3_ASO_MLT_GLL_%s_AOAD_5000M.HDF' % (
+            inCfg['PATH']['sat'], inCfg['PATH']['sensor'], ymd)
 
         daily_path_use = pb_io.path_replace_ymd(daily_path, ymd)
         com_out_file = os.path.join(daily_path_use, com_filename)
@@ -239,7 +242,8 @@ def create_05_combine_d(date_s, date_e):
         granule_pro_lst = find_file(proj_path_use, reg)
         print len(granule_pro_lst)
 
-        com_dict = {'PATH': {'ipath': granule_lst, 'ppath': granule_pro_lst, 'opath': com_out_file}}
+        com_dict = {
+            'PATH': {'ipath': granule_lst, 'ppath': granule_pro_lst, 'opath': com_out_file}}
         cfgFile = os.path.join(cfg_path, '%s.yaml' % ymd)
         CreateYamlCfg(com_dict, cfgFile)
 
@@ -261,7 +265,8 @@ def create_06_combine_d_map(date_s, date_e):
         ymd = date_s.strftime('%Y%m%d')
         timeStep = relativedelta(days=1)
         daily_path_use = pb_io.path_replace_ymd(daily_path, ymd)
-        com_filename = '%s_%s_GBAL_L3_ASO_MLT_GLL_%s_AOAD_5000M.HDF' % (inCfg['PATH']['sat'], inCfg['PATH']['sensor'], ymd)
+        com_filename = '%s_%s_GBAL_L3_ASO_MLT_GLL_%s_AOAD_5000M.HDF' % (
+            inCfg['PATH']['sat'], inCfg['PATH']['sensor'], ymd)
         FileLst.append(os.path.join(daily_path_use, com_filename))
         date_s = date_s + timeStep
 
@@ -277,7 +282,7 @@ def CreateYamlCfg(yaml_dict, cfgFile):
     if not os.path.isdir(cfgPath):
         os.makedirs(cfgPath)
     with open(cfgFile, 'w') as stream:
-            yaml.dump(yaml_dict, stream, default_flow_style=False)
+        yaml.dump(yaml_dict, stream, default_flow_style=False)
 
 
 def create_hostfile(mode=0):
