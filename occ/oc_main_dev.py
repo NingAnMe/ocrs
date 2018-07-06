@@ -23,11 +23,14 @@ __description__ = u'交叉主调度处理的函数'
 __author__ = 'wangpeng'
 __date__ = '2018-05-30'
 __version__ = '1.0.0_beat'
-__updated__ = '2018-06-27'
+__updated__ = '2018-07-06'
 
 
-python = '/share/apps/soft/python_All/python2.7.15/bin/python27'
-mpiRun = '/usr/mpi/intel/mvapich-1.2.0/bin/mpirun_rsh'
+python = 'python2.7  -W ignore'
+mpi_run = 'mpirun'
+mpi_main = 'mpi_main.py'
+np = 56
+
 # 启动socket服务,防止多实例运行
 port = 10000
 sserver = SocketServer()
@@ -144,11 +147,7 @@ def main():
                 arg_list = eval(job_id_name)(
                     job_mode, sat_pair, date_s, date_e, job_id_name)
                 # 执行
-                if int(job_id) >= 310:
-                    print '22222222222222'
-                    run_command_parallel(arg_list)
-                else:
-                    run_command(arg_list)
+                run_command_parallel(arg_list)
 
 
 def job_0110(job_exe, sat_pair, date_s, date_e, job_id):
@@ -208,26 +207,17 @@ def job_0310(job_exe, sat_pair, date_s, date_e, job_id):
     in_path = cfg_body['PATH']['MID']['calibrate']
     reg = 'FY3[A-Z]_MERSI_GBAL_L1_%s_(\d{4})_1000M_MS.HDF'
     arg_list = []
-    file_list_all = []
 
     while date_s <= date_e:
         ymd = date_s.strftime('%Y%m%d')
         use_in_path = pb_io.path_replace_ymd(in_path, ymd)
         use_reg = reg % ymd
         file_list = pb_io.find_file(use_in_path, use_reg)
+        for in_file in file_list:
+            cmd_list = './%s %s %s ' % (job_exe, in_file, cfg)
+            arg_list.append(cmd_list)
 
-        file_list_all.extend(file_list)
         date_s = date_s + relativedelta(days=1)
-
-    # 生成filelist
-    file_list1 = [each + '\n' for each in file_list_all]
-    fp = open('filelist.txt', 'w')
-    fp.writelines(file_list1)
-    fp.close()
-    cmd = '%s -np %s -hostfile hostfile parallel.exe -l \
-        ./filelist.txt -e ./%s -c %s' % (mpiRun, '56', job_exe, cfg)
-
-    arg_list.append(cmd)
 
     return arg_list
 
@@ -239,29 +229,19 @@ def job_0410(job_exe, sat_pair, date_s, date_e, job_id):
     Log.info(u'get arg list from %s' % job_id)
 
     in_path = cfg_body['PATH']['MID']['granule']
-    reg = 'FY3[A-Z]_MERSI_ORBT_L2_OCC_MLT_NUL_%s_(\d{4})_1000M.HDF'
+    reg = 'FY3[A-Z]_MERSI_ORBT_L2_\w{3}_MLT_NUL_%s_(\d{4})_1000M.HDF'
     arg_list = []
-    file_list_all = []
-    job_exe = os.path.basename(job_exe)
-    job_exe = '%s\ -W\ ignore\ %s\ %s' % (python, job_exe, sat_pair)
 
     while date_s <= date_e:
         ymd = date_s.strftime('%Y%m%d')
         use_in_path = pb_io.path_replace_ymd(in_path, ymd)
         use_reg = reg % ymd
         file_list = pb_io.find_file(use_in_path, use_reg)
-
-        file_list_all.extend(file_list)
+        for in_file in file_list:
+            cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
+            arg_list.append(cmd_list)
         date_s = date_s + relativedelta(days=1)
 
-    # 生成filelist
-    file_list1 = [each + '\n' for each in file_list_all]
-    fp = open('filelist.txt', 'w')
-    fp.writelines(file_list1)
-    fp.close()
-    cmd = '%s -np %s -hostfile hostfile parallel.exe -l \
-        ./filelist.txt -e "%s"' % (mpiRun, '56',  job_exe)
-    arg_list.append(cmd)
     return arg_list
 
 
@@ -282,8 +262,7 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
     proj_path = cfg_body['PATH']['MID']['projection']
     cfg_path = cfg_body['PATH']['MID']['incfg']
     daily_path = cfg_body['PATH']['OUT']['daily']
-    job_exe = os.path.basename(job_exe)
-    job_exe = '%s\ -W\ ignore\ %s\ %s' % (python, job_exe, sat_pair)
+
     # 清理配置
     if os.path.isdir(cfg_path):
         shutil.rmtree(cfg_path)
@@ -301,7 +280,7 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
         reg = 'FY3[A-Z]_MERSI_ORBT_L2_OCC_MLT_NUL_%s_(\d{4})_1000M.HDF' % ymd
         granule_lst = pb_io.find_file(granule_path_use, reg)
 
-        reg = 'FY3[A-Z]_MERSI_ORBT_L2_OCC_MLT_NUL_%s_(\d{4})_5000M.HDF' % ymd
+        reg = 'FY3[A-Z]_MERSI_ORBT_L2_\w{3}_MLT_NUL_%s_(\d{4})_5000M.HDF' % ymd
         proj_path_use = pb_io.path_replace_ymd(proj_path, ymd)
         granule_pro_lst = pb_io.find_file(proj_path_use, reg)
         print len(granule_pro_lst)
@@ -315,13 +294,9 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
 
     reg = '.*.yaml'
     FileLst = pb_io.find_file(cfg_path, reg)
-    FileLst = [each + '\n' for each in FileLst]
-    fp = open('filelist.txt', 'w')
-    fp.writelines(FileLst)
-    fp.close()
-    arg_list = []
-    cmd = '%s -np %s -hostfile hostfile parallel.exe -l \
-        ./filelist.txt -e "%s"' % (mpiRun, '56',  job_exe)
+    for in_file in FileLst:
+        cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
+        arg_list.append(cmd_list)
     arg_list.append(cmd)
     return arg_list
 
@@ -338,26 +313,29 @@ def job_0810(job_exe, sat_pair, date_s, date_e, job_id):
         ymd = date_s.strftime('%Y%m%d')
         timeStep = relativedelta(days=1)
         daily_path_use = pb_io.path_replace_ymd(daily_path, ymd)
-        com_filename = '%s_%s_GBAL_L3_OCC_MLT_GLL_%s_AOAD_5000M.HDF' % (
+        com_filename = '%s_%s_GBAL_L3_\w{3}_MLT_GLL_%s_AOAD_5000M.HDF' % (
             cfg_body['PATH']['sat'], cfg_body['PATH']['sensor'], ymd)
         FileLst.append(os.path.join(daily_path_use, com_filename))
         date_s = date_s + timeStep
 
-    FileLst = [each + '\n' for each in FileLst]
-    fp = open('filelist.txt', 'w')
-    fp.writelines(FileLst)
-    fp.close()
+    for in_file in FileLst:
+        cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
+        arg_list.append(cmd_list)
 
-    arg_list = []
-    cmd = '%s -np %s -hostfile hostfile parallel.exe -l \
-        ./filelist.txt -e "%s"' % (mpiRun, '56',  job_exe)
-    arg_list.append(cmd)
     return arg_list
 
 
 def run_command_parallel(arg_list):
-    for cmd_list in arg_list:
-        os.system(cmd_list)
+
+    arg_list = [each + '\n' for each in arg_list]
+    fp = open('filelist.txt', 'w')
+    fp.writelines(arg_list)
+    fp.close()
+
+    cmd = '%s -np %d -machinefile hostfile %s %s' % (
+        mpi_run, np, python, mpi_main)
+    print cmd
+    os.system(cmd)
 
 
 def run_command(arg_list):

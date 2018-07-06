@@ -4,17 +4,18 @@
 @Time    : 2018/6/8 14:52
 @Author  : AnNing
 """
-import re
 import os
+import re
 import sys
 
 import h5py
-import numpy as np
 
-from DP.dp_prj_new import prj_core
+from DP.dp_prj import prj_core
 from DV import dv_map
 from PB import pb_io, pb_time
 from PB.pb_time import time_block
+import numpy as np
+
 
 TIME_TEST = False  # 时间测试
 
@@ -75,7 +76,8 @@ class Projection(object):
         if self.error:
             return
         # 创建查找表
-        lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
+        lookup_table = prj_core(
+            self.cmd, self.res, unit="deg", row=self.row, col=self.col)
         # 通过查找表和经纬度数据生成数据在全球的行列信息
         lookup_table.create_lut(self.lons, self.lats)
         self.ii = lookup_table.lut_i
@@ -197,7 +199,8 @@ class Projection(object):
         #         p.colormap = 'brg'
 
         # 创建查找表
-        lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
+        lookup_table = prj_core(
+            self.cmd, self.res, unit="deg", row=self.row, col=self.col)
         lookup_table.grid_lonslats()
         lons = lookup_table.lons
         lats = lookup_table.lats
@@ -212,7 +215,8 @@ class Projection(object):
         slope = 0.001
         value = value * slope
 
-        p.easyplot(lats, lons, value, ptype=None, vmin=vmin, vmax=vmax, markersize=0.1, marker='o')
+        p.easyplot(lats, lons, value, ptype=None, vmin=vmin,
+                   vmax=vmax, markersize=0.1, marker='o')
 
         out_png_path = os.path.dirname(in_file)
         out_png = os.path.join(out_png_path, '{}.png'.format(dataset_name))
