@@ -9,11 +9,11 @@ import os
 
 import h5py
 import yaml
-import numpy as np
 
-from DP.dp_prj_new import prj_core
+from DP.dp_prj import prj_core
 from PB import pb_io
 from PB.pb_time import time_block
+import numpy as np
 
 
 TIME_TEST = False  # 运行时间测试
@@ -23,6 +23,7 @@ class CombineL2(object):
     """
     对水色产品 L2 产品进行合成
     """
+
     def __init__(self):
         self.error = False
 
@@ -156,7 +157,8 @@ class CombineL2(object):
                         for k in h5.keys():
                             # 记录属性信息
                             if k not in self.attrs:
-                                self.attrs[k] = pb_io.attrs2dict(h5.get(k).attrs)
+                                self.attrs[k] = pb_io.attrs2dict(
+                                    h5.get(k).attrs)
 
                             if k == "Longitude" or k == "Latitude":
                                 continue
@@ -178,7 +180,8 @@ class CombineL2(object):
 
         with time_block("Grid to lons and lats time:", switch=TIME_TEST):
             if "Longitude" not in self.out_data:
-                lookup_table = prj_core(self.cmd, self.res, unit="deg", row=self.row, col=self.col)
+                lookup_table = prj_core(
+                    self.cmd, self.res, unit="deg", row=self.row, col=self.col)
                 lookup_table.grid_lonslats()
                 self.out_data["Longitude"] = lookup_table.lons
                 self.out_data["Latitude"] = lookup_table.lats
@@ -227,6 +230,7 @@ class CombineL3(object):
     """
     对水色产品的L3数据进行合成
     """
+
     def __init__(self):
         self.error = False
 
@@ -311,7 +315,8 @@ class CombineL3(object):
                             continue
                         else:
                             data = h5.get(k)[:].reshape(reshape)
-                            self.out_data[k] = np.concatenate((self.out_data[k], data), axis=2)
+                            self.out_data[k] = np.concatenate(
+                                (self.out_data[k], data), axis=2)
 
                     # 记录属性信息
                     if k in self.attrs:
@@ -359,7 +364,8 @@ class CombineL3(object):
                     else:
                         value = h5.get(k)[:]
                         idx = np.where(value > 0)
-                        self.out_data[k][idx] = self.out_data[k][idx] + value[idx]
+                        self.out_data[k][idx] = self.out_data[
+                            k][idx] + value[idx]
                         self.counter[k][idx] += 1
 
                     # 记录属性信息

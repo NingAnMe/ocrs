@@ -85,6 +85,7 @@ def worker(comm, rank):
             sys.stdout.write(
                 "Hello, World I am process %d of %d on %s.\n"
                 % (rank, size, name))
+            print cmd
             os.system(cmd)
             sys.stdout.flush()
 

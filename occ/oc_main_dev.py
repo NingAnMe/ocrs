@@ -23,7 +23,7 @@ __description__ = u'交叉主调度处理的函数'
 __author__ = 'wangpeng'
 __date__ = '2018-05-30'
 __version__ = '1.0.0_beat'
-__updated__ = '2018-07-06'
+__updated__ = '2018-07-09'
 
 
 python = 'python2.7  -W ignore'
@@ -140,7 +140,7 @@ def main():
             job_mode = cfg_body['BAND_JOB_MODE'][job_id_name]
             job_mode = os.path.join(main_path, job_mode)
 
-            print job_id_name, job_mode
+            print '111', job_id_name, job_mode
             # 多个时间段 依次处理
             for date_s, date_e in date_list:
                 # 获取作业需要的参数列表
@@ -266,7 +266,7 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
     # 清理配置
     if os.path.isdir(cfg_path):
         shutil.rmtree(cfg_path)
-
+    arg_list = []
     while date_s <= date_e:
         ymd = date_s.strftime('%Y%m%d')
 
@@ -283,12 +283,12 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
         reg = 'FY3[A-Z]_MERSI_ORBT_L2_\w{3}_MLT_NUL_%s_(\d{4})_5000M.HDF' % ymd
         proj_path_use = pb_io.path_replace_ymd(proj_path, ymd)
         granule_pro_lst = pb_io.find_file(proj_path_use, reg)
-        print len(granule_pro_lst)
 
-        com_dict = {
-            'PATH': {'ipath': granule_lst, 'ppath': granule_pro_lst, 'opath': com_out_file}}
-        cfgFile = os.path.join(cfg_path, '%s.yaml' % ymd)
-        CreateYamlCfg(com_dict, cfgFile)
+        if len(granule_pro_lst) > 0:
+            com_dict = {
+                'PATH': {'ipath': granule_lst, 'ppath': granule_pro_lst, 'opath': com_out_file}}
+            cfgFile = os.path.join(cfg_path, '%s.yaml' % ymd)
+            CreateYamlCfg(com_dict, cfgFile)
 
         date_s = date_s + relativedelta(days=1)
 
@@ -297,15 +297,67 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
     for in_file in FileLst:
         cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
         arg_list.append(cmd_list)
-    arg_list.append(cmd)
+    return arg_list
+
+
+def job_0710(job_exe, sat_pair, date_s, date_e, job_id):
+    '''
+    :月合成
+    '''
+    Log.info(u'get arg list from %s' % job_id)
+    cfg_path = cfg_body['PATH']['MID']['incfg']
+    daily_path = cfg_body['PATH']['OUT']['daily']
+    month_path = cfg_body['PATH']['OUT']['monthly']
+
+    # 清理配置
+    if os.path.isdir(cfg_path):
+        shutil.rmtree(cfg_path)
+    arg_list = []
+
+    # 月首和月末 调整
+    ymd1 = date_s.strftime('%Y%m%d')
+    ymd2 = date_e.strftime('%Y%m%d')
+    lastday = calendar.monthrange(int(ymd2[:4]), int(ymd2[4:6]))[1]
+    date_s = datetime.strptime('%s01' % ymd1[0:6], '%Y%m%d')
+    date_e = datetime.strptime('%s%d' % (ymd2[0:6], lastday), '%Y%m%d')
+
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+
+        # 输出
+        com_filename = '%s_%s_GBAL_L3_OCC_MLT_GLL_%s_AOAM_5000M.HDF' % (
+            cfg_body['PATH']['sat'], cfg_body['PATH']['sensor'], ymd)
+
+        month_path_use = pb_io.path_replace_ymd(month_path, ymd)
+        com_out_file = os.path.join(month_path_use, com_filename)
+
+        # 输入
+        reg = 'FY3[A-Z]_MERSI_ORBT_L2_\w{3}_MLT_NUL_%s.*_(\d{4})_5000M.HDF' % ymd[
+            0:6]
+        daily_path_use = pb_io.path_replace_ymd(daily_path, ymd)
+        data_list_use = pb_io.find_file(daily_path_use, reg)
+
+        if len(granule_pro_lst) > 0:
+            com_dict = {
+                'PATH': {'ipath': data_list_use, 'opath': com_out_file}}
+            cfgFile = os.path.join(cfg_path, '%s.yaml' % ymd)
+            CreateYamlCfg(com_dict, cfgFile)
+
+        date_s = date_s + relativedelta(months=1)
+
+    reg = '.*.yaml'
+    FileLst = pb_io.find_file(cfg_path, reg)
+    for in_file in FileLst:
+        cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
+        arg_list.append(cmd_list)
     return arg_list
 
 
 def job_0810(job_exe, sat_pair, date_s, date_e, job_id):
+    '''
+    :合成后文件绘图
+    '''
     Log.info(u'get arg list from %s' % job_id)
-
-    job_exe = os.path.basename(job_exe)
-    job_exe = '%s\ -W\ ignore\ %s\ %s' % (python, job_exe, sat_pair)
 
     daily_path = cfg_body['PATH']['OUT']['daily']
     FileLst = []
