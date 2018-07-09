@@ -11,12 +11,12 @@ import sys
 import h5py
 
 from PB.CSC.pb_csc_console import LogServer
-from PB import pb_io, pb_time, pb_calculate
+from PB import pb_io
 from PB.pb_time import time_block
 from DV.dv_img import dv_rgb
 
 from app.config import InitApp
-from app.calibrate import Calibrate
+from app.calibrate import CalibrateFY3B
 
 TIME_TEST = False  # 时间测试
 
@@ -92,8 +92,8 @@ def main(sat_sensor, in_file):
         return
 
     # 初始化一个预处理实例
-    calibrate = Calibrate(l1_1000m=l1_1000m, obc_1000m=obc_1000m, coeff_file=coeff_file,
-                          out_file=out_file, launch_date=launch_date)
+    calibrate = CalibrateFY3B(l1_1000m=l1_1000m, obc_1000m=obc_1000m, coeff_file=coeff_file,
+                              out_file=out_file, launch_date=launch_date)
 
     # 对 OBC 文件进行 SV 提取
     calibrate.obc_sv_extract_fy3b(probe=probe, probe_count=probe_count,

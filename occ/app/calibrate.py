@@ -12,32 +12,7 @@ import numpy as np
 from PB import pb_io, pb_time, pb_calculate
 
 
-def dataset_extract(dataset, probe_count, probe_id, slide_step=10):
-    """
-    提取数据集的数据, 将 x * x 的数据提取为 y * 1
-    :param slide_step: 滑动步长
-    :param dataset: 二维数据集
-    :param probe_count: (int) 探元总数量
-    :param probe_id: (int) 此通道对应的探元 id
-    :return:
-    """
-    # 筛选窗区内探元号对应的行
-    dataset_ext = pb_calculate.extract_lines(dataset, probe_count, probe_id)
-    # 滑动计算 avg 和 std
-    avg_std_list = pb_calculate.rolling_calculate_avg_std(dataset_ext, slide_step)
-    # 过滤标准差范围内的有效值
-    dataset_valid = pb_calculate.filter_valid_value(dataset_ext, avg_std_list, 2)
-    # 计算均值
-    dataset_avg = pb_calculate.calculate_avg(dataset_valid)
-    dataset_avg = np.array(dataset_avg).reshape(len(dataset_avg), 1)
-    # 将行数扩大 10 倍
-    dataset_avg = pb_calculate.expand_dataset_line(dataset_avg, 10)
-    # 对浮点数据数据进行四舍五入
-    dataset_new = np.rint(dataset_avg)
-    return dataset_new
-
-
-class Calibrate(object):
+class CalibrateFY3B(object):
     """
     使用矫正系数对 MERSI L1 的产品进行定标预处理
     """
@@ -338,3 +313,30 @@ class Calibrate(object):
 
                     # 添加文件属性
                     out_hdf5.attrs['dsl'] = self.dsl
+
+
+def dataset_extract(dataset, probe_count, probe_id, slide_step=10):
+    """
+    提取数据集的数据, 将 x * x 的数据提取为 y * 1
+    :param slide_step: 滑动步长
+    :param dataset: 二维数据集
+    :param probe_count: (int) 探元总数量
+    :param probe_id: (int) 此通道对应的探元 id
+    :return:
+    """
+    # 筛选窗区内探元号对应的行
+    dataset_ext = pb_calculate.extract_lines(dataset, probe_count, probe_id)
+    # 滑动计算 avg 和 std
+    avg_std_list = pb_calculate.rolling_calculate_avg_std(dataset_ext, slide_step)
+    # 过滤标准差范围内的有效值
+    dataset_valid = pb_calculate.filter_valid_value(dataset_ext, avg_std_list, 2)
+    # 计算均值
+    dataset_avg = pb_calculate.calculate_avg(dataset_valid)
+    dataset_avg = np.array(dataset_avg).reshape(len(dataset_avg), 1)
+    # 将行数扩大 10 倍
+    dataset_avg = pb_calculate.expand_dataset_line(dataset_avg, 10)
+    # 对浮点数据数据进行四舍五入
+    dataset_new = np.rint(dataset_avg)
+    return dataset_new
+
+
