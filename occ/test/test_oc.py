@@ -17,7 +17,7 @@ def main(test_id):
     测试水色程序
     :return:
     """
-    python = "python27"
+    python = "python2"
     arg1 = "FY3B+MERSI"
 
     file1 = "/storage-space/disk1/973NCEP_data/2018/201805/fnl_20180510_00_00_c"

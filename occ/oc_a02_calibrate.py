@@ -58,57 +58,62 @@ def main(sat_sensor, in_file):
     print '-' * 100
     print 'Start calibration'
 
-    # 获取 M1000 文件和对应 OBC 文件
-    l1_1000m = in_file
-    obc_1000m = _get_obc_file(l1_1000m, l1_path, obc_path)
-    if not os.path.isfile(l1_1000m):
-        log.error("File is not exist: {}".format(l1_1000m))
-        return
-    elif not os.path.isfile(obc_1000m):
-        log.error("File is not exist: {}".format(obc_1000m))
-        return
+    # 不同的卫星对使用不同的处理类和流程
+    if "fy3b" in sat_sensor.lower() and 'mersi' in sat_sensor.lower():
+        # 获取 M1000 文件和对应 OBC 文件
+        l1_1000m = in_file
+        obc_1000m = _get_obc_file(l1_1000m, l1_path, obc_path)
+        if not os.path.isfile(l1_1000m):
+            log.error("File is not exist: {}".format(l1_1000m))
+            return
+        elif not os.path.isfile(obc_1000m):
+            log.error("File is not exist: {}".format(obc_1000m))
+            return
+        else:
+            print "<<< {}".format(l1_1000m)
+            print "<<< {}".format(obc_1000m)
+
+        ymd = _get_ymd(l1_1000m)
+
+        # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
+        coeff_file = os.path.join(coeff_path, '{}.txt'.format(ymd[0:4]))
+        if not os.path.isfile(coeff_file):
+            log.error("File is not exist: {}".format(coeff_file))
+            return
+        else:
+            print "<<< {}".format(coeff_file)
+
+        # 获取输出文件
+        out_path = pb_io.path_replace_ymd(out_path, ymd)
+        _name = os.path.basename(l1_1000m)
+        out_file = os.path.join(out_path, _name)
+
+        # 如果输出文件已经存在，跳过预处理
+        if os.path.isfile(out_file):
+            print "File is already exist, skip it: {}".format(out_file)
+            return
+
+        # 初始化一个预处理实例
+        calibrate = CalibrateFY3B(l1_1000m=l1_1000m, obc_1000m=obc_1000m, coeff_file=coeff_file,
+                                  out_file=out_file, launch_date=launch_date)
+
+        # 对 OBC 文件进行 SV 提取
+        calibrate.obc_sv_extract_fy3b(probe=probe, probe_count=probe_count,
+                                      slide_step=slide_step)
+
+        # 重新定标 L1 数据
+        calibrate.calibrate()
+
+        # 将新数据写入 HDF5 文件
+        calibrate.write()
+
+        if not calibrate.error:
+            print ">>> {}".format(calibrate.out_file)
+        else:
+            print "Error: Calibrate error".format(in_file)
     else:
-        print "<<< {}".format(l1_1000m)
-        print "<<< {}".format(obc_1000m)
-
-    ymd = _get_ymd(l1_1000m)
-
-    # 获取 coefficient 水色波段系统定标系数， 2013年以前和2013年以后不同
-    coeff_file = os.path.join(coeff_path, '{}.txt'.format(ymd[0:4]))
-    if not os.path.isfile(coeff_file):
-        log.error("File is not exist: {}".format(coeff_file))
+        print "***Error***: Don`t handle this sat and sensor: {}".format(sat_sensor)
         return
-    else:
-        print "<<< {}".format(coeff_file)
-
-    # 获取输出文件
-    out_path = pb_io.path_replace_ymd(out_path, ymd)
-    _name = os.path.basename(l1_1000m)
-    out_file = os.path.join(out_path, _name)
-
-    # 如果输出文件已经存在，跳过预处理
-    if os.path.isfile(out_file):
-        print "File is already exist, skip it: {}".format(out_file)
-        return
-
-    # 初始化一个预处理实例
-    calibrate = CalibrateFY3B(l1_1000m=l1_1000m, obc_1000m=obc_1000m, coeff_file=coeff_file,
-                              out_file=out_file, launch_date=launch_date)
-
-    # 对 OBC 文件进行 SV 提取
-    calibrate.obc_sv_extract_fy3b(probe=probe, probe_count=probe_count,
-                                  slide_step=slide_step)
-
-    # 重新定标 L1 数据
-    calibrate.calibrate()
-
-    # 将新数据写入 HDF5 文件
-    calibrate.write()
-
-    if not calibrate.error:
-        print ">>> {}".format(calibrate.out_file)
-    else:
-        print "Error: Calibrate error".format(in_file)
 
     # 对原数据和处理后的数据各出一张真彩图
     if plot == "on":
@@ -122,12 +127,12 @@ def main(sat_sensor, in_file):
                 print "File is already exist, skip it: {}".format(out_pic_old)
                 return
             else:
-                _plot_rgb(in_file, out_pic_old)
+                _plot_rgb_old(in_file, out_pic_old)
             if os.path.isfile(out_pic_new):
                 print "File is already exist, skip it: {}".format(out_pic_new)
                 return
             else:
-                _plot_rgb(out_file, out_pic_new)
+                _plot_rgb_new(out_file, out_pic_new)
 
     print '-' * 100
 
@@ -148,7 +153,7 @@ def _get_ymd(l1_file):
         return m.groups()[0]
 
 
-def _plot_rgb(l1_file, out_file):
+def _plot_rgb_old(l1_file, out_file):
     """
     对原数据和处理后的数据各出一张真彩图
     """
@@ -157,6 +162,23 @@ def _plot_rgb(l1_file, out_file):
             r = h5.get("EV_1KM_RefSB")[5]  # 第 11 通道 650
             g = h5.get("EV_1KM_RefSB")[4]  # 第 10 通道 565
             b = h5.get("EV_1KM_RefSB")[2]  # 第 8 通道 490
+        dv_rgb(r, g, b, out_file)
+        print ">>> {}".format(out_file)
+    except Exception as why:
+        print why
+        print "Error: plot RGB error".format(l1_file)
+        return
+
+
+def _plot_rgb_new(l1_file, out_file):
+    """
+    对原数据和处理后的数据各出一张真彩图
+    """
+    try:
+        with h5py.File(l1_file) as h5:
+            r = h5.get("CH_11/Ref")[:]  # 第 11 通道 650
+            g = h5.get("CH_10/Ref")[:]  # 第 10 通道 565
+            b = h5.get("CH_08/Ref")[:]  # 第 8 通道 490
         dv_rgb(r, g, b, out_file)
         print ">>> {}".format(out_file)
     except Exception as why:
