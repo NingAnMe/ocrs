@@ -4,12 +4,254 @@
 @Time    : 2018/6/7 14:08
 @Author  : AnNing
 """
+import re
 import os
+from datetime import datetime
 
 import h5py
 import numpy as np
 
+from PB.pb_time import fy3_ymd2seconds
 from PB import pb_io, pb_time, pb_calculate
+from PB import pb_name
+
+
+class CalibrateFY3D(object):
+    """
+    1km的mersi2数据类
+    """
+
+    def __init__(self):
+
+        # 定标使用
+        self.error = False
+        self.shape = (2000, 2048)
+        self.geo_file = None
+        self.in_file = None
+        self.sat = 'FY3D'
+        self.sensor = 'MERSI'
+        self.res = 1000
+        self.Band = 25
+        self.orbit_direction = []
+        self.orbit_num = []
+        self.Dn = {}
+        self.Ref = {}
+        self.Rad = {}
+        self.Tbb = {}
+
+        self.satAzimuth = None
+        self.satZenith = None
+        self.sunAzimuth = None
+        self.sunZenith = None
+        self.Lons = None
+        self.Lats = None
+        self.Time = None
+
+        self.SV = {}
+        self.BB = {}
+        self.LandSeaMask = None
+        self.LandCover = None
+
+        self.ary_height = None
+        self.ary_satz = None
+        self.ary_sata = None
+        self.ary_sunz = None
+        self.ary_suna = None
+        self.ary_lon = None
+        self.ary_lat = None
+        self.ary_land_cover = None
+        self.ary_land_sea_mask = None
+
+        self.cal_coeff1 = {}
+
+        # 投影使用
+        self.VIS_Coeff = []
+
+    def calibrate(self, in_file, geo_file, ary_vis_coeff_file=None):
+
+        self.in_file = in_file
+        self.geo_file = geo_file
+
+        with h5py.File(in_file, 'r') as hdf5:
+            orbit_direction = hdf5.attrs.get('Orbit Direction')
+            orbit_num = hdf5.attrs.get('Orbit Number')
+            self.orbit_direction.append(orbit_direction)
+            self.orbit_num.append(orbit_num)
+
+            ary_ch1_4 = hdf5.get('/Data/EV_250_Aggr.1KM_RefSB')[:]
+            ary_ch5_19 = hdf5.get('/Data/EV_1KM_RefSB')[:]
+            if ary_vis_coeff_file:
+                ary_vis_coeff = np.loadtxt(ary_vis_coeff_file)
+            else:
+                ary_vis_coeff = hdf5.get('/Calibration/VIS_Cal_Coeff')[:]
+            ary_sv = hdf5.get('/Calibration/SV_DN_average')[:]
+            ary_bb = hdf5.get('/Calibration/BB_DN_average')[:]
+
+        with h5py.File(geo_file, 'r') as hdf5:
+            self.ary_height = hdf5.get('/Geolocation/DEM')[:]
+            self.ary_satz = hdf5.get('/Geolocation/SensorZenith')[:]
+            self.ary_sata = hdf5.get('/Geolocation/SensorAzimuth')[:]
+            self.ary_sunz = hdf5.get('/Geolocation/SolarZenith')[:]
+            self.ary_suna = hdf5.get('/Geolocation/SolarAzimuth')[:]
+            self.ary_lon = hdf5.get('/Geolocation/Longitude')[:]
+            self.ary_lat = hdf5.get('/Geolocation/Latitude')[:]
+            self.ary_land_cover = hdf5.get('/Geolocation/LandCover')[:]
+            self.ary_land_sea_mask = hdf5.get('/Geolocation/LandSeaMask')[:]
+            ary_day = hdf5.get('/Timedata/Day_Count')[:]
+            ary_time = hdf5.get('/Timedata/Millisecond_Count')[:]
+
+        # 1-19通道的可见光数据进行定标
+        k = ary_vis_coeff
+        for i in range(19):
+            if i < 4:
+                # 统一下标
+                j = i
+                indata = ary_ch1_4[j]
+            else:
+                j = i - 4
+                indata = ary_ch5_19[j]
+
+            # 初始存放dn数据的结构，初始值 Nan
+            dn = np.full(self.shape, np.nan)
+            idx = np.logical_and(indata < 11000, indata >= 0)
+            dn[idx] = indata[idx]
+            ref = ((dn ** 2 * k[i, 2]) + dn * k[i, 1] + k[i, 0]) * 100.
+
+            # # 除去有效范围外的 ref 值
+            ref = np.ma.masked_greater_equal(ref, 11000)
+            ref = np.ma.masked_less(ref, 0)
+            ref = ref.filled(0)
+
+            channel_name = 'CH_%02d' % (i + 1)
+            if channel_name not in self.Dn:
+                self.Dn[channel_name] = dn
+                self.Ref[channel_name] = ref
+            else:
+                self.Dn[channel_name] = np.concatenate((self.Dn[channel_name], dn))
+                self.Ref[channel_name] = np.concatenate((self.Ref[channel_name], ref))
+
+            if channel_name not in self.cal_coeff1:
+                self.cal_coeff1[channel_name] = [k[i, 0], k[i, 1], k[i, 2]]
+
+        # 全局信息赋值 ############################
+        # 对时间进行赋值合并
+        v_ymd2seconds = np.vectorize(fy3_ymd2seconds)
+        t1 = v_ymd2seconds(ary_day, ary_time)
+
+        time = np.full(self.shape, -999)
+        for i in xrange(self.shape[0]):
+            time[i, :] = t1[i / 10, 0]
+        if not self.Time:
+            self.Time = time
+        else:
+            self.Time = np.concatenate((self.Time, time))
+
+        # sv, bb
+        for i in xrange(self.Band):
+            channel_name = 'CH_%02d' % (i + 1)
+            sv = np.full(self.shape, 32767)
+            bb = np.full(self.shape, 32767)
+            for j in xrange(self.shape[0]):
+                sv[j, :] = ary_sv[i][j / 10]
+                bb[j, :] = ary_bb[i][j / 10]
+            if channel_name not in self.SV:
+                self.SV[channel_name] = sv
+                self.BB[channel_name] = bb
+            else:
+                self.SV[channel_name] = np.concatenate((self.SV[channel_name], sv))
+                self.BB[channel_name] = np.concatenate((self.BB[channel_name], bb))
+
+        # 系数先不合并，暂时未用，数据格式无法统一了
+        self.VIS_Coeff = ary_vis_coeff
+
+    @staticmethod
+    def _create_dataset(name, data, dtype, hdf5, compression='gzip', compression_opts=5,
+                        shuffle=True):
+        dataset = hdf5.create_dataset(name, data=data, dtype=dtype,
+                                      compression=compression,
+                                      compression_opts=compression_opts,
+                                      shuffle=shuffle)
+        return dataset
+
+    def write(self, out_file):
+        """
+        :return:
+        """
+        # 创建生成输出目录
+        pb_io.make_sure_path_exists(os.path.dirname(out_file))
+        # 写入数据
+        with h5py.File(out_file, 'w') as hdf5:
+            for i in xrange(0, 19):
+                channel_name = 'CH_{:02}'.format(i + 1)
+
+                name = '{}/Ref'.format(channel_name)
+                data = self.Ref[channel_name].astype('u2')
+                dtype = 'u2'
+                self._create_dataset(name, data, dtype, hdf5)
+
+                name = '{}/SV'.format(channel_name)
+                data = self.SV[channel_name].astype('u2')
+                dtype = 'u2'
+                self._create_dataset(name, data, dtype, hdf5)
+
+                name = '{}/CalCoeff'.format(channel_name)
+                data = self.cal_coeff1[channel_name]
+                dtype = 'f4'
+                self._create_dataset(name, data, dtype, hdf5)
+
+                name = '{}/BB'.format(channel_name)
+                data = self.BB[channel_name]
+                dtype = 'f4'
+                self._create_dataset(name, data, dtype, hdf5)
+
+            name = 'Height'
+            dtype = 'i2'
+            data = self.ary_height
+            self._create_dataset(name, data, dtype, hdf5)
+
+            name = 'LandCover'
+            dtype = 'u1'
+            data = self.ary_land_cover
+            self._create_dataset(name, data, dtype, hdf5)
+            name = 'LandSeaMask'
+            dtype = 'u1'
+            data = self.ary_land_sea_mask
+            self._create_dataset(name, data, dtype, hdf5)
+
+            name = 'Latitude'
+            dtype = 'f4'
+            data = self.ary_lat
+            self._create_dataset(name, data, dtype, hdf5)
+            name = 'Longitude'
+            dtype = 'f4'
+            data = self.ary_lon
+            self._create_dataset(name, data, dtype, hdf5)
+
+            name = 'SolarZenith'
+            dtype = 'i2'
+            data = self.ary_sunz
+            self._create_dataset(name, data, dtype, hdf5)
+            name = 'SolarAzimuth'
+            dtype = 'i2'
+            data = self.ary_suna
+            self._create_dataset(name, data, dtype, hdf5)
+            name = 'SensorZenith'
+            dtype = 'i2'
+            data = self.ary_satz
+            self._create_dataset(name, data, dtype, hdf5)
+            name = 'SensorAzimuth'
+            dtype = 'i2'
+            data = self.ary_satz
+            self._create_dataset(name, data, dtype, hdf5)
+
+            name = 'Times'
+            dtype = 'i4'
+            data = self.Time
+            self._create_dataset(name, data, dtype, hdf5)
+
+            # 复制文件属性
+            with h5py.File(self.in_file, 'r') as hdf5_in_file:
+                pb_io.copy_attrs_h5py(hdf5_in_file, hdf5)
 
 
 class CalibrateFY3B(object):
@@ -38,10 +280,6 @@ class CalibrateFY3B(object):
         self.out_file = out_file
         self.launch_date = launch_date
 
-        self._get_ymd()
-        self._get_coeff()
-        self._get_dsl()
-
         # 分通道数据集，使用 {}
         self.SV = None  # {}
         self.Ref = None  # {}
@@ -57,16 +295,34 @@ class CalibrateFY3B(object):
         self.SolarZenith = None  # []
         self.LandCover = None  # []
         self.LandSeaMask = None  # []
-        self.Times = None  # [] 转成距离1970年的秒
+        self.Time = None  # [] 转成距离1970年的秒
+
+        self._get_ymd()
+        self._get_coeff()
+        self._get_dsl()
+        self._get_time()
 
     def _get_ymd(self):
         if self.error:
             return
         try:
             self.ymd = pb_time.get_ymd(self.l1_1000m)
+            self.hm = pb_time.get_hm(self.l1_1000m)
         except Exception as why:
             print why
             self.error = True
+
+    def _get_time(self):
+        shape = self._get_shape()
+        time = np.full(shape, -999.)
+        name_class = pb_name.nameClassManager()
+        info = name_class.getInstance(os.path.basename(self.l1_1000m))
+        secs = int((info.dt_s - datetime(1970, 1, 1, 0, 0, 0)).total_seconds())
+        time[:] = secs
+        if not self.Time:
+            self.Time = time
+        else:
+            self.Time = np.concatenate((self.Time, time))
 
     def _get_coeff(self):
         if self.error:
@@ -89,6 +345,11 @@ class CalibrateFY3B(object):
         except Exception as why:
             print why
             self.error = True
+
+    def _get_shape(self):
+        with h5py.File(self.l1_1000m) as hdf5:
+            self.shape = hdf5.get('Latitude').shape
+        return self.shape
 
     def obc_sv_extract_fy3b(self, probe=None, probe_count=None, slide_step=None):
         """
@@ -183,7 +444,7 @@ class CalibrateFY3B(object):
 
                 # 除去有效范围外的 dn 值
                 ref_new = np.ma.masked_less_equal(ref_new, 0)
-                ref_new.filled(0)
+                ref_new = ref_new.filled(0)
                 ref_new = ref_new.astype(np.uint16)
 
                 if i < 4:
@@ -233,7 +494,7 @@ class CalibrateFY3B(object):
 
                 # 除去有效范围外的 dn 值
                 ref_new = np.ma.masked_less_equal(ref_new, 0)
-                ref_new.filled(0)
+                ref_new = ref_new.filled(0)
                 ref_new = ref_new.astype(np.uint16)
 
                 if i < 4:
@@ -257,21 +518,12 @@ class CalibrateFY3B(object):
         # 创建生成输出目录
         pb_io.make_sure_path_exists(os.path.dirname(self.out_file))
         # 写入数据
-        with h5py.File(self.out_file, 'w') as out_hdf5:
+        with h5py.File(self.out_file, 'w') as hdf5:
             with h5py.File(self.l1_1000m, 'r') as m1000:
                 with h5py.File(self.obc_1000m, 'r') as obc:
-                    # # M1000 文件的数据集
-                    # dataset_m1000 = [
-                    #     'EV_1KM_RefSB', 'EV_250_Aggr.1KM_RefSB',
-                    #     'RSB_Cal_Cor_Coeff', 'LandSeaMask',
-                    #     'Latitude', 'Longitude', 'SolarZenith', 'SolarAzimuth', 'SensorZenith',
-                    #     'SensorAzimuth'
-                    # ]
-                    # # OBC 文件的数据集
-                    # dataset_obc = ['SV_1km', 'SV_250m_REFL']
 
                     # 创建输出文件的数据集
-                    for i in xrange(0, 19):
+                    for i in xrange(0, 20):
                         channel_name = 'CH_{:02}'.format(i + 1)
 
                         name = '{}/Ref'.format(channel_name)
@@ -280,10 +532,10 @@ class CalibrateFY3B(object):
                         elif i == 4:
                             data = m1000.get('EV_250_Aggr.1KM_Emissive')[:]
                         else:
-                            i = i - 4
+                            i = i - 5
                             data = self.ev_1000m_ref[i]
                         dtype = 'u2'
-                        self._create_dataset(name, data, dtype, out_hdf5)
+                        self._create_dataset(name, data, dtype, hdf5)
 
                         name = '{}/SV'.format(channel_name)
                         if i < 4:
@@ -294,7 +546,7 @@ class CalibrateFY3B(object):
                             i = i - 1
                             data = self.sv_extract_obc[i]
                         dtype = 'u2'
-                        self._create_dataset(name, data, dtype, out_hdf5)
+                        self._create_dataset(name, data, dtype, hdf5)
 
                         name = '{}/CalCoeff'.format(channel_name)
                         if i < 4:
@@ -305,128 +557,63 @@ class CalibrateFY3B(object):
                             i = i - 1
                             data = self.coeff[i].reshape(-1, 1)
                         dtype = 'f4'
-                        self._create_dataset(name, data, dtype, out_hdf5)
+                        self._create_dataset(name, data, dtype, hdf5)
 
                         name = '{}/BB'.format(channel_name)
                         data = m1000.get('BB_DN_average')[i].reshape(-1, 1)
                         dtype = 'f4'
-                        self._create_dataset(name, data, dtype, out_hdf5)
-
-                    # out_hdf5.create_dataset('EV_250_Aggr.1KM_RefSB', data=self.ev_250m_ref,
-                    #                         dtype='u2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('EV_1KM_RefSB', data=self.ev_1000m_ref, dtype='u2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('SV_1km', data=self.sv_extract_obc[0:4], dtype='u2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('SV_250m_REFL', data=self.sv_extract_obc[4:19],
-                    #                         dtype='u2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('RSB_Cal_Cor_Coeff', data=self.coeff, dtype='f4',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
+                        self._create_dataset(name, data, dtype, hdf5)
 
                     name = 'Height'
                     dtype = 'i2'
                     data = m1000.get('Height')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
 
                     name = 'LandCover'
                     dtype = 'u1'
                     data = m1000.get('LandCover')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
                     name = 'LandSeaMask'
                     dtype = 'u1'
                     data = m1000.get('LandSeaMask')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
 
                     name = 'Latitude'
                     dtype = 'f4'
                     data = m1000.get('Latitude')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
                     name = 'Longitude'
                     dtype = 'f4'
                     data = m1000.get('Longitude')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
 
                     name = 'SolarZenith'
                     dtype = 'i2'
                     data = m1000.get('SolarZenith')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
                     name = 'SolarAzimuth'
                     dtype = 'i2'
                     data = m1000.get('SolarAzimuth')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
                     name = 'SensorZenith'
                     dtype = 'i2'
                     data = m1000.get('SensorZenith')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
+                    self._create_dataset(name, data, dtype, hdf5)
                     name = 'SensorAzimuth'
                     dtype = 'i2'
                     data = m1000.get('SensorAzimuth')[:]
-                    self._create_dataset(name, data, dtype, out_hdf5)
-                    # out_hdf5.create_dataset('Height', data=m1000.get('Height')[:],
-                    #                         dtype='i2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('LandCover', data=m1000.get('LandCover')[:],
-                    #                         dtype='u1',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('LandSeaMask', data=m1000.get('LandSeaMask')[:],
-                    #                         dtype='u1',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('Latitude', data=m1000.get('Latitude')[:], dtype='f4',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('Longitude', data=m1000.get('Longitude')[:],
-                    #                         dtype='f4',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('SolarZenith', data=m1000.get('SolarZenith')[:],
-                    #                         dtype='i2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('SolarAzimuth', data=m1000.get('SolarAzimuth')[:],
-                    #                         dtype='i2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('SensorZenith', data=m1000.get('SensorZenith')[:],
-                    #                         dtype='i2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
-                    # out_hdf5.create_dataset('SensorAzimuth', data=m1000.get('SensorAzimuth')[:],
-                    #                         dtype='i2',
-                    #                         compression='gzip', compression_opts=5, shuffle=True)
+                    self._create_dataset(name, data, dtype, hdf5)
 
-                    # coeff_attrs = {
-                    #     'Intercept': [0.0],
-                    #     'Slope': [1.0],
-                    #     '_FillValue': [-9999.0],
-                    #     'band_name':
-                    #         "Calibration Model:Slope=k0+k1*DSL+k2*DSL*DSL;RefFacor=Slope*("
-                    #         "EV-SV);Ref=RefFacor*d*d/100/cos(SolZ)",
-                    #     'long_name':
-                    #         "Calibration Updating Model Coefficients for 19 Reflective Solar "
-                    #         "Bands (1-4, 6-20)",
-                    #     'units':
-                    #         'NO',
-                    #     'valid_range': [0.0, 1.0],
-                    # }
-                    #
-                    # 复制原来每个 dataset 的属性
-                    # for dataset_name in dataset_m1000:
-                    #     if dataset_name == "RSB_Cal_Cor_Coeff":
-                    #         continue
-                    #     else:
-                    #         for k, v in m1000.get(dataset_name).attrs.items():
-                    #             out_hdf5.get(dataset_name).attrs[k] = v
-                    # for dataset_name in dataset_obc:
-                    #     if dataset_name == "RSB_Cal_Cor_Coeff":
-                    #         continue
-                    #     else:
-                    #         for k, v in obc.get(dataset_name).attrs.items():
-                    #             out_hdf5.get(dataset_name).attrs[k] = v
-                    # for k, v in coeff_attrs.items():
-                    #     out_hdf5.get("RSB_Cal_Cor_Coeff").attrs[k] = v
+                    name = 'Times'
+                    dtype = 'i4'
+                    data = self.Time
+                    self._create_dataset(name, data, dtype, hdf5)
 
                     # 复制文件属性
-                    pb_io.copy_attrs_h5py(m1000, out_hdf5)
+                    pb_io.copy_attrs_h5py(m1000, hdf5)
 
                     # 添加文件属性
-                    out_hdf5.attrs['dsl'] = self.dsl
+                    hdf5.attrs['dsl'] = self.dsl
 
 
 def dataset_extract(dataset, probe_count, probe_id, slide_step=10):
@@ -452,3 +639,57 @@ def dataset_extract(dataset, probe_count, probe_id, slide_step=10):
     # 对浮点数据数据进行四舍五入
     dataset_new = np.rint(dataset_avg)
     return dataset_new
+
+
+def get_files_by_ymd(dir_path, ymd_start, ymd_end, ext=None, pattern_ymd=None):
+    """
+    :param dir_path: 文件夹
+    :param ymd_start: 开始时间
+    :param ymd_end: 结束时间
+    :param ext: 后缀名
+    :param pattern_ymd: 匹配时间的模式
+    :return: list
+    """
+    files_found = []
+    if pattern_ymd is not None:
+        pattern = pattern_ymd
+    else:
+        pattern = r".*(\d{8})"
+
+    for root, dirs, files in os.walk(dir_path):
+        for file_name in files:
+            if ext is not None:
+                if os.path.splitext(file_name)[1].lower() != ext:
+                    continue
+            re_result = re.match(pattern, file_name)
+            if re_result is not None:
+                ymd_file = re_result.groups()[0]
+            else:
+                continue
+            if int(ymd_start) <= int(ymd_file) <= int(ymd_end):
+                files_found.append(os.path.join(root, file_name))
+    return files_found
+
+
+if __name__ == '__main__':
+    # file_name = 'FY3B_MERSI_GBAL_L1_20170101_0045_1000M_MS.HDF'
+    # Time = np.full((2000, 2048), -999.)
+    # nameClass = pb_name.nameClassManager()
+    # info = nameClass.getInstance(file_name)
+    # secs = int((info.dt_s - datetime(1970, 1, 1, 0, 0, 0)).total_seconds())
+    # Time[:] = secs
+    # print Time
+    # if not self.Time:
+    #     self.Time = Time
+    # else:
+    #     self.Time = np.concatenate((self.Time, Time))
+
+    # in_file = r'E:\projects\oc_data\FY3D_MERSI_GBAL_L1_20180101_0000_1000M_MS.HDF'
+    # geo_file = r'E:\projects\oc_data\FY3D_MERSI_GBAL_L1_20180101_0000_GEO1K_MS.HDF'
+    # out_file = r'E:\projects\oc_data\FY3D_MERSI_GBAL_L1_20180101_0000_1000M_MS_Calibration.HDF'
+    #
+    # calibration = CalibrateFY3D()
+    # calibration.calibrate(in_file, geo_file)
+    # calibration.write(out_file)
+
+    pass
