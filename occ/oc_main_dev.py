@@ -3,6 +3,7 @@
 from datetime import datetime
 from multiprocessing import Pool, Lock
 from time import ctime
+import calendar
 import getopt
 import os
 import re
@@ -23,10 +24,11 @@ __description__ = u'交叉主调度处理的函数'
 __author__ = 'wangpeng'
 __date__ = '2018-05-30'
 __version__ = '1.0.0_beat'
-__updated__ = '2018-07-09'
+__updated__ = '2018-07-11'
 
 
-python = 'python2.7  -W ignore'
+# python = 'python2.7  -W ignore'
+python = 'python2.7'
 mpi_run = 'mpirun'
 mpi_main = 'mpi_main.py'
 np = 56
@@ -139,8 +141,7 @@ def main():
             # 根据命令行输入的作业id获取函数模块名字
             job_mode = cfg_body['BAND_JOB_MODE'][job_id_name]
             job_mode = os.path.join(main_path, job_mode)
-
-            print '111', job_id_name, job_mode
+            print job_id_name, job_mode
             # 多个时间段 依次处理
             for date_s, date_e in date_list:
                 # 获取作业需要的参数列表
@@ -154,7 +155,7 @@ def job_0110(job_exe, sat_pair, date_s, date_e, job_id):
     """
     ncep处理的输入接口
     """
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s ncep处理开始...' % job_id)
 
     in_path = cfg_body['PATH']['IN']['ncep']
     reg = 'fnl_%s_.*'
@@ -176,7 +177,7 @@ def job_0210(job_exe, sat_pair, date_s, date_e, job_id):
     """
     L1数据预处理的输入接口
     """
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s L1数据预处理开始...' % job_id)
 
     in_path = cfg_body['PATH']['IN']['l1']
     reg = 'FY3[A-Z]_MERSI_GBAL_L1_%s_(\d{4})_1000M_MS.HDF'
@@ -198,7 +199,7 @@ def job_0310(job_exe, sat_pair, date_s, date_e, job_id):
     '''
     :反演
     '''
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s 反演处理开始...' % job_id)
     cfg = 'aerosol.cfg'
 
     # 去掉路径信息
@@ -226,7 +227,7 @@ def job_0410(job_exe, sat_pair, date_s, date_e, job_id):
     '''
     :反演后的快视图
     '''
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s 反演轨道产品快视图处理开始...' % job_id)
 
     in_path = cfg_body['PATH']['MID']['granule']
     reg = 'FY3[A-Z]_MERSI_ORBT_L2_\w{3}_MLT_NUL_%s_(\d{4})_1000M.HDF'
@@ -249,7 +250,7 @@ def job_0510(job_exe, sat_pair, date_s, date_e, job_id):
     '''
     :投影
     '''
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s 投影处理开始...' % job_id)
     return job_0410(job_exe, sat_pair, date_s, date_e, job_id)
 
 
@@ -257,7 +258,7 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
     '''
     :日合成
     '''
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s 日合成处理开始...' % job_id)
     granule_path = cfg_body['PATH']['MID']['granule']
     proj_path = cfg_body['PATH']['MID']['projection']
     cfg_path = cfg_body['PATH']['MID']['incfg']
@@ -277,7 +278,7 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
         com_out_file = os.path.join(daily_path_use, com_filename)
 
         granule_path_use = pb_io.path_replace_ymd(granule_path, ymd)
-        reg = 'FY3[A-Z]_MERSI_ORBT_L2_OCC_MLT_NUL_%s_(\d{4})_1000M.HDF' % ymd
+        reg = 'FY3[A-Z]_MERSI_ORBT_L2_\w{3}_MLT_NUL_%s_(\d{4})_1000M.HDF' % ymd
         granule_lst = pb_io.find_file(granule_path_use, reg)
 
         reg = 'FY3[A-Z]_MERSI_ORBT_L2_\w{3}_MLT_NUL_%s_(\d{4})_5000M.HDF' % ymd
@@ -300,11 +301,37 @@ def job_0610(job_exe, sat_pair, date_s, date_e, job_id):
     return arg_list
 
 
+def job_0611(job_exe, sat_pair, date_s, date_e, job_id):
+    '''
+    :合成后文件绘图
+    '''
+    Log.info(u'job: %s 日合成出图处理开始...' % job_id)
+
+    daily_path = cfg_body['PATH']['OUT']['daily']
+    FileLst = []
+    arg_list = []
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+        timeStep = relativedelta(days=1)
+        daily_path_use = pb_io.path_replace_ymd(daily_path, ymd)
+        com_filename = '%s_%s_GBAL_L3_OCC_MLT_GLL_%s_AOAD_5000M.HDF' % (
+            cfg_body['PATH']['sat'], cfg_body['PATH']['sensor'], ymd)
+#         'FY3[A-Z]_MERSI_GBAL_L3_\w{3}_MLT_GLL_%s_(\d{4})_AOAD_5000M.HDF' % ymd
+        FileLst.append(os.path.join(daily_path_use, com_filename))
+        date_s = date_s + timeStep
+
+    for in_file in FileLst:
+        cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
+        arg_list.append(cmd_list)
+
+    return arg_list
+
+
 def job_0710(job_exe, sat_pair, date_s, date_e, job_id):
     '''
     :月合成
     '''
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s 月合成处理开始...' % job_id)
     cfg_path = cfg_body['PATH']['MID']['incfg']
     daily_path = cfg_body['PATH']['OUT']['daily']
     month_path = cfg_body['PATH']['OUT']['monthly']
@@ -337,7 +364,7 @@ def job_0710(job_exe, sat_pair, date_s, date_e, job_id):
         daily_path_use = pb_io.path_replace_ymd(daily_path, ymd)
         data_list_use = pb_io.find_file(daily_path_use, reg)
 
-        if len(granule_pro_lst) > 0:
+        if len(data_list_use) > 0:
             com_dict = {
                 'PATH': {'ipath': data_list_use, 'opath': com_out_file}}
             cfgFile = os.path.join(cfg_path, '%s.yaml' % ymd)
@@ -353,22 +380,31 @@ def job_0710(job_exe, sat_pair, date_s, date_e, job_id):
     return arg_list
 
 
-def job_0810(job_exe, sat_pair, date_s, date_e, job_id):
+def job_0711(job_exe, sat_pair, date_s, date_e, job_id):
     '''
-    :合成后文件绘图
+    :月成后文件绘图
     '''
-    Log.info(u'get arg list from %s' % job_id)
+    Log.info(u'job: %s 月合成出图处理开始...' % job_id)
 
     daily_path = cfg_body['PATH']['OUT']['daily']
     FileLst = []
+    arg_list = []
+
+    # 月首和月末 调整
+    ymd1 = date_s.strftime('%Y%m%d')
+    ymd2 = date_e.strftime('%Y%m%d')
+    lastday = calendar.monthrange(int(ymd2[:4]), int(ymd2[4:6]))[1]
+    date_s = datetime.strptime('%s01' % ymd1[0:6], '%Y%m%d')
+    date_e = datetime.strptime('%s%d' % (ymd2[0:6], lastday), '%Y%m%d')
+
     while date_s <= date_e:
         ymd = date_s.strftime('%Y%m%d')
-        timeStep = relativedelta(days=1)
         daily_path_use = pb_io.path_replace_ymd(daily_path, ymd)
-        com_filename = '%s_%s_GBAL_L3_\w{3}_MLT_GLL_%s_AOAD_5000M.HDF' % (
+        com_filename = '%s_%s_GBAL_L3_OCC_MLT_GLL_%s_AOAM_5000M.HDF' % (
             cfg_body['PATH']['sat'], cfg_body['PATH']['sensor'], ymd)
+#         'FY3[A-Z]_MERSI_GBAL_L3_\w{3}_MLT_GLL_%s_(\d{4})_AOAD_5000M.HDF' % ymd
         FileLst.append(os.path.join(daily_path_use, com_filename))
-        date_s = date_s + timeStep
+        date_s = date_s + relativedelta(months=1)
 
     for in_file in FileLst:
         cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
@@ -386,7 +422,6 @@ def run_command_parallel(arg_list):
 
     cmd = '%s -np %d -machinefile hostfile %s %s' % (
         mpi_run, np, python, mpi_main)
-    print cmd
     os.system(cmd)
 
 
@@ -430,50 +465,5 @@ def command(args_cmd):
     P1.wait()
 
 
-def get_arglist_job01_04(job_exe, sat_pair, date_s, date_e, job_id):
-
-    arg_list = []
-    while date_s <= date_e:
-        ymd = date_s.strftime('%Y%m%d')
-        cfg_path = os.path.join(
-            JOBCFG_DIR, sat_pair, job_id, ymd)
-
-        if not os.path.isdir(cfg_path):
-            Log.error(u'not found %s ' % (cfg_path))
-            date_s = date_s + relativedelta(days=1)
-            continue
-
-        Lst = sorted(os.listdir(cfg_path), reverse=False)
-
-        for Line in Lst:
-            yaml_file = os.path.join(cfg_path, Line)
-            cmd_list = '%s %s %s' % (python, job_exe, yaml_file)
-            arg_list.append(cmd_list)
-
-        date_s = date_s + relativedelta(days=1)
-
-    return arg_list
-
-
-def create_hostfile(mode=0):
-
-    hostfile = 'hostfile'
-    if mode == 0:
-        # 预处理由于网盘原因暂时用主控开并行
-        hostname = ['cluster973\n'] * 10
-        fp = open(hostfile, 'w')
-        fp.writelines(hostname)
-        fp.close()
-    elif mode == 1:
-        hostname = ['compute-0-0\n', 'compute-0-1\n', 'compute-0-2\n', 'compute-0-3\n',
-                    'compute-0-4\n', 'compute-0-5\n', 'compute-0-6\n', 'compute-0-7\n'] * 7
-        fp = open(hostfile, 'w')
-        fp.writelines(hostname)
-        fp.close()
-
-    npnums = len(hostname)
-    return npnums
-
 if __name__ == '__main__':
-    #     create_hostfile(1)
     main()
