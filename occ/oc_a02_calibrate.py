@@ -162,9 +162,9 @@ def main(sat_sensor, in_file):
         out_file = os.path.join(out_path, _name)
 
         # 如果输出文件已经存在，跳过预处理
-        # if os.path.isfile(out_file):
-        #     print "File is already exist, skip it: {}".format(out_file)
-        #     return
+        if os.path.isfile(out_file):
+            print "File is already exist, skip it: {}".format(out_file)
+            return
 
         # 初始化一个预处理实例
         calibrate = CalibrateFY3D()
