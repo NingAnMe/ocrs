@@ -1,0 +1,159 @@
+
+# FY传感器和国外传感器名称
+sensor1: MERSI
+sensor2: MODIS
+
+# chan1的通道序号 CH_01 对应mersi的1通道 依此类推
+# chan2的通道序号 CH_01 对应modis的1通道 依此类推
+chan1: [CH_01,CH_02,CH_03,CH_04,CH_06,CH_07,CH_08,CH_09,CH_10,CH_11,CH_12,CH_14,CH_15,CH_16,CH_17,CH_18,CH_20]
+chan2: [CH_03,CH_04,CH_01,CH_02,CH_06,CH_07,CH_08,CH_09,CH_10,CH_12,CH_13,CH_15,CH_16,CH_17,CH_18,CH_19,CH_20]
+
+# 窗口大小 Fov 和 Env ,只能是奇数,针对所有通道（DN REF/TBB/RAD）Mean std
+FovWind1: [7, 7]
+EnvWind1: [9, 9]
+FovWind2: [7, 7]
+EnvWind2: [9, 9]
+
+rewrite: ON  # ON覆盖  OFF 关闭H5文件输出
+drawmap: OFF  # ON绘图  OFF 关闭绘图
+# 绘图内容与坐标轴范围,如果自动范围开启ON 则xy轴坐标范围失效，关闭OFF则生效
+AutoRange: OFF
+axis_ref: {CH_01:[0,1],CH_02:[0,1],CH_03:[0,1],CH_04:[0,1],CH_05:[0,0.8],CH_06:[0,0.8],CH_07:[0,0.8],CH_08:[0,0.3],CH_09:[0,0.3],CH_10:[0,0.3],CH_11:[0,0.3],CH_12:[0,0.3],CH_14:[0,0.3],CH_15:[0,0.3],CH_16:[0,0.9],CH_17:[0,0.9],CH_18:[0,0.9]}
+axis_rad: {CH_20:[0,1.5],CH_21:[0,2.6],CH_22:[0,26],CH_23:[1,70],CH_24:[5,120],CH_25:[8,130]}
+axis_tbb: {CH_20:[200,320],CH_21:[200,320],CH_22:[180,280],CH_23:[180,300],CH_24:[180,300],CH_25:[180,300]}
+
+# 全局阈值
+solglint_min : 40   # 太阳耀斑角阈值，保留大于的
+solzenith_max : 75  # 太阳天顶角阈值，保留小于的
+satzenith_max : 35 # 卫星观测角阈值，保留小于的
+timedif_max : 600   # 时间阈值，单位秒
+distdif_max : 1     # 距离阈值，单位 km
+angledif_max : 0.03 # 角度阈值，暂时先粗选，每个通道在精细化选择
+
+# 通道阈值 分别针对红外和可见通道生效 vis可见  ir红外 max最大值  min最小值
+clear_band_vis: CH_01          # 云和晴空判识使用的通道
+clear_max_vis: 0               # 晴空判识的最大值，0则关闭
+clear_band_ir: CH_24           # 云和晴空判识使用的通道
+clear_min_ir: 210               # 晴空判识的最小值，0则关闭
+
+# 对应各个通道阈值 ,根据FY通道顺序书写
+#######################################可见##########################################
+#######################################可见##########################################
+CH_01:
+  value_max: 0.99               # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.03         # 靶区均匀性
+  homodif_env_max: 0.03         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_02:
+  value_max: 0.99                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.03         # 靶区均匀性
+  homodif_env_max: 0.03         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_03:
+  value_max: 0.99                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.03         # 靶区均匀性
+  homodif_env_max: 0.03         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_04:
+  value_max: 0.7                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.03         # 靶区均匀性
+  homodif_env_max: 0.03         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+
+CH_05:
+  value_max : 0.9
+  angledif_max: 0.01             # 角度均匀性
+  homodif_fov_max : 0.05         # 靶区均匀性
+  homodif_env_max : 0.05         # 环境均匀性
+  homodif_fov_env_max : 0.05     # 靶区/环境 均匀性
+  
+CH_06:
+  value_max : 0.9
+  angledif_max: 0.01             # 角度均匀性
+  homodif_fov_max : 0.05         # 靶区均匀性
+  homodif_env_max : 0.05         # 环境均匀性
+  homodif_fov_env_max : 0.05     # 靶区/环境 均匀性
+  
+CH_07:
+  value_max : 0.9
+  angledif_max: 0.01             # 角度均匀性
+  homodif_fov_max : 0.05         # 靶区均匀性
+  homodif_env_max : 0.05         # 环境均匀性
+  homodif_fov_env_max : 0.05     # 靶区/环境 均匀性
+  
+CH_08:
+  value_max: 0.4                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.02         # 靶区均匀性
+  homodif_env_max: 0.02         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+    
+CH_09:
+  value_max: 0.4                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.02         # 靶区均匀性
+  homodif_env_max: 0.02         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_10:
+  value_max: 0.18               # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.02         # 靶区均匀性
+  homodif_env_max: 0.02         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+    
+CH_11:
+  value_max: 0.12               # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.02         # 靶区均匀性
+  homodif_env_max: 0.02         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_12:
+  value_max: 0.07               # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.04         # 靶区均匀性
+  homodif_env_max: 0.04         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_14:
+  value_max: 0.065              # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.04         # 靶区均匀性
+  homodif_env_max: 0.04         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_15:
+  value_max: 0.062              # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.04         # 靶区均匀性
+  homodif_env_max: 0.04         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_16:
+  value_max: 0.5                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.03         # 靶区均匀性
+  homodif_env_max: 0.03         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_17:
+  value_max: 0.9                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.025         # 靶区均匀性
+  homodif_env_max: 0.025         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
+  
+CH_18:
+  value_max: 0.7                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  angledif_max: 0.01            # 角度均匀性
+  homodif_fov_max: 0.025         # 靶区均匀性
+  homodif_env_max: 0.025         # 环境均匀性
+  homodif_fov_env_max: 0.02     # 靶区/环境 均匀性
