@@ -115,8 +115,13 @@ class ReadHDF5(object):
                 data = data[i]
         return data
 
-    # TODO
-    read
+    # TODO 添加读取属性的方法
+    def read_file_attr(self):
+        pass
+
+    def read_dataset_attr(self):
+        pass
+
 
 if __name__ == '__main__':
     test_file = r'E:\projects\oc_data\FY3B+MERSI_AQUA+MODIS_MATCHEDPOINTS_20130119213330.H5'
