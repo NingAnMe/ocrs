@@ -110,7 +110,7 @@ def main(sat_sensor, in_file):
                     plot_map["log10"] = True
 
                 with time_block("Draw combine time:", switch=TIME_TEST):
-                    plot_map_global = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+                    plot_map_global = PlotMapL3(in_file, dataset_name, pic_name, map_=plot_map)
                     plot_map_global.draw_combine()
 
                 if not plot_map_global.error:
@@ -136,7 +136,7 @@ def main(sat_sensor, in_file):
                 plot_map["lat_lon_line"] = lat_lon_line
 
                 with time_block("Draw combine time:", switch=TIME_TEST):
-                    plot_map_china = PlotMapL3(in_file, dataset_name, pic_name, plot_map=plot_map)
+                    plot_map_china = PlotMapL3(in_file, dataset_name, pic_name, map_=plot_map)
                     plot_map_china.draw_combine()
 
                 if not plot_map_china.error:
