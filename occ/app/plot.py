@@ -8,16 +8,22 @@ import os
 
 import h5py
 import numpy as np
-
-from PB import pb_io
-from PB.pb_time import time_block
+from DV import dv_map
 from DV import dv_map_oc
 from DV.dv_img import dv_rgb
+from DV.dv_plot import plt, FONT0, Histogram, TimeSeries, Scatter
 from DV.dv_pub_3d import plt
-
+from PB import pb_io
+from PB.pb_io import make_sure_path_exists
+from PB.pb_time import time_block
 
 DEBUG = False
 TIME_TEST = False
+
+RED = '#f63240'
+BLUE = '#1c56fb'
+GRAY = '#c0c0c0'
+EDGE_GRAY = '#303030'
 
 
 class RGB(object):
@@ -296,12 +302,12 @@ class PlotMapL3(object):
     绘制 L3 产品的全球投影绘图
     """
 
-    def __init__(self, in_file, dataset_name, out_file, plot_map=None):
+    def __init__(self, in_file, dataset_name, out_file, map_=None):
         self.error = False
         self.in_file = in_file
         self.dataset_name = dataset_name
         self.out_file = out_file
-        self.map = plot_map
+        self.map = map_
 
     def draw_combine(self):
         """
@@ -410,3 +416,218 @@ class PlotMapL3(object):
             # p.easyplot(lats, lons, value, ptype="pcolormesh", vmin=vmin, vmax=vmax, box=box)
             pb_io.make_sure_path_exists(os.path.dirname(self.out_file))
             p.savefig(self.out_file, dpi=300)
+
+
+def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
+                 x_range=None, y_range=None, x_label=None, y_label=None, annotate=None,
+                 ymd_start=None, ymd_end=None, ymd=None,
+                 ):
+    main_path = os.path.dirname(os.path.dirname(__file__))
+    style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
+    plt.style.use(style_file)
+    fig = plt.figure(figsize=(6, 4))
+    # fig.subplots_adjust(top=0.88, bottom=0.11, left=0.12, right=0.97)
+
+    ax1 = plt.subplot2grid((1, 1), (0, 0))
+
+    ax = Scatter(ax1)
+    if x_range:
+        ax.set_x_axis_range(x_range[0], x_range[1])
+    if y_range:
+        ax.set_y_axis_range(y_range[0], y_range[1])
+
+    if x_label:
+        ax.set_x_label(x_label)
+    if y_label:
+        ax.set_y_label(y_label)
+
+    if annotate:
+        ax.set_annotate(annotate=annotate)
+
+    size = 1
+    alpha = 0.8  # 透明度
+    marker = "o"  # 形状
+    color = "b"  # 颜色
+    ax.set_scatter(size=size, alpha=alpha, marker=marker, color=color)
+
+    ax.plot_scatter(data_x=data_x, data_y=data_y)
+
+    # --------------------
+    plt.tight_layout()
+    fig.suptitle(title, fontsize=11, fontproperties=FONT0)
+    fig.subplots_adjust(bottom=0.2, top=0.88)
+
+    if ymd_start and ymd_end:
+        fig.text(0.50, 0.02, '%s-%s' % (ymd_start, ymd_end), fontproperties=FONT0)
+    elif ymd:
+        fig.text(0.50, 0.02, '%s' % ymd, fontproperties=FONT0)
+
+    fig.text(0.8, 0.02, 'OCC', fontproperties=FONT0)
+    # ---------------
+    make_sure_path_exists(os.path.dirname(out_file))
+    fig.savefig(out_file)
+    fig.clear()
+    plt.close()
+    print '>>> {}'.format(out_file)
+
+
+def plot_map(lat=None, lon=None, data=None, out_file=None,
+             vmin=None, vmax=None, title=None):
+    if title:
+        title = title
+    else:
+        title = "Map"
+
+    if vmin:
+        vmin = vmin
+    else:
+        vmin = np.min(data)
+
+    if vmax:
+        vmax = vmax
+    else:
+        vmax = np.max(data)
+
+    p = dv_map.dv_map()
+    p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
+               ptype=None, markersize=0.05, marker='s')
+    p.title = title
+    make_sure_path_exists(os.path.dirname(out_file))
+    p.savefig(out_file)
+    print '>>> {}'.format(out_file)
+
+
+def plot_histogram(data=None, out_file=None,
+                   title=None, x_label=None, y_label=None,
+                   bins_count=200, x_range=None, hist_label=None,
+                   annotate=None, ymd_start=None, ymd_end=None):
+    """
+    :param ymd_end:
+    :param ymd_start:
+    :param out_file: str
+    :param data: np.ndarray
+    :param title: str
+    :param x_label: str
+    :param y_label: str
+    :param bins_count: int
+    :param x_range: (int or float, int or float)
+    :param hist_label: str
+    :param annotate:
+    :return:
+    """
+    main_path = os.path.dirname(os.path.dirname(__file__))
+    style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
+    plt.style.use(style_file)
+    fig = plt.figure(figsize=(6, 4))
+    # fig.subplots_adjust(top=0.88, bottom=0.11, left=0.12, right=0.97)
+
+    ax1 = plt.subplot2grid((1, 1), (0, 0))
+
+    ax = Histogram(ax1)
+
+    if x_range:
+        ax.set_x_axis_range(x_range[0], x_range[1])
+
+    if x_label:
+        ax.set_x_label(x_label)
+    if y_label:
+        ax.set_y_label(y_label)
+
+    if annotate:
+        ax.set_annotate(annotate=annotate)
+
+    ax.set_histogram(bins_count=bins_count)
+
+    if hist_label:
+        ax.set_histogram(label=hist_label)
+
+    ax.plot_histogram(data)
+
+    # --------------------
+    plt.tight_layout()
+    fig.suptitle(title, fontsize=11, fontproperties=FONT0)
+    fig.subplots_adjust(bottom=0.2, top=0.88)
+
+    fig.text(0.50, 0.02, '{}-{}'.format(ymd_start, ymd_end), fontproperties=FONT0)
+    fig.text(0.80, 0.02, 'OCC', fontproperties=FONT0)
+    # ---------------
+    make_sure_path_exists(os.path.dirname(out_file))
+    plt.savefig(out_file)
+    fig.clear()
+    plt.close()
+    print '>>> {}'.format(out_file)
+
+
+def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
+                     month_data_y=None, out_file=None, title=None,
+                     month_data_y_std=None, x_range=None, y_range=None,
+                     y_label=None, y_major_count=None, y_minor_count=None,
+                     ymd_start=None, ymd_end=None, ymd=None):
+    main_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    style_file = os.path.join(main_path, "cfg", 'time_series.mplstyle')
+    plt.style.use(style_file)
+    fig = plt.figure(figsize=(6, 4))
+    ax1 = plt.subplot2grid((1, 1), (0, 0))
+
+    ax = TimeSeries(ax1)
+
+    # 配置属性
+    if x_range is None:
+        x_range = [np.min(day_data_x), np.max(day_data_x)]
+    ax.set_x_axis_range(axis_min=x_range[0], axis_max=x_range[1])
+    if y_range is not None:
+        ax.set_y_axis_range(axis_min=y_range[0], axis_max=y_range[1])
+    if y_label is not None:
+        ax.set_y_label(y_label)
+    if y_major_count is not None:
+        ax.set_y_major_count(y_major_count)
+    if y_minor_count is not None:
+        ax.set_y_minor_count(y_minor_count)
+
+    # 绘制日数据长时间序列
+    ax.set_time_series(maker='o', color=BLUE, line_width=None, marker_size=3,
+                       marker_facecolor=None,
+                       marker_edgecolor=BLUE, marker_edgewidth=0.3, alpha=0.8,
+                       label="Daily"
+                       )
+    ax.plot_time_series(day_data_x, day_data_y)
+    # 绘制月数据长时间序列
+    if month_data_x and month_data_y:
+        ax.set_time_series(maker='o-', color=RED, line_width=0.6, marker_size=3,
+                           marker_facecolor=None,
+                           marker_edgecolor=RED, marker_edgewidth=0, alpha=0.8,
+                           label="Monthly")
+        ax.plot_time_series(month_data_x, month_data_y)
+
+    # 绘制背景填充
+    if month_data_y_std and month_data_x and month_data_y and month_data_y_std:
+        ax.set_background_fill(x=month_data_x,
+                               y1=month_data_y - month_data_y_std,
+                               y2=month_data_y + month_data_y_std,
+                               color=RED,
+                               alpha=0.1,
+                               )
+        ax.plot_background_fill()
+    # 绘制 y=0 线配置，在绘制之间设置x轴范围
+    ax.plot_zero_line()
+
+    # 格式化 ax
+    ax.set_ax()
+
+    # --------------------
+    plt.tight_layout()
+    fig.suptitle(title, fontsize=11, fontproperties=FONT0)
+    fig.subplots_adjust(bottom=0.2, top=0.88)
+
+    if ymd_start and ymd_end:
+        fig.text(0.50, 0.02, '%s-%s' % (ymd_start, ymd_end), fontproperties=FONT0)
+    elif ymd:
+        fig.text(0.50, 0.02, '%s' % ymd, fontproperties=FONT0)
+
+    fig.text(0.8, 0.02, 'OCC', fontproperties=FONT0)
+    # ---------------
+    make_sure_path_exists(os.path.dirname(out_file))
+    fig.savefig(out_file)
+    fig.clear()
+    plt.close()
+    print '>>> {}'.format(out_file)

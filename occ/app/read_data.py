@@ -9,13 +9,6 @@ import os
 import h5py
 import numpy as np
 
-from PB import pb_io
-from PB.pb_time import time_block
-from DV import dv_map_oc
-from DV.dv_img import dv_rgb
-from DV.dv_pub_3d import plt
-
-
 DEBUG = True
 TIME_TEST = False
 
@@ -28,6 +21,7 @@ class ReadHDF5(object):
     read_group()
     read_datasets()
     """
+
     def __init__(self, in_file):
         self.file_path = in_file
         self.dir_path = os.path.dirname(in_file)
@@ -80,6 +74,7 @@ class ReadHDF5(object):
         """
         with h5py.File(self.file_path, 'r') as hdf5_file:
             for dataset in datasets:
+                print dataset
                 hdf5_dataset = hdf5_file[dataset]
                 self.read_dataset(hdf5_dataset)
 
@@ -123,16 +118,60 @@ class ReadHDF5(object):
         pass
 
 
+class ReadCrossData(object):
+    """
+    读取交叉匹配数据
+    """
+
+    def __init__(self):
+        self.ymd = None
+        self.hm = None
+
+        self.data = dict()
+        self.file_attr = dict()
+        self.data_attr = dict()
+
+    def read_cross_data(self, in_files):
+
+        for in_file in in_files:
+            read_hdf5 = ReadHDF5(in_file)
+            read_hdf5.read_hdf5()
+            if not self.data:
+                self.data = read_hdf5.data
+            else:
+                self.concatenate(read_hdf5.data, axis=0)
+
+    def concatenate(self, data, axis=None):
+        """
+        仅支持2层数据
+        :param axis:
+        :param data:
+        :return:
+        """
+        for key in self.data:
+            if isinstance(self.data[key], dict):
+                for key_two in self.data[key]:
+                    self.data[key][key_two] = np.concatenate(
+                        (self.data[key][key_two], data[key][key_two]), axis=axis)
+            else:
+                self.data[key] = np.concatenate(
+                    (self.data[key], data[key]), axis=axis)
+
+
 if __name__ == '__main__':
     test_file = r'E:\projects\oc_data\FY3B+MERSI_AQUA+MODIS_MATCHEDPOINTS_20130119213330.H5'
-    read_hdf5 = ReadHDF5(test_file)
-    read_hdf5.read_hdf5()
-    keys = read_hdf5.data.keys()
-    keys.sort()
+    # read_hdf5 = ReadHDF5(test_file)
+    # read_hdf5.read_hdf5()
+    # keys = read_hdf5.data.keys()
+    # keys.sort()
+    #
+    # read_hdf5 = ReadHDF5(test_file)
+    # read_hdf5.read_hdf5(datasets=[u'/CH_01/S1_FovRefMean'], groups=[u'CH_01'])
+    # keys = read_hdf5.data.keys()
+    # keys.sort()
+    # print keys
+    # print read_hdf5.data
 
-    read_hdf5 = ReadHDF5(test_file)
-    read_hdf5.read_hdf5(datasets=[u'/CH_01/S1_FovRefMean'], groups=[u'CH_01'])
-    keys = read_hdf5.data.keys()
-    keys.sort()
-    print keys
-    print read_hdf5.data
+    read_cross_data = ReadCrossData()
+    read_cross_data.read_cross_data(in_files=[test_file, test_file])
+    print read_cross_data.data
