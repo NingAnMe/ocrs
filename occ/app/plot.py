@@ -489,6 +489,7 @@ def plot_map(lat=None, lon=None, data=None, out_file=None,
         vmax = np.max(data)
 
     p = dv_map.dv_map()
+    p.colorbar_fmt = '%0.2f'
     p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
                ptype=None, markersize=0.05, marker='s')
     p.title = title
