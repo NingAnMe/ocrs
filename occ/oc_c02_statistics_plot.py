@@ -12,8 +12,8 @@ from PB.pb_io import Config
 from PB.pb_time import time_block
 from app.bias import Bias
 from app.config import InitApp
-from app.read_data import ReadCrossData
 from app.plot import plot_map, plot_histogram, plot_scatter
+from app.read_data import ReadCrossData
 
 TIME_TEST = False  # 时间测试
 RED = '#f63240'
@@ -142,9 +142,9 @@ if __name__ == "__main__":
             main(SAT_SENSOR, FILE_PATH)
     else:
         print HELP_INFO
-        sys.exit(-1)
+#         sys.exit(-1)
 
-######################### TEST ##############################
-if __name__ == '__main__':
-    yaml_file = r'E:\projects\oc_data\20130103154613_MERSI_MODIS.yaml'
-    main('FY3B+MERSI', yaml_file)
+# ######################### TEST ##############################
+# if __name__ == '__main__':
+#     yaml_file = r'E:\projects\oc_data\20130103154613_MERSI_MODIS.yaml'
+#     main('FY3B+MERSI', yaml_file)
