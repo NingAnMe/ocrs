@@ -21,7 +21,7 @@ time_list="00 06 12 18"
 
 while :
 do
-    ncep_dir=/aerosol/CMA_AEROSOL/IDATA/NcepData/${stime:0:4}/${stime:0:6}
+    ncep_dir=/aerosol/IDATA/NcepData/${stime:0:4}/${stime:0:6}
     if [ ! -d $ncep_dir ];then
         mkdir -p $ncep_dir
     fi

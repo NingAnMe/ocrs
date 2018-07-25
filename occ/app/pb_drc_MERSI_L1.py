@@ -54,6 +54,7 @@ class CLASS_MERSI_L1():
 
     def Load(self, L1File):
         # 读取L1文件 FY3B MERSI
+        print (u'读取 L1 %s' % L1File)
         try:
             h5File_R = h5py.File(L1File, 'r')
             ary_lon = h5File_R.get('/Longitude')[:]
@@ -69,9 +70,8 @@ class CLASS_MERSI_L1():
             for key in h5File_R.keys():
                 pre_rootgrp = h5File_R.get(key)  # 获取根下名字
                 if type(pre_rootgrp).__name__ == "Group":
-                    print key
                     ary_ref = h5File_R.get('/%s/Ref' % key)[:]
-                    print ary_ref
+                    self.Ref[key] = ary_ref / 10000.
 
         except Exception as e:
             print str(e)
@@ -80,7 +80,14 @@ class CLASS_MERSI_L1():
             h5File_R.close()
 
         # 数据大小 使用经度维度 ###############
+
+        for key in self.Ref.keys():
+            idx = np.where(np.isclose(self.Ref[key], 0.))
+            self.Ref[key][idx] = np.nan
+
         dshape = ary_lon.shape
+
+        self.Time = ary_times
 
         # 土地覆盖
         ary_LandCover_idx = np.full(dshape, np.nan)
@@ -123,7 +130,7 @@ class CLASS_MERSI_L1():
 
         # 卫星方位角 天顶角
         ary_sata_idx = np.full(dshape, np.nan)
-        condition = np.logical_and(ary_sata > 0, ary_sata < 36000)
+        condition = np.logical_and(ary_sata > -18000, ary_sata < 18000)
         ary_sata_idx[condition] = ary_sata[condition]
 
         if self.satAzimuth == []:
@@ -143,7 +150,7 @@ class CLASS_MERSI_L1():
 
         # 太阳方位角 天顶角
         ary_suna_idx = np.full(dshape, np.nan)
-        condition = np.logical_and(ary_suna > 0, ary_suna < 36000)
+        condition = np.logical_and(ary_suna > -18000, ary_suna < 18000)
         ary_suna_idx[condition] = ary_suna[condition]
 
         if self.sunAzimuth == []:
@@ -166,4 +173,5 @@ if __name__ == '__main__':
     L1File = 'D:/data/FY3B_MERSI/FY3B_MERSI_GBAL_L1_20130101_0005_1000M_MS.HDF'
     mersi = CLASS_MERSI_L1()
     mersi.Load(L1File)
+    print mersi.Ref['CH_01']
     pass
