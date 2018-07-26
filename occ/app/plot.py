@@ -12,7 +12,6 @@ from DV import dv_map
 from DV import dv_map_oc
 from DV.dv_img import dv_rgb
 from DV.dv_plot import plt, FONT0, Histogram, TimeSeries, Scatter
-from DV.dv_pub_3d import plt
 from PB import pb_io
 from PB.pb_io import make_sure_path_exists
 from PB.pb_time import time_block
@@ -489,6 +488,7 @@ def plot_map(lat=None, lon=None, data=None, out_file=None,
         vmax = np.max(data)
 
     p = dv_map.dv_map()
+    p.colorbar_fmt = '%0.2f'
     p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
                ptype=None, markersize=0.05, marker='s')
     p.title = title
