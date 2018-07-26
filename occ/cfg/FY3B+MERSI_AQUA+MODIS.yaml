@@ -6,40 +6,8 @@
 launch_date: "20101105"
 
 ################################ HDF5 压缩复制配置#################################
-ncep2byte:
-  filename_suffix: "_all.bin"  # 在原文件名的基础上增加的后缀
-  ncep_table:
-    - "PRES:sfc"
-    - "PWAT:atmos col"
-    - "UGRD:10 m above gnd"
-    - "VGRD:10 m above gnd"
-    - "TOZNE:atmos"
-    - "TMP:1000 mb"
-    - "TMP:925 mb"
-    - "TMP:850 mb"
-    - "TMP:700 mb"
-    - "TMP:500 mb"
-    - "TMP:400 mb"
-    - "TMP:300 mb"
-    - "TMP:250 mb"
-    - "TMP:200 mb"
-    - "TMP:150 mb"
-    - "TMP:100 mb"
-    - "TMP:70 mb"
-    - "TMP:50 mb"
-    - "TMP:30 mb"
-    - "TMP:20 mb"
-    - "TMP:10 mb"
-    - "RH:1000 mb"
-    - "RH:925 mb"
-    - "RH:850 mb"
-    - "RH:700 mb"
-    - "RH:500 mb"
-    - "RH:400 mb"
-    - "RH:300 mb"
-    - "LAND:sfc"
-    - "TMP:sfc"
-    - "ICEC:sfc"
+plot_scatter:
+  fix_ref: 0.25
 
 ################################ 数据预处理配置 ####################################
 calibrate:

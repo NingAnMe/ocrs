@@ -6,7 +6,7 @@
 """
 import os
 import sys
-
+import numpy as np
 from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config
 from PB.pb_time import time_block
@@ -37,7 +37,7 @@ def main(sat_sensor, in_file):
         return
 
     gc = app.global_config
-    # sc = app.sat_config
+    sc = app.sat_config
     yc = Config(in_file)
     log = LogServer(gc.path_out_log)
 
@@ -97,6 +97,10 @@ def main(sat_sensor, in_file):
         title_scatter = '{} {}'.format(sat_sensor, channel)
         y_label_scatter = 'Bias'
         x_label_scatter = 'REF'
+        fix_point = sc.plot_scatter_fix_ref
+        fix_dif, fix_pdif = get_dif_pdif(ref_s1, ref_s2, fix_point)
+        annotate_scatter = {'left_top': ['', 'Dif@{:.2f}={:.4f}'.format(fix_point, fix_dif),
+                                         'PDif@{:.2f}={:.4f}'.format(fix_point, fix_pdif)]}
         picture_path = yc.path_opath
         picture_name_absolute = 'Scatter_Absolute_Bias_{}.png'.format(channel)
         picture_name_relative = 'Scatter_Relative_Bias_{}.png'.format(channel)
@@ -104,7 +108,7 @@ def main(sat_sensor, in_file):
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_scatter(data_x=ref_s1, data_y=absolute_bias, out_file=picture_file_absolute,
                      title=title_scatter, x_label=x_label_scatter, y_label=y_label_scatter,
-                     ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+                     ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, annotate=annotate_scatter)
         plot_scatter(data_x=ref_s1, data_y=relative_bias, out_file=picture_file_relative,
                      title=title_scatter, x_label=x_label_scatter, y_label=y_label_scatter,
                      ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
@@ -117,6 +121,26 @@ def main(sat_sensor, in_file):
                  title=title_map)
 
     print '-' * 100
+
+
+def get_dif_pdif(data1, data2, fix_point):
+    """
+    关于偏差的计算，请增加特定反射率处的偏差量计算，
+    匹配后MERSI反射率为x，MODIS反射率为y, 拟合线yfit=ax+b
+    特定反射率x_typical若取0.25
+    Dif@0.25=x_typical-yfit(x_typical)
+    PDif@0.25=x_typical/yfit(x_typical)-1
+    :param data1:
+    :param data2:
+    :param fix_point:
+    :return:
+    """
+    # ----- 计算回归直线特殊值的绝对偏差和相对偏差
+    p1 = np.poly1d(np.polyfit(data1, data2, 1))
+    ploy_fix_point = p1(fix_point)
+    fix_dif = fix_point - ploy_fix_point
+    fix_pdif = fix_point / ploy_fix_point - 1
+    return fix_dif, fix_pdif
 
 
 ######################### 程序全局入口 ##############################
@@ -142,9 +166,9 @@ if __name__ == "__main__":
             main(SAT_SENSOR, FILE_PATH)
     else:
         print HELP_INFO
-#         sys.exit(-1)
+        sys.exit(-1)
 
 # ######################### TEST ##############################
 # if __name__ == '__main__':
 #     yaml_file = r'E:\projects\oc_data\20130103154613_MERSI_MODIS.yaml'
-#     main('FY3B+MERSI', yaml_file)
+#     main('FY3B+MERSI_AQUA+MODIS', yaml_file)
