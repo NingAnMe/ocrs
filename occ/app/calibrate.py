@@ -179,9 +179,16 @@ class CalibrateFY3D(object):
         """
         # 创建生成输出目录
         pb_io.make_sure_path_exists(os.path.dirname(out_file))
+
+        # 将现在的第5通道数据复制一份到20通道 2018/07/27
+        self.Ref['CH_20'] = self.Ref['CH_05']
+        self.SV['CH_20'] = self.SV['CH_05']
+        self.cal_coeff1['CH_20'] = self.cal_coeff1['CH_05']
+        self.BB['CH_20'] = self.BB['CH_05']
+
         # 写入数据
         with h5py.File(out_file, 'w') as hdf5:
-            for i in xrange(0, 19):
+            for i in xrange(0, 20):
                 channel_name = 'CH_{:02}'.format(i + 1)
 
                 name = '{}/Ref'.format(channel_name)
