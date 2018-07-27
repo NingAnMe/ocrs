@@ -24,7 +24,7 @@ __description__ = u'交叉主调度处理的函数'
 __author__ = 'wangpeng'
 __date__ = '2018-05-30'
 __version__ = '1.0.0_beat'
-__updated__ = '2018-07-25'
+__updated__ = '2018-07-27'
 
 
 # python = 'python2.7  -W ignore'
@@ -187,7 +187,7 @@ def job_0210(job_exe, sat_pair, date_s, date_e, job_id):
         ymd = date_s.strftime('%Y%m%d')
         use_in_path = pb_io.path_replace_ymd(in_path, ymd)
 
-        use_reg = '.*_%s_.*.HDF' % ymd
+        use_reg = '.*_%s_.*.HDF$' % ymd
         file_list = pb_io.find_file(use_in_path, use_reg)
         for in_file in file_list:
             cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
@@ -592,6 +592,14 @@ def job_0212(job_exe, sat_pair, date_s, date_e, job_id):
         arg_list.append(cmd)
 
     return arg_list
+
+
+def job_0213(job_exe, sat_pair, date_s, date_e, job_id):
+    '''
+    python2.7 oc_main.py  -s FY3B+MERSI_AQUA+MODIS -j 0213 -t 20130101-2013033
+    '''
+    Log.info(u'%s: %s 交叉匹配结果长时间图处理开始...' % (job_id, job_exe))
+    return job_0212(job_exe, sat_pair, date_s, date_e, job_id)
 
 
 def ReadCrossFile_LEO_LEO(sat1, sat2, ymd):
