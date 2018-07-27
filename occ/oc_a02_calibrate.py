@@ -151,8 +151,7 @@ def main(sat_sensor, in_file):
         # 获取 coefficient 定标系数
         coeff_file = os.path.join(coeff_path, '{}.txt'.format(ymd[0:4]))
         if not os.path.isfile(coeff_file):
-            log.error("File is not exist: {}".format(coeff_file))
-            coeff_file = None
+            pass
         else:
             print "<<< {}".format(coeff_file)
 
