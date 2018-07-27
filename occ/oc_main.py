@@ -582,13 +582,13 @@ def job_0212(job_exe, sat_pair, date_s, date_e, job_id):
         os.makedirs(opath)
 
     dict = {'INFO': {'sat1': sat1, 'sensor1': sensor1, 'sat2': sat2, 'sensor2': sensor2, 'ymd_s': stime, 'ymd_e': etime},
-            'PATH': {'opath': opath, 'ipath1': all_file_list}}
+            'PATH': {'opath': opath, 'ipath': all_file_list}}
 
     if len(all_file_list) > 0:
         Log.info('%s %s-%s create collocation cfg success' %
                  (sat_pair, stime, etime))
         CreateYamlCfg(dict, ofile_yaml)
-        cmd = '%s %s %s' % (python, job_exe, ofile_yaml)
+        cmd = '%s %s %s %s' % (python, job_exe, sat_pair, ofile_yaml)
         arg_list.append(cmd)
 
     return arg_list
