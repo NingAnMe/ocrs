@@ -81,8 +81,8 @@ def main(sat_sensor, in_file):
         y_label_hist = 'Amount'
         bins_count = 200
         picture_path = yc.path_opath
-        picture_name_absolute = 'Histogram_Absolute_Bias_{}.png'.format(channel)
-        picture_name_relative = 'Histogram_Relative_Bias_{}.png'.format(channel)
+        picture_name_absolute = 'Histogram_Dif_{}.png'.format(channel)
+        picture_name_relative = 'Histogram_PDif_{}.png'.format(channel)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_histogram(data=absolute_bias, title=title_hist, x_label=x_label_hist,
@@ -102,8 +102,8 @@ def main(sat_sensor, in_file):
         annotate_scatter = {'left_top': ['', 'Dif@{:.2f}={:.4f}'.format(fix_point, fix_dif),
                                          'PDif@{:.2f}={:.4f}'.format(fix_point, fix_pdif)]}
         picture_path = yc.path_opath
-        picture_name_absolute = 'Scatter_Absolute_Bias_{}.png'.format(channel)
-        picture_name_relative = 'Scatter_Relative_Bias_{}.png'.format(channel)
+        picture_name_absolute = 'Scatter_Dif_{}.png'.format(channel)
+        picture_name_relative = 'Scatter_PDif_{}.png'.format(channel)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_scatter(data_x=ref_s1, data_y=absolute_bias, out_file=picture_file_absolute,
@@ -115,7 +115,7 @@ def main(sat_sensor, in_file):
         # 绘制全球分布图
         title_map = '{} GLOBAL DISTRIBUTION {}'.format(sat_sensor, channel)
         picture_path = yc.path_opath
-        picture_name = 'Map_Absolute_Bias_{}.png'.format(channel)
+        picture_name = 'Map_Dif_{}.png'.format(channel)
         picture_file_map = os.path.join(picture_path, picture_name)
         plot_map(lat=lat, lon=lon, data=absolute_bias, out_file=picture_file_map,
                  title=title_map)
