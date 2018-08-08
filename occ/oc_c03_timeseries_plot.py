@@ -116,8 +116,8 @@ def main(sat_sensor, in_file):
         y_label_series_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
         y_label_series_relative = 'Pdif  ({}/{})-1'.format(sensor1, sensor2)
         picture_path = yc.path_opath
-        picture_name_absolute = 'Time_Series_Dif_{}.png'.format(channel)
-        picture_name_relative = 'Time_Series_PDif_{}.png'.format(channel)
+        picture_name_absolute = 'Time_Series_Dif_{}_{}.png'.format(sat_sensor1, channel)
+        picture_name_relative = 'Time_Series_PDif_{}_{}.png'.format(sat_sensor1, channel)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
@@ -162,32 +162,32 @@ def get_one_day_files(all_files, ymd, ext=None, pattern_ymd=None):
     return files_found
 
 
-######################### 程序全局入口 ##############################
-if __name__ == "__main__":
-    # 获取程序参数接口
-    ARGS = sys.argv[1:]
-    HELP_INFO = \
-        u"""
-        [arg1]：sat+sensor
-        [arg2]：yaml file
-        [arg3]: is_time_series [bool]
-        [example]： python app.py arg1 arg2
-        """
-    if "-h" in ARGS:
-        print HELP_INFO
-        sys.exit(-1)
+# ######################### 程序全局入口 ##############################
+# if __name__ == "__main__":
+#     # 获取程序参数接口
+#     ARGS = sys.argv[1:]
+#     HELP_INFO = \
+#         u"""
+#         [arg1]：sat+sensor
+#         [arg2]：yaml file
+#         [arg3]: is_time_series [bool]
+#         [example]： python app.py arg1 arg2
+#         """
+#     if "-h" in ARGS:
+#         print HELP_INFO
+#         sys.exit(-1)
+#
+#     if len(ARGS) == 2:
+#         SAT_SENSOR = ARGS[0]
+#         FILE_PATH = ARGS[1]
+#
+#         with time_block("All", switch=TIME_TEST):
+#             main(SAT_SENSOR, FILE_PATH)
+#     else:
+#         print HELP_INFO
+#         sys.exit(-1)
 
-    if len(ARGS) == 2:
-        SAT_SENSOR = ARGS[0]
-        FILE_PATH = ARGS[1]
-
-        with time_block("All", switch=TIME_TEST):
-            main(SAT_SENSOR, FILE_PATH)
-    else:
-        print HELP_INFO
-        sys.exit(-1)
-
-# ######################### TEST ##############################
-# if __name__ == '__main__':
-#     yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
-#     main('FY3B+MERSI_AQUA+MODIS', yaml_file)
+######################### TEST ##############################
+if __name__ == '__main__':
+    yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
+    main('FY3B+MERSI_AQUA+MODIS', yaml_file)
