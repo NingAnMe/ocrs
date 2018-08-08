@@ -538,8 +538,7 @@ def plot_histogram(data=None, out_file=None,
 
     ax.set_histogram(bins_count=bins_count)
 
-    if hist_label:
-        ax.set_histogram(label=hist_label)
+    ax.set_histogram(label=hist_label)
 
     ax.plot_histogram(data)
 
