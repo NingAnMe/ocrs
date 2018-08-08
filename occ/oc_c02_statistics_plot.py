@@ -11,7 +11,7 @@ from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config
 from app.bias import Bias
 from app.config import InitApp
-from app.plot import plot_bias_map, plot_histogram, plot_scatter
+from app.plot import plot_bias_map, plot_histogram, plot_scatter, plot_regression
 from app.read_data import ReadCrossData
 
 TIME_TEST = False  # 时间测试
@@ -164,6 +164,26 @@ def main(sat_sensor, in_file):
                      title=title_scatter, x_label=x_label_scatter, y_label=y_label_scatter_relative,
                      ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
                      annotate=annotate_scatter_relative)
+        # 绘制REF回归图
+        title_regression = '{}_{} {}_{} Diagonal Regression'.format(sat_sensor1, channel1,
+                                                                    sat_sensor2,
+                                                                    channel2)
+        x_label_regression = 'REF {}'.format(sat_sensor1)
+        y_label_regression = 'REF {}'.format(sat_sensor2)
+        annotate_regression = {'left_top': ['MERSI@Mean={:.4f}'.format(mean_ref_s1),
+                                            'MERSI@Std={:.4f}'.format(std_ref_s1),
+                                            'MERSI@Medina={:.4f}'.format(medina_ref_s1),
+                                            'MERSI@Amount={:4d}'.format(amount_ref_s1),
+                                            ]}
+        picture_path = yc.path_opath
+        picture_name_regression = 'Diagonal_Regression_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_file_regression = os.path.join(picture_path, picture_name_regression)
+        plot_regression(data_x=ref_s1, data_y=ref_s2, out_file=picture_file_regression,
+                        title=title_regression, x_label=x_label_regression,
+                        y_label=y_label_regression,
+                        ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
+                        annotate=annotate_regression)
         # 绘制偏差全球分布图
         title_map_absolute = '{}_{} {}_{} Global Distribution Dif {}-{}'.format(
             sat_sensor1, channel1, sat_sensor2, channel2, sensor1, sensor2)
