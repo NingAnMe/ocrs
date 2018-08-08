@@ -7,12 +7,11 @@
 
 import os
 import re
-import sys
 
 import numpy as np
 from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config
-from PB.pb_time import ymd2date, time_block
+from PB.pb_time import ymd2date
 from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_time_series
@@ -114,10 +113,12 @@ def main(sat_sensor, in_file):
         title_series = '{}_{} {}_{} Time Series'.format(sat_sensor1, channel1, sat_sensor2,
                                                         channel2)
         y_label_series_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
-        y_label_series_relative = 'Pdif  ({}/{})-1'.format(sensor1, sensor2)
+        y_label_series_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
         picture_path = yc.path_opath
-        picture_name_absolute = 'Time_Series_Dif_{}_{}.png'.format(sat_sensor1, channel)
-        picture_name_relative = 'Time_Series_PDif_{}_{}.png'.format(sat_sensor1, channel)
+        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                         sat_sensor2, channel2)
+        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                          sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,

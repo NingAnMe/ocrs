@@ -77,19 +77,23 @@ def main(sat_sensor, in_file):
         absolute_bias = bias.absolute_deviation(ref_s1, ref_s2)
         relative_bias = bias.relative_deviation(ref_s1, ref_s2)
 
-        # 绘制直方图
+        # 绘制偏差直方图
         channel1 = channel
         index_channel1 = s_channel1.index(channel1)
         channel2 = s_channel2[index_channel1]
         title_hist = '{}_{} {}_{} Histogram'.format(sat_sensor1, channel1, sat_sensor2,
                                                     channel2)
         x_label_hist_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
-        x_label_hist_relative = 'Pdif  ({}/{})-1'.format(sensor1, sensor2)
+        x_label_hist_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
         y_label_hist = 'Count'
         bins_count = 200
         picture_path = yc.path_opath
-        picture_name_absolute = 'Histogram_Dif_{}_{}.png'.format(sat_sensor1, channel)
-        picture_name_relative = 'Histogram_PDif_{}_{}.png'.format(sat_sensor1, channel)
+        picture_name_absolute = 'Histogram_Dif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                       sat_sensor2,
+                                                                       channel2)
+        picture_name_relative = 'Histogram_PDif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                        sat_sensor2,
+                                                                        channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_histogram(data=absolute_bias, title=title_hist, x_label=x_label_hist_absolute,
@@ -99,34 +103,50 @@ def main(sat_sensor, in_file):
                        y_label=y_label_hist, bins_count=bins_count, out_file=picture_file_relative,
                        ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e)
         # 绘制偏差分布图
-        title_scatter = '{} {}'.format(sat_sensor, channel)
-        y_label_scatter = 'Bias'
-        x_label_scatter = 'REF'
+        title_scatter = '{}_{} {}_{} Scattergram'.format(sat_sensor1, channel1, sat_sensor2,
+                                                         channel2)
+        y_label_scatter_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
+        y_label_scatter_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
+        x_label_scatter = 'REF {}'.format(sat_sensor1)
         fix_point = sc.plot_scatter_fix_ref
         fix_dif, fix_pdif = get_dif_pdif(ref_s1, ref_s2, fix_point)
         annotate_scatter_absolute = {'left_top': ['Dif@{:.2f}={:.4f}'.format(fix_point, fix_dif)]}
         annotate_scatter_relative = {'left_top': ['PDif@{:.2f}={:.4f}'.format(fix_point, fix_pdif)]}
         picture_path = yc.path_opath
-        picture_name_absolute = 'Scatter_Dif_{}_{}.png'.format(sat_sensor1, channel)
-        picture_name_relative = 'Scatter_PDif_{}_{}.png'.format(sat_sensor1, channel)
+        picture_name_absolute = 'Scattergram_Dif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                         sat_sensor2,
+                                                                         channel2)
+        picture_name_relative = 'Scattergram_PDif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                          sat_sensor2,
+                                                                          channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_scatter(data_x=ref_s1, data_y=absolute_bias, out_file=picture_file_absolute,
-                     title=title_scatter, x_label=x_label_scatter, y_label=y_label_scatter,
+                     title=title_scatter, x_label=x_label_scatter, y_label=y_label_scatter_absolute,
                      ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
                      annotate=annotate_scatter_absolute)
         plot_scatter(data_x=ref_s1, data_y=relative_bias, out_file=picture_file_relative,
-                     title=title_scatter, x_label=x_label_scatter, y_label=y_label_scatter,
+                     title=title_scatter, x_label=x_label_scatter, y_label=y_label_scatter_relative,
                      ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
                      annotate=annotate_scatter_relative)
-        # 绘制全球分布图
-        title_map = '{}_{} {}_{} Dif Global Distribution'.format(sat_sensor1, channel1, sat_sensor2,
-                                                    channel2)
+        # 绘制偏差全球分布图
+        title_map_absolute = '{}_{} {}_{} Global Distribution Dif {}-{}'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2, sensor1, sensor2)
+        title_map_relative = '{}_{} {}_{} Global Distribution PDif ({}/{})-1'.format(
+            sat_sensor1,channel1,sat_sensor2,channel2,sensor1,sensor2)
+
+        picture_name_absolute = 'Map_Dif_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2,channel2)
+        picture_name_relative = 'Map_PDif_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
         picture_path = yc.path_opath
-        picture_name = 'Map_Dif_{}_{}.png'.format(sat_sensor1, channel)
-        picture_file_map = os.path.join(picture_path, picture_name)
-        plot_map(lat=lat, lon=lon, data=absolute_bias, out_file=picture_file_map,
-                 title=title_map)
+        picture_file_map_absolute = os.path.join(picture_path, picture_name_absolute)
+        picture_file_map_relative = os.path.join(picture_path, picture_name_relative)
+
+        plot_map(lat=lat, lon=lon, data=absolute_bias, out_file=picture_file_map_absolute,
+                 title=title_map_absolute)
+        plot_map(lat=lat, lon=lon, data=relative_bias, out_file=picture_file_map_relative,
+                 title=title_map_relative)
 
     print '-' * 100
 
