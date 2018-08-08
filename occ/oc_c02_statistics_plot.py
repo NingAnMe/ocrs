@@ -42,10 +42,13 @@ def main(sat_sensor, in_file):
     log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
-
-    # 加载程序配置信息
-
+    sat_sensor1, sat_sensor2 = sat_sensor.split('_')
+    sat1, sensor1 = sat_sensor1.split('+')
+    sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息
+    s_channel1 = sc.chan1
+    s_channel2 = sc.chan2
+    # 加载业务配置信息
     # ######################## 开始处理 ###########################
     print "-" * 100
     print "Start plot verify result."
@@ -76,21 +79,28 @@ def main(sat_sensor, in_file):
         relative_bias = bias.relative_deviation(ref_s1, ref_s2)
 
         # 绘制直方图
-        title_hist = '{} REF BIAS {}'.format(sat_sensor, channel)
-        x_label_hist = 'Bias'
-        y_label_hist = 'Amount'
+        channel1 = channel
+        index_channel1 = s_channel1.index(channel1)
+        channel2 = s_channel2[index_channel1]
+        title_hist = '{}_{} {}_{} Histogram'.format(sat_sensor1, channel1, sat_sensor2,
+                                                        channel2)
+        x_label_hist_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
+        x_label_hist_relative = 'Pdif  ({}/{})-1'.format(sensor1, sensor2)
+        y_label_hist = 'Count'
+        hist_label_absolute = 'Dif'
+        hist_label_relative = 'Pdif'
         bins_count = 200
         picture_path = yc.path_opath
-        picture_name_absolute = 'Histogram_Dif_{}.png'.format(channel)
-        picture_name_relative = 'Histogram_PDif_{}.png'.format(channel)
+        picture_name_absolute = 'Histogram_Dif_{}_{}.png'.format(sat_sensor1, channel)
+        picture_name_relative = 'Histogram_PDif_{}_{}.png'.format(sat_sensor1, channel)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
-        plot_histogram(data=absolute_bias, title=title_hist, x_label=x_label_hist,
-                       y_label=y_label_hist, bins_count=bins_count,
+        plot_histogram(data=absolute_bias, title=title_hist, x_label=x_label_hist_absolute,
+                       y_label=y_label_hist, bins_count=bins_count, hist_label=hist_label_absolute,
                        out_file=picture_file_absolute,
                        ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e)
-        plot_histogram(data=relative_bias, title=title_hist, x_label=x_label_hist,
-                       y_label=y_label_hist, bins_count=bins_count,
+        plot_histogram(data=relative_bias, title=title_hist, x_label=x_label_hist_relative,
+                       y_label=y_label_hist, bins_count=bins_count, hist_label=hist_label_relative,
                        out_file=picture_file_relative,
                        ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e)
         # 绘制偏差分布图
@@ -102,8 +112,8 @@ def main(sat_sensor, in_file):
         annotate_scatter = {'left_top': ['', 'Dif@{:.2f}={:.4f}'.format(fix_point, fix_dif),
                                          'PDif@{:.2f}={:.4f}'.format(fix_point, fix_pdif)]}
         picture_path = yc.path_opath
-        picture_name_absolute = 'Scatter_Dif_{}.png'.format(channel)
-        picture_name_relative = 'Scatter_PDif_{}.png'.format(channel)
+        picture_name_absolute = 'Scatter_Dif_{}_{}.png'.format(sat_sensor1, channel)
+        picture_name_relative = 'Scatter_PDif_{}_{}.png'.format(sat_sensor1, channel)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_scatter(data_x=ref_s1, data_y=absolute_bias, out_file=picture_file_absolute,
@@ -115,7 +125,7 @@ def main(sat_sensor, in_file):
         # 绘制全球分布图
         title_map = '{} GLOBAL DISTRIBUTION {}'.format(sat_sensor, channel)
         picture_path = yc.path_opath
-        picture_name = 'Map_Dif_{}.png'.format(channel)
+        picture_name = 'Map_Dif_{}_{}.png'.format(sat_sensor1, channel)
         picture_file_map = os.path.join(picture_path, picture_name)
         plot_map(lat=lat, lon=lon, data=absolute_bias, out_file=picture_file_map,
                  title=title_map)
@@ -143,32 +153,32 @@ def get_dif_pdif(data1, data2, fix_point):
     return fix_dif, fix_pdif
 
 
-######################### 程序全局入口 ##############################
-if __name__ == "__main__":
-    # 获取程序参数接口
-    ARGS = sys.argv[1:]
-    HELP_INFO = \
-        u"""
-        [arg1]：sat+sensor
-        [arg2]：yaml file
-        [arg3]: is_time_series [bool]
-        [example]： python app.py arg1 arg2
-        """
-    if "-h" in ARGS:
-        print HELP_INFO
-        sys.exit(-1)
+# ######################### 程序全局入口 ##############################
+# if __name__ == "__main__":
+#     # 获取程序参数接口
+#     ARGS = sys.argv[1:]
+#     HELP_INFO = \
+#         u"""
+#         [arg1]：sat+sensor
+#         [arg2]：yaml file
+#         [arg3]: is_time_series [bool]
+#         [example]： python app.py arg1 arg2
+#         """
+#     if "-h" in ARGS:
+#         print HELP_INFO
+#         sys.exit(-1)
+#
+#     if len(ARGS) == 2:
+#         SAT_SENSOR = ARGS[0]
+#         FILE_PATH = ARGS[1]
+#
+#         with time_block("All", switch=TIME_TEST):
+#             main(SAT_SENSOR, FILE_PATH)
+#     else:
+#         print HELP_INFO
+#         sys.exit(-1)
 
-    if len(ARGS) == 2:
-        SAT_SENSOR = ARGS[0]
-        FILE_PATH = ARGS[1]
-
-        with time_block("All", switch=TIME_TEST):
-            main(SAT_SENSOR, FILE_PATH)
-    else:
-        print HELP_INFO
-        sys.exit(-1)
-
-# ######################### TEST ##############################
-# if __name__ == '__main__':
-#     yaml_file = r'E:\projects\oc_data\20130103154613_MERSI_MODIS.yaml'
-#     main('FY3B+MERSI_AQUA+MODIS', yaml_file)
+######################### TEST ##############################
+if __name__ == '__main__':
+    yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
+    main('FY3B+MERSI_AQUA+MODIS', yaml_file)
