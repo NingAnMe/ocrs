@@ -470,27 +470,27 @@ def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
     print '>>> {}'.format(out_file)
 
 
-def plot_map(lat=None, lon=None, data=None, out_file=None,
-             vmin=None, vmax=None, title=None):
+def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
+                  title=None):
     if title:
         title = title
     else:
         title = "Map"
 
-    if vmin:
-        vmin = vmin
+    # 绘制偏差的全球分布图，保持0值永远在bar的中心
+    datamax = np.max(data)
+    if datamax >= 0:
+        vmin = -1.0 * datamax
+        vmax = datamax
     else:
-        vmin = np.min(data)
-
-    if vmax:
-        vmax = vmax
-    else:
-        vmax = np.max(data)
+        vmin = datamax
+        vmax = -1.0 * datamax
 
     p = dv_map.dv_map()
     p.colorbar_fmt = '%0.3f'
     p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
-               ptype=None, markersize=0.05, marker='s')
+               ptype=None, markersize=0.05, marker='s',
+               colormap=plt.get_cmap('bwr'))
     p.title = title
     make_sure_path_exists(os.path.dirname(out_file))
     p.savefig(out_file)
