@@ -92,6 +92,11 @@ def main(sat_sensor, in_file):
         amount_ref_s1 = len(ref_s1)
         medina_ref_s1 = np.nanmedian(ref_s1)
 
+        mean_ref_s2 = np.nanmean(ref_s2)
+        std_ref_s2 = np.nanstd(ref_s2)
+        amount_ref_s2 = len(ref_s2)
+        medina_ref_s2 = np.nanmedian(ref_s2)
+
         # 绘制偏差直方图
         channel1 = channel
         index_channel1 = s_channel1.index(channel1)
@@ -107,26 +112,59 @@ def main(sat_sensor, in_file):
                                                                        sat_sensor2, channel2)
         picture_name_relative = 'Histogram_PDif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
                                                                         sat_sensor2, channel2)
-        annotate_scatter_absolute = {'left_top': ['Dif@Mean={:.4f}'.format(mean_absolute),
-                                                  'Dif@Std={:.4f}'.format(std_absolute),
-                                                  'Dif@Medina={:.4f}'.format(medina_absolute),
-                                                  'Dif@Amount={:4d}'.format(amount_absolute),
-                                                  ]}
-        annotate_scatter_relative = {'left_top': ['PDif@Mean={:.4f}'.format(mean_relative),
-                                                  'PDif@Std={:.4f}'.format(std_relative),
-                                                  'PDif@Medina={:.4f}'.format(medina_relative),
-                                                  'PDif@Amount={:4d}'.format(amount_relative),
-                                                  ]}
+        annotate_hist_absolute = {'left_top': ['Dif@Mean={:.4f}'.format(mean_absolute),
+                                               'Dif@Std={:.4f}'.format(std_absolute),
+                                               'Dif@Medina={:.4f}'.format(medina_absolute),
+                                               'Dif@Amount={:4d}'.format(amount_absolute),
+                                               ]}
+        annotate_hist_relative = {'left_top': ['PDif@Mean={:.4f}'.format(mean_relative),
+                                               'PDif@Std={:.4f}'.format(std_relative),
+                                               'PDif@Medina={:.4f}'.format(medina_relative),
+                                               'PDif@Amount={:4d}'.format(amount_relative),
+                                               ]}
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_histogram(data=absolute_bias, title=title_hist, x_label=x_label_hist_absolute,
                        y_label=y_label_hist, bins_count=bins_count, out_file=picture_file_absolute,
                        ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
-                       annotate=annotate_scatter_absolute, )
+                       annotate=annotate_hist_absolute, )
         plot_histogram(data=relative_bias, title=title_hist, x_label=x_label_hist_relative,
                        y_label=y_label_hist, bins_count=bins_count, out_file=picture_file_relative,
                        ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
-                       annotate=annotate_scatter_relative, )
+                       annotate=annotate_hist_relative, )
+        # 绘制REF直方图
+        channel1 = channel
+        index_channel1 = s_channel1.index(channel1)
+        channel2 = s_channel2[index_channel1]
+        title_hist_sat1 = '{}_{} Histogram'.format(sat_sensor1, channel1)
+        title_hist_sat2 = '{}_{} Histogram'.format(sat_sensor2, channel2)
+        x_label_hist_sat1 = 'REF  {}'.format(sat_sensor1)
+        x_label_hist_sat2 = 'REF  {}'.format(sat_sensor2)
+        y_label_hist = 'Count'
+        bins_count = 200
+        picture_path = yc.path_opath
+        picture_name_sat1 = 'Histogram_REF_{}_{}.png'.format(sat_sensor1, channel1)
+        picture_name_sat2 = 'Histogram_REF_{}_{}.png'.format(sat_sensor2, channel2)
+        annotate_hist_sat1 = {'left_top': ['REF@Mean={:.4f}'.format(mean_ref_s1),
+                                           'REF@Std={:.4f}'.format(std_ref_s1),
+                                           'REF@Medina={:.4f}'.format(medina_ref_s1),
+                                           'REF@Amount={:4d}'.format(amount_ref_s1),
+                                           ]}
+        annotate_hist_sat2 = {'left_top': ['REF@Mean={:.4f}'.format(mean_ref_s2),
+                                           'REF@Std={:.4f}'.format(std_ref_s2),
+                                           'REF@Medina={:.4f}'.format(medina_ref_s2),
+                                           'REF@Amount={:4d}'.format(amount_ref_s2),
+                                           ]}
+        picture_file_sat1 = os.path.join(picture_path, picture_name_sat1)
+        picture_file_sat2 = os.path.join(picture_path, picture_name_sat2)
+        plot_histogram(data=ref_s1, title=title_hist_sat1, x_label=x_label_hist_sat1,
+                       y_label=y_label_hist, bins_count=bins_count, out_file=picture_file_sat1,
+                       ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
+                       annotate=annotate_hist_sat1, )
+        plot_histogram(data=ref_s2, title=title_hist_sat2, x_label=x_label_hist_sat2,
+                       y_label=y_label_hist, bins_count=bins_count, out_file=picture_file_sat2,
+                       ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
+                       annotate=annotate_hist_sat2, )
         # 绘制偏差散点图
         title_scatter = '{}_{} {}_{} Scattergram'.format(sat_sensor1, channel1, sat_sensor2,
                                                          channel2)
