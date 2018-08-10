@@ -471,13 +471,13 @@ def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
 
 
 def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
-                    x_range=None, y_range=None, x_label=None, y_label=None, annotate=None,
+                    x_label=None, y_label=None, annotate=None,
                     ymd_start=None, ymd_end=None, ymd=None,
                     ):
     main_path = os.path.dirname(os.path.dirname(__file__))
     style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
     plt.style.use(style_file)
-    fig = plt.figure(figsize=(6, 5.6))
+    fig = plt.figure(figsize=(6, 6))
     # fig.subplots_adjust(top=0.88, bottom=0.11, left=0.12, right=0.97)
 
     ax1 = plt.subplot2grid((1, 1), (0, 0))
@@ -514,9 +514,8 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     if y_label:
         ax.set_y_label(y_label)
 
-    annotate_new = {}
-    annotate_new['left_top'] = ['Slope={:.4f}'.format(ab[0]),
-                                'Offset={:.4f}'.format(ab[1])]
+    annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
+                                 'Offset={:.4f}'.format(ab[1])]}
     annotate_new['left_top'].extend(annotate['left_top'])
     ax.set_annotate(annotate=annotate_new)
 
@@ -526,8 +525,10 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     color = "b"  # 颜色
     ax.set_scatter(size=size, alpha=alpha, marker=marker, color=color)
 
-    ax.plot_scatter(data_x=data_x, data_y=data_y)
+    # kde 是否绘制密度点颜色
+    ax.plot_scatter(data_x=data_x, data_y=data_y, kde=True)
 
+    # plt.colorbar(ax.plot_result)
     # --------------------
     plt.tight_layout()
     fig.suptitle(title, fontsize=11, fontproperties=FONT0)

@@ -9,9 +9,10 @@ import os
 import re
 
 import numpy as np
+import sys
 from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config
-from PB.pb_time import ymd2date
+from PB.pb_time import ymd2date, time_block
 from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_time_series
@@ -163,32 +164,32 @@ def get_one_day_files(all_files, ymd, ext=None, pattern_ymd=None):
     return files_found
 
 
-# ######################### 程序全局入口 ##############################
-# if __name__ == "__main__":
-#     # 获取程序参数接口
-#     ARGS = sys.argv[1:]
-#     HELP_INFO = \
-#         u"""
-#         [arg1]：sat+sensor
-#         [arg2]：yaml file
-#         [arg3]: is_time_series [bool]
-#         [example]： python app.py arg1 arg2
-#         """
-#     if "-h" in ARGS:
-#         print HELP_INFO
-#         sys.exit(-1)
-#
-#     if len(ARGS) == 2:
-#         SAT_SENSOR = ARGS[0]
-#         FILE_PATH = ARGS[1]
-#
-#         with time_block("All", switch=TIME_TEST):
-#             main(SAT_SENSOR, FILE_PATH)
-#     else:
-#         print HELP_INFO
-#         sys.exit(-1)
+######################### 程序全局入口 ##############################
+if __name__ == "__main__":
+    # 获取程序参数接口
+    ARGS = sys.argv[1:]
+    HELP_INFO = \
+        u"""
+        [arg1]：sat+sensor
+        [arg2]：yaml file
+        [arg3]: is_time_series [bool]
+        [example]： python app.py arg1 arg2
+        """
+    if "-h" in ARGS:
+        print HELP_INFO
+        sys.exit(-1)
 
-######################### TEST ##############################
-if __name__ == '__main__':
-    yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
-    main('FY3B+MERSI_AQUA+MODIS', yaml_file)
+    if len(ARGS) == 2:
+        SAT_SENSOR = ARGS[0]
+        FILE_PATH = ARGS[1]
+
+        with time_block("All", switch=TIME_TEST):
+            main(SAT_SENSOR, FILE_PATH)
+    else:
+        print HELP_INFO
+        sys.exit(-1)
+
+# ######################### TEST ##############################
+# if __name__ == '__main__':
+#     yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
+#     main('FY3B+MERSI_AQUA+MODIS', yaml_file)
