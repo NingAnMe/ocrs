@@ -7,12 +7,12 @@
 
 import os
 import re
-import sys
 
 import numpy as np
+import sys
 from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config
-from PB.pb_time import time_block, ymd2date
+from PB.pb_time import ymd2date, time_block
 from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_time_series
@@ -41,15 +41,18 @@ def main(sat_sensor, in_file):
         return
 
     gc = app.global_config
-    # sc = app.sat_config
+    sc = app.sat_config
     yc = Config(in_file)
     log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
-
-    # 加载程序配置信息
-
+    sat_sensor1, sat_sensor2 = sat_sensor.split('_')
+    sat1, sensor1 = sat_sensor1.split('+')
+    sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息
+    s_channel1 = sc.chan1
+    s_channel2 = sc.chan2
+    # 加载业务配置信息
     # ######################## 开始处理 ###########################
     print "-" * 100
     print "Start plot verify result."
@@ -105,21 +108,28 @@ def main(sat_sensor, in_file):
         relative_bias = data_relative[channel]
         date_channel = date[channel]
         # 绘制时间序列图
-        title_series = '{} TIME SERIES {}'.format(sat_sensor, channel)
-        y_label_series = 'Bias'
+        channel1 = channel
+        index_channel1 = s_channel1.index(channel1)
+        channel2 = s_channel2[index_channel1]
+        title_series = '{}_{} {}_{} Time Series'.format(sat_sensor1, channel1, sat_sensor2,
+                                                        channel2)
+        y_label_series_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
+        y_label_series_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
         picture_path = yc.path_opath
-        picture_name_absolute = 'Time_Series_Absolute_Bias_{}.png'.format(channel)
-        picture_name_relative = 'Time_Series_Relative_Bias_{}.png'.format(channel)
+        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                         sat_sensor2, channel2)
+        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
+                                                                          sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
                          out_file=picture_file_absolute,
-                         title=title_series, y_label=y_label_series, ymd_start=yc.info_ymd_s,
-                         ymd_end=yc.info_ymd_e, )
+                         title=title_series, y_label=y_label_series_absolute,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
         plot_time_series(day_data_x=date_channel, day_data_y=relative_bias,
                          out_file=picture_file_relative,
-                         title=title_series, y_label=y_label_series, ymd_start=yc.info_ymd_s,
-                         ymd_end=yc.info_ymd_e, )
+                         title=title_series, y_label=y_label_series_relative,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
 
     print '-' * 100
 
@@ -181,5 +191,5 @@ if __name__ == "__main__":
 
 # ######################### TEST ##############################
 # if __name__ == '__main__':
-#     yaml_file = r'E:\projects\oc_data\20130103154613_MERSI_MODIS.yaml'
-#     main('FY3B+MERSI', yaml_file)
+#     yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
+#     main('FY3B+MERSI_AQUA+MODIS', yaml_file)

@@ -470,27 +470,105 @@ def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
     print '>>> {}'.format(out_file)
 
 
-def plot_map(lat=None, lon=None, data=None, out_file=None,
-             vmin=None, vmax=None, title=None):
+def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
+                    x_label=None, y_label=None, annotate=None,
+                    ymd_start=None, ymd_end=None, ymd=None,
+                    ):
+    main_path = os.path.dirname(os.path.dirname(__file__))
+    style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
+    plt.style.use(style_file)
+    fig = plt.figure(figsize=(6, 6))
+    # fig.subplots_adjust(top=0.88, bottom=0.11, left=0.12, right=0.97)
+
+    ax1 = plt.subplot2grid((1, 1), (0, 0))
+    # 绘制回归线
+    max_value = np.nanmax(data_x)
+    min_value = np.nanmin(data_x)
+    color_regression = '#ff0000'
+    width_regression = 1.0
+    ab = np.polyfit(data_x, data_y, 1)
+    p1 = np.poly1d(ab)
+    p1_max = p1(max_value)
+    p1_min = p1(min_value)
+    ax1.plot([min_value, max_value], [p1_min, p1_max], color=color_regression,
+             linewidth=width_regression, zorder=100)
+
+    # 绘制对角线
+    color_diagonal = '#888888'
+    width_diagonal = 1.0
+    max_value = abs(np.nanmax(np.concatenate((data_x, data_y))))
+    min_value = -1 * max_value
+    ax1.plot([min_value, max_value], [min_value, max_value], color=color_diagonal,
+             linewidth=width_diagonal, zorder=80)
+
+    ax = Scatter(ax1)
+    x_min_value = np.min(data_x)
+    x_max_value = np.max(data_x)
+    y_min_value = np.min(data_y)
+    y_max_value = np.max(data_y)
+    ax.set_x_axis_range(x_min_value, x_max_value)
+    ax.set_y_axis_range(y_min_value, y_max_value)
+
+    if x_label:
+        ax.set_x_label(x_label)
+    if y_label:
+        ax.set_y_label(y_label)
+
+    annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
+                                 'Offset={:.4f}'.format(ab[1])]}
+    annotate_new['left_top'].extend(annotate['left_top'])
+    ax.set_annotate(annotate=annotate_new)
+
+    size = 1
+    alpha = 0.8  # 透明度
+    marker = "o"  # 形状
+    color = "b"  # 颜色
+    ax.set_scatter(size=size, alpha=alpha, marker=marker, color=color)
+
+    # kde 是否绘制密度点颜色
+    ax.plot_scatter(data_x=data_x, data_y=data_y, kde=True)
+
+    # plt.colorbar(ax.plot_result)
+    # --------------------
+    plt.tight_layout()
+    fig.suptitle(title, fontsize=11, fontproperties=FONT0)
+    fig.subplots_adjust(bottom=0.13, top=0.88)
+
+    if ymd_start and ymd_end:
+        fig.text(0.50, 0.02, '%s-%s' % (ymd_start, ymd_end), fontproperties=FONT0)
+    elif ymd:
+        fig.text(0.50, 0.02, '%s' % ymd, fontproperties=FONT0)
+
+    fig.text(0.8, 0.02, 'OCC', fontproperties=FONT0)
+    # ---------------
+    make_sure_path_exists(os.path.dirname(out_file))
+    fig.savefig(out_file)
+    fig.clear()
+    plt.close()
+    print '>>> {}'.format(out_file)
+
+
+def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
+                  title=None):
     if title:
         title = title
     else:
         title = "Map"
 
-    if vmin:
-        vmin = vmin
+    # 绘制偏差的全球分布图，保持0值永远在bar的中心
+    datamax = np.max(data)
+    if datamax >= 0:
+        vmin = -1.0 * datamax
+        vmax = datamax
     else:
-        vmin = np.min(data)
-
-    if vmax:
-        vmax = vmax
-    else:
-        vmax = np.max(data)
+        vmin = datamax
+        vmax = -1.0 * datamax
 
     p = dv_map.dv_map()
-    p.colorbar_fmt = '%0.2f'
+    p.colorbar_fmt = '%0.3f'
     p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
-               ptype=None, markersize=0.05, marker='s')
+               ptype=None, markersize=0.05, marker='s',
+               colormap=plt.get_cmap('bwr'))
     p.title = title
     make_sure_path_exists(os.path.dirname(out_file))
     p.savefig(out_file)
@@ -538,8 +616,7 @@ def plot_histogram(data=None, out_file=None,
 
     ax.set_histogram(bins_count=bins_count)
 
-    if hist_label:
-        ax.set_histogram(label=hist_label)
+    ax.set_histogram(label=hist_label)
 
     ax.plot_histogram(data)
 
