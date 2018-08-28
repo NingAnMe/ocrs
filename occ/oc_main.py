@@ -24,7 +24,7 @@ __description__ = u'交叉主调度处理的函数'
 __author__ = 'wangpeng'
 __date__ = '2018-05-30'
 __version__ = '1.0.0_beat'
-__updated__ = '2018-07-27'
+__updated__ = '2018-08-02'
 
 
 # python = 'python2.7  -W ignore'
@@ -440,10 +440,12 @@ def job_0711(job_exe, sat_pair, date_s, date_e, job_id):
     return arg_list
 
 
-def job_0211(job_exe, sat_pair, date_s, date_e, job_id):
+def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
 
-    Log.info(u'%s: %s 交叉匹配处理开始...' % (job_id, job_exe))
-
+    if reload is None:
+        Log.info(u'%s: %s 交叉匹配(use pre data)处理开始...' % (job_id, job_exe))
+    else:
+        print 'reload'
     # 解析mathcing: FY3A+MERSI_AQUA+MODIS ,根据下划线分割获取 卫星+传感器 ,再次分割获取俩颗卫星短名
     sat1 = (sat_pair.split('_')[0]).split('+')[0]
     sensor1 = (sat_pair.split('_')[0]).split('+')[1]
@@ -456,6 +458,7 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id):
     DATA_DIR = cfg_body['PATH']['IN']['data']
     jobCfg = cfg_body['PATH']['IN']['jobCfg']
     match_path = cfg_body['PATH']['MID']['match']
+    L1_data_dir = cfg_body['PATH']['IN']['l1']
 
     # 存放分发列表
     arg_list = []
@@ -466,8 +469,12 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id):
 
         print ymd
         # 存放俩颗卫星的原始数据目录位置
-        inpath1 = os.path.join(DATA_DIR, '%s/%s/L1/ORBIT' %
-                               (sat1, sensor1), ymd[:6])
+
+        if reload is None:
+            inpath1 = os.path.join(DATA_DIR, '%s/%s/L1/ORBIT' %
+                                   (sat1, sensor1), ymd[:6])
+        else:
+            inpath1 = pb_io.path_replace_ymd(L1_data_dir, ymd)
         inpath2 = os.path.join(DATA_DIR, '%s/%s/L1/ORBIT' %
                                (sat2, sensor2, ), ymd[:6])
 
@@ -507,8 +514,12 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id):
             filename3 = '%s_MATCHEDPOINTS_%s.H5' % (sat_pair, ymdhms)
 
             # 输出完整路径
-            full_filename3 = os.path.join(
-                match_path, sat_pair, ymdhms[:6], filename3)
+            if reload is None:
+                full_filename3 = os.path.join(
+                    match_path, sat_pair, ymdhms[:6], filename3)
+            else:
+                full_filename3 = os.path.join(
+                    match_path, sat_pair + '_L1', ymdhms[:6], filename3)
 
             # 投影参数
             cmd = '+proj=laea  +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84' % (
@@ -527,7 +538,10 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id):
                 Log.info('%s %s create collocation cfg success' %
                          (sat_pair, ymdhms))
                 CreateYamlCfg(dict3, yaml_file3)
-                cmd = '%s %s %s' % (python, job_exe, yaml_file3)
+                if reload is None:
+                    cmd = '%s %s %s 0' % (python, job_exe, yaml_file3)
+                else:
+                    cmd = '%s %s %s 1' % (python, job_exe, yaml_file3)
                 arg_list.append(cmd)
 
         date_s = date_s + relativedelta(days=1)
@@ -543,6 +557,11 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id):
 
 
 def job_0212(job_exe, sat_pair, date_s, date_e, job_id):
+    Log.info(u'%s: %s 交叉匹配(use L1 data)处理开始...' % (job_id, job_exe))
+    return job_0211(job_exe, sat_pair, date_s, date_e, job_id, True)
+
+
+def job_0213(job_exe, sat_pair, date_s, date_e, job_id):
 
     Log.info(u'%s: %s 交叉匹配结果绘图处理开始...' % (job_id, job_exe))
 
@@ -594,12 +613,12 @@ def job_0212(job_exe, sat_pair, date_s, date_e, job_id):
     return arg_list
 
 
-def job_0213(job_exe, sat_pair, date_s, date_e, job_id):
+def job_0214(job_exe, sat_pair, date_s, date_e, job_id):
     '''
     python2.7 oc_main.py  -s FY3B+MERSI_AQUA+MODIS -j 0213 -t 20130101-2013033
     '''
     Log.info(u'%s: %s 交叉匹配结果长时间图处理开始...' % (job_id, job_exe))
-    return job_0212(job_exe, sat_pair, date_s, date_e, job_id)
+    return job_0213(job_exe, sat_pair, date_s, date_e, job_id)
 
 
 def ReadCrossFile_LEO_LEO(sat1, sat2, ymd):

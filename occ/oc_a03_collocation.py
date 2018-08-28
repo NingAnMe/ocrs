@@ -23,6 +23,7 @@ from DV import dv_plt
 from DV.dv_map import dv_map
 from PB.pb_sat import sun_glint_cal
 from app.pb_drc_MERSI_L1 import CLASS_MERSI_L1
+from app.pb_drc_MERSI_L1_PRE import CLASS_MERSI_L1_PRE
 from app.pb_drc_MODIS_L1 import CLASS_MODIS_L1
 import numpy as np
 
@@ -556,7 +557,7 @@ def regression(x, y, value_min, value_max, flag, ICFG, MCFG, Band):
     p.savefig(ofile, dpi=300)
 
 
-def main(inYamlFile):
+def main(inYamlFile, mode):
     T1 = datetime.now()
 
     # 01 ICFG = 输入配置文件类 ##########
@@ -586,32 +587,28 @@ def main(inYamlFile):
         T1 = datetime.now()
         # 03 解析 第一颗传感器的L1数据 ##########
         for inFile in ICFG.ifile1:
-            D1 = CLASS_MERSI_L1()
+            if '1' in mode:
+                print 'L1'
+                D1 = CLASS_MERSI_L1()
+            elif '0' in mode:
+                print 'L1 PRE'
+                D1 = CLASS_MERSI_L1_PRE()
             D1.Load(inFile)
+            D1.sun_earth(ICFG.ymd[0:8])
 
             # 04 投影，简历查找表  ##########
             print ICFG.cmd
             P1 = prj_core(ICFG.cmd, ICFG.res, row=ICFG.row, col=ICFG.col)
             P1.create_lut(D1.Lons, D1.Lats)
-            value = np.full_like(P1.lons, 20.)
-            p_map = dv_map()
-            p_map.easyplot(P1.lats, P1.lons,  value, markersize=20, marker='.')
-            p_map.savefig('test_p1_1.png')
             # 05 解析 第二颗传感器的L1数据   ##########
-            i = 0
+
             for inFile2 in ICFG.ifile2:
-                i = i + 1
                 D2 = CLASS_MODIS_L1()
                 D2.Load(inFile2)
 
                 # 06 投影，简历查找表  ##########
                 P2 = prj_core(ICFG.cmd, ICFG.res, row=ICFG.row, col=ICFG.col)
                 P2.create_lut(D2.Lons, D2.Lats)
-                value = np.full_like(P2.lons, 40.)
-                p_map = dv_map()
-                p_map.easyplot(
-                    P2.lats, P2.lons, value, markersize=20, marker='.')
-                p_map.savefig('test_p2_%d.png' % i)
                 # 07 粗匹配 ##########
                 DCLC.save_rough_data(P1, P2, D1, D2, MCFG)
 
@@ -633,14 +630,15 @@ if __name__ == '__main__':
 
     # 获取python输入参数，进行处理
     args = sys.argv[1:]
-    if len(args) == 1:  # 跟参数，则处理输入的时段数据
+    if len(args) == 2:  # 跟参数，则处理输入的时段数据
         inYamlFile = args[0]
+        mode = args[1]
     else:
         print 'input args error exit'
         sys.exit(-1)
 
     # 统计整体运行时间
     T_all_1 = datetime.now()
-    main(inYamlFile)
+    main(inYamlFile, mode)
     T_all_2 = datetime.now()
     print 'times:', (T_all_2 - T_all_1).total_seconds()
