@@ -514,12 +514,16 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
             filename3 = '%s_MATCHEDPOINTS_%s.H5' % (sat_pair, ymdhms)
 
             # 输出完整路径
-            if reload is None:
-                full_filename3 = os.path.join(
-                    match_path, sat_pair, ymdhms[:6], filename3)
-            else:
-                full_filename3 = os.path.join(
-                    match_path, sat_pair + '_L1', ymdhms[:6], filename3)
+            # FY3B+MERSI_AQUA+MODIS_L1  和 FY3B+MERSI_AQUA+MODIS 两种支持  wangpeng
+            # add 2018-09-14
+            full_filename3 = os.path.join(
+                match_path, sat_pair, ymdhms[:6], filename3)
+#             if reload is None:
+#                 full_filename3 = os.path.join(
+#                     match_path, sat_pair, ymdhms[:6], filename3)
+#             else:
+#                 full_filename3 = os.path.join(
+#                     match_path, sat_pair + '_L1', ymdhms[:6], filename3)
 
             # 投影参数
             cmd = '+proj=laea  +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84' % (
