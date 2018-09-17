@@ -416,8 +416,8 @@ class CalibrateFY3B(object):
         5: ref_new = ((dn_new - sv_dn_obc) * slope_new) * 100 【# 四舍五入取整】
         """
         # 定标计算
-        # 发星-2013 年
-        if int(self.ymd[0:4]) <= 2013:
+        # 发星-201303060015
+        if int(self.ymd) <= 20130306 and int(self.hm) <= 0015:
             for i in xrange(19):
                 if i < 4:
                     ev_name = "EV_250_Aggr.1KM_RefSB"
@@ -459,7 +459,7 @@ class CalibrateFY3B(object):
                 else:
                     self.ev_1000m_ref.append(ref_new)
 
-        # 2014 年 - 今
+        # 201303060020 - 今
         else:
             for i in xrange(19):
                 if i < 4:
