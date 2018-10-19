@@ -116,6 +116,9 @@ class CLASS_MODIS_L1():
             idx = np.where(condition)
             data_ch38[i][idx] = (
                 in_data_r250[i][idx] - in_data_r250_o[i]) * in_data_r250_s[i]
+            idx1 = np.where(data_ch38[i] <= 0.)
+            data_ch38[i][idx1] = np.nan
+
         # 3-7通道
         for i in range(2, 7, 1):
             # 过滤 无效值

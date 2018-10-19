@@ -113,6 +113,7 @@ class CLASS_MERSI_L1():
             # FY3A/FY3B MERSI
             # 读取L1文件
             try:
+                print '11111111111111111111111111111111111'
                 h5File_R = h5py.File(L1File, 'r')
                 ary_lon = h5File_R.get('/Longitude')[:]
                 ary_lat = h5File_R.get('/Latitude')[:]
@@ -170,7 +171,6 @@ class CLASS_MERSI_L1():
         # 定标系数 19*3 转  20*3
         values = np.array([0, 0, 0])
         K = np.insert(proj_Cal_Coeff, 4, values, 0)
-        print K
         # 可见
         for i in xrange(self.Band):
             BandName = 'CH_%02d' % (i + 1)
@@ -202,6 +202,8 @@ class CLASS_MERSI_L1():
                 self.Dn[BandName] = DN
                 # rad
                 Rad = DN / 100.
+                idx1 = np.where(Rad <= 0.)
+                Rad[idx1] = np.nan
                 self.Rad[BandName] = Rad
 
                 # tbb
