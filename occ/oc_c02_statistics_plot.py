@@ -66,10 +66,15 @@ def main(sat_sensor, in_file):
     cross_data.read_cross_data(in_files=in_files)
 
     # 循环通道数据
+    info = {}
     for channel in cross_data.data:
+        point_count_min = 10
         ref_s1 = cross_data.data[channel]['S1_FovRefMean']
-        if len(ref_s1) == 0:
-            print 'Dont have enough point to plot, is 0: {}'.format(channel)
+        point_count = len(ref_s1)
+        info[channel] = point_count
+        print '---INFO--- {} Points: {}'.format(channel, point_count)
+        if point_count < point_count_min:
+            print '***WARNING***Dont have enough point to plot: < {}'.format(point_count_min)
             continue
         ref_s2 = cross_data.data[channel]['S2_FovRefMean']
         lat = cross_data.data[channel]['S1_Lat']
@@ -243,6 +248,10 @@ def main(sat_sensor, in_file):
         plot_bias_map(lat=lat, lon=lon, data=relative_bias, out_file=picture_file_map_relative,
                       title=title_map_relative)
 
+    keys = info.keys()
+    keys.sort()
+    for channel in keys:
+        print 'CHANNEL: {} POINT: {}'.format(channel, info[channel])
     print '-' * 100
 
 
@@ -266,7 +275,7 @@ def get_dif_pdif(data1, data2, fix_point):
     return fix_dif, fix_pdif
 
 
-######################### 程序全局入口 ##############################
+# ######################## 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
     ARGS = sys.argv[1:]

@@ -417,7 +417,7 @@ class CalibrateFY3B(object):
         """
         # 定标计算
         # 发星-201303060015
-        if int(self.ymd) <= 20130306 and int(self.hm) <= 0015:
+        if int(self.ymd + self.hm) <= 201303060015:
             for i in xrange(19):
                 if i < 4:
                     ev_name = "EV_250_Aggr.1KM_RefSB"
