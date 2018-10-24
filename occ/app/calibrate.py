@@ -181,6 +181,7 @@ class CalibrateFY3D(object):
         pb_io.make_sure_path_exists(os.path.dirname(out_file))
 
         # 将现在的第5通道数据复制一份到20通道 2018/07/27
+        self.Dn['CH_20'] = self.Dn['CH_05']
         self.Ref['CH_20'] = self.Ref['CH_05']
         self.SV['CH_20'] = self.SV['CH_05']
         self.cal_coeff1['CH_20'] = self.cal_coeff1['CH_05']
@@ -190,6 +191,11 @@ class CalibrateFY3D(object):
         with h5py.File(out_file, 'w') as hdf5:
             for i in xrange(0, 20):
                 channel_name = 'CH_{:02}'.format(i + 1)
+
+                name = '{}/Dn'.format(channel_name)
+                data = self.Dn[channel_name].astype('u2')
+                dtype = 'u2'
+                self._create_dataset(name, data, dtype, hdf5)
 
                 name = '{}/Ref'.format(channel_name)
                 data = self.Ref[channel_name].astype('u2')
@@ -288,6 +294,7 @@ class CalibrateFY3B(object):
         self.launch_date = launch_date
 
         # 分通道数据集，使用 {}
+        self.Dn = dict()
         self.SV = None  # {}
         self.Ref = None  # {}
         self.BB = None  # {}
@@ -422,9 +429,11 @@ class CalibrateFY3B(object):
                 if i < 4:
                     ev_name = "EV_250_Aggr.1KM_RefSB"
                     k = i
+                    channel_name = 'CH_{:02d}'.format(i + 1)
                 else:
                     ev_name = "EV_1KM_RefSB"
                     k = i - 4
+                    channel_name = 'CH_{:02d}'.format(i + 2)
 
                 with h5py.File(self.l1_1000m, "r") as h5:
                     ev_dn_l1 = h5.get(ev_name)[:][k]
@@ -449,6 +458,8 @@ class CalibrateFY3B(object):
                 dn_new = ev_dn_l1 - sv_dn_obc
                 ref_new = dn_new * slope * 100
 
+                self.Dn[channel_name] = dn_new
+
                 # 除去有效范围外的 dn 值
                 ref_new = np.ma.masked_less_equal(ref_new, 0)
                 ref_new = ref_new.filled(0)
@@ -466,10 +477,12 @@ class CalibrateFY3B(object):
                     k = i
                     ev_name = "EV_250_Aggr.1KM_RefSB"
                     sv_name = "SV_250_Aggr1KM_RefSB"
+                    channel_name = 'CH_{:02d}'.format(i + 1)
                 else:
                     k = i - 4
                     ev_name = "EV_1KM_RefSB"
                     sv_name = "SV_1KM_RefSB"
+                    channel_name = 'CH_{:02d}'.format(i + 2)
 
                 with h5py.File(self.l1_1000m, "r") as h5:
                     ev_ref_l1 = h5.get(ev_name)[:][k]
@@ -498,6 +511,8 @@ class CalibrateFY3B(object):
                 slope_new = (self.dsl ** 2) * k2_new + self.dsl * k1_new + k0_new
                 dn_new = dn_new - sv_dn_obc
                 ref_new = dn_new * slope_new * 100
+
+                self.Dn[channel_name] = dn_new
 
                 # 除去有效范围外的 dn 值
                 ref_new = np.ma.masked_less_equal(ref_new, 0)
@@ -532,6 +547,14 @@ class CalibrateFY3B(object):
                     # 创建输出文件的数据集
                     for i in xrange(0, 20):
                         channel_name = 'CH_{:02}'.format(i + 1)
+
+                        name = '{}/Dn'.format(channel_name)
+                        if i != 4:
+                            data = self.Dn[channel_name].astype('u2')
+                        else:
+                            data = m1000.get('EV_250_Aggr.1KM_Emissive')[:]
+                        dtype = 'u2'
+                        self._create_dataset(name, data, dtype, hdf5)
 
                         name = '{}/Ref'.format(channel_name)
                         if i < 4:

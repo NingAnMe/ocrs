@@ -55,7 +55,7 @@ def main(sat_sensor, in_file):
     slide_step = sc.calibrate_slide_step
     plot = sc.calibrate_plot
 
-    ######################### 开始处理 ###########################
+    # ######################## 开始处理 ###########################
     print '-' * 100
     print 'Start calibration'
 
@@ -151,7 +151,8 @@ def main(sat_sensor, in_file):
         # 获取 coefficient 定标系数
         coeff_file = os.path.join(coeff_path, '{}.txt'.format(ymd[0:4]))
         if not os.path.isfile(coeff_file):
-            pass
+            log.error("File is not exist: {}".format(coeff_file))
+            coeff_file = None
         else:
             print "<<< {}".format(coeff_file)
 
@@ -196,8 +197,6 @@ def main(sat_sensor, in_file):
                     else:
                         print out_file
                         _plot_rgb_fy3d_new(out_file, out_pic_new)
-                    print out_file
-                    _plot_rgb_fy3d_new(out_file, out_pic_new)
         else:
             print "***Error***: Calibrate error".format(in_file)
     else:
@@ -359,7 +358,7 @@ def get_files_by_ymd(dir_path, time_start, time_end, ext=None, pattern_ymd=None)
     return files_found
 
 
-######################### 程序全局入口 ##############################
+# ######################## 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
     ARGS = sys.argv[1:]
