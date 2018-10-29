@@ -8,10 +8,11 @@
 import os
 import re
 
+import h5py
 import numpy as np
 import sys
 from PB.CSC.pb_csc_console import LogServer
-from PB.pb_io import Config
+from PB.pb_io import Config, make_sure_path_exists
 from PB.pb_time import ymd2date, time_block
 from app.bias import Bias
 from app.config import InitApp
@@ -70,6 +71,8 @@ def main(sat_sensor, in_file):
     date = dict()
     date_start = ymd2date(yc.info_ymd_s)
     date_end = ymd2date(yc.info_ymd_e)
+
+    result = dict()
     while date_start <= date_end:
         ymd_now = date_start.strftime('%Y%m%d')
         in_files = get_one_day_files(all_files=all_files, ymd=ymd_now, ext='.h5',
@@ -85,6 +88,9 @@ def main(sat_sensor, in_file):
                 data_relative[channel] = list()
             if channel not in date:
                 date[channel] = list()
+            if channel not in result:
+                result[channel] = dict()
+
             ref_s1 = cross_data.data[channel]['S1_FovRefMean']
             if len(ref_s1) == 0:
                 print 'Dont have enough point to plot, is 0: {}'.format(channel)
@@ -97,6 +103,28 @@ def main(sat_sensor, in_file):
             data_absolute[channel].append(np.mean(absolute_bias))
             data_relative[channel].append(np.mean(relative_bias))
             date[channel].append(date_start)
+
+            mean_absolute = np.nanmean(absolute_bias)
+            std_absolute = np.nanstd(absolute_bias)
+            amount_absolute = len(absolute_bias)
+            medina_absolute = np.nanmedian(absolute_bias)
+
+            mean_relative = np.nanmean(relative_bias)
+            std_relative = np.nanstd(relative_bias)
+            amount_relative = len(relative_bias)
+            medina_relative = np.nanmedian(relative_bias)
+
+            result_names = ['Dif_mean', 'Dif_std', 'Dif_medina', 'Dif_count',
+                            'PDif_mean', 'PDif_std', 'PDif_medina', 'PDif_count',
+                            'Date']
+            datas = [mean_absolute, std_absolute, amount_absolute, medina_absolute,
+                     mean_relative, std_relative, amount_relative, medina_relative,
+                     ymd_now]
+            for result_name, data in zip(result_names, datas):
+                if result_name not in result[channel]:
+                    result[channel][result_name] = list()
+                else:
+                    result[channel][result_name].append(data)
 
         date_start = date_start + relativedelta(days=1)
 
@@ -131,6 +159,13 @@ def main(sat_sensor, in_file):
                          title=title_series, y_label=y_label_series_relative,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
 
+    # 输出HDF5
+    hdf5_name = '{}_{}_Dif_PDif.HDF'.format(sat_sensor1, sat_sensor2)
+    out_path = yc.path_opath
+    out_file_hdf5 = os.path.join(out_path, hdf5_name)
+    make_sure_path_exists(out_path)
+    write_hdf5(out_file_hdf5, result)
+
     print '-' * 100
 
 
@@ -164,7 +199,38 @@ def get_one_day_files(all_files, ymd, ext=None, pattern_ymd=None):
     return files_found
 
 
-######################### 程序全局入口 ##############################
+def write_hdf5(out_file, datas):
+    """
+    :param out_file: (str)
+    :param datas: (dict)
+    :return:
+    """
+    if not datas:
+        return
+    with h5py.File(out_file, 'w') as hdf5:
+        for key in datas:
+            if isinstance(datas[key], dict):
+                group_name = key
+                group_data = datas[key]
+                if isinstance(group_data, dict):
+                    for dataset_name in group_data:
+                        data = group_data[dataset_name]
+                        # 处理
+                        if dataset_name != 'Date':
+                            hdf5.create_dataset('/{}/{}'.format(group_name, dataset_name),
+                                                dtype=np.float32, data=data)
+                        else:
+                            hdf5.create_dataset('/{}/{}'.format(group_name, dataset_name),
+                                                data=data)
+            else:
+                dataset_name = key
+                data = datas[dataset_name]
+                # 处理
+                hdf5.create_dataset(dataset_name, data=data)
+    print '>>> {}'.format(out_file)
+
+
+# ######################## 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
     ARGS = sys.argv[1:]
