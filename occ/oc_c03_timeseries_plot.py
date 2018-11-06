@@ -53,6 +53,7 @@ def main(sat_sensor, in_file):
     # 加载卫星配置信息
     s_channel1 = sc.chan1
     s_channel2 = sc.chan2
+    timseries_channels_config = sc.timeseries_channels
     # 加载业务配置信息
     # ######################## 开始处理 ###########################
     print "-" * 100
@@ -82,6 +83,7 @@ def main(sat_sensor, in_file):
 
         # 循环通道数据
         for channel in cross_data.data:
+
             if channel not in data_absolute:
                 data_absolute[channel] = list()
             if channel not in data_relative:
@@ -107,18 +109,32 @@ def main(sat_sensor, in_file):
             mean_absolute = np.nanmean(absolute_bias)
             std_absolute = np.nanstd(absolute_bias)
             amount_absolute = len(absolute_bias)
-            medina_absolute = np.nanmedian(absolute_bias)
+            median_absolute = np.nanmedian(absolute_bias)
 
             mean_relative = np.nanmean(relative_bias)
             std_relative = np.nanstd(relative_bias)
             amount_relative = len(relative_bias)
-            medina_relative = np.nanmedian(relative_bias)
+            median_relative = np.nanmedian(relative_bias)
 
-            result_names = ['Dif_mean', 'Dif_std', 'Dif_medina', 'Dif_count',
-                            'PDif_mean', 'PDif_std', 'PDif_medina', 'PDif_count',
+            mean_ref_s1 = np.nanmean(ref_s1)
+            std_ref_s1 = np.nanstd(ref_s1)
+            amount_ref_s1 = len(ref_s1)
+            median_ref_s1 = np.nanmedian(ref_s1)
+
+            mean_ref_s2 = np.nanmean(ref_s2)
+            std_ref_s2 = np.nanstd(ref_s2)
+            amount_ref_s2 = len(ref_s2)
+            median_ref_s2 = np.nanmedian(ref_s2)
+
+            result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
+                            'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
+                            'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
+                            'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
                             'Date']
-            datas = [mean_absolute, std_absolute, amount_absolute, medina_absolute,
-                     mean_relative, std_relative, amount_relative, medina_relative,
+            datas = [mean_absolute, std_absolute, amount_absolute, median_absolute,
+                     mean_relative, std_relative, amount_relative, median_relative,
+                     mean_ref_s1, std_ref_s1, amount_ref_s1, median_ref_s1,
+                     mean_ref_s2, std_ref_s2, amount_ref_s2, median_ref_s2,
                      ymd_now]
             for result_name, data in zip(result_names, datas):
                 if result_name not in result[channel]:
@@ -130,6 +146,15 @@ def main(sat_sensor, in_file):
 
     for channel in data_absolute:
         absolute_bias = data_absolute[channel]
+
+        plot_config = timseries_channels_config[channel]
+        try:
+            dif_y_range = plot_config['dif_y_range']
+            pdif_y_range = plot_config['pdif_y_range']
+        except:
+            dif_y_range = None
+            pdif_y_range = None
+
         if len(absolute_bias) == 0:
             print 'Dont have enough point to plot, is 0: {}'.format(channel)
             continue
@@ -151,10 +176,12 @@ def main(sat_sensor, in_file):
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
+                         y_range=dif_y_range,
                          out_file=picture_file_absolute,
                          title=title_series, y_label=y_label_series_absolute,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
         plot_time_series(day_data_x=date_channel, day_data_y=relative_bias,
+                         y_range=pdif_y_range,
                          out_file=picture_file_relative,
                          title=title_series, y_label=y_label_series_relative,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )

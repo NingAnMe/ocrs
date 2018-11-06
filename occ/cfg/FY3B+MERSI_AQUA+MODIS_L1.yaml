@@ -126,7 +126,6 @@ plt_combine:
     lon_w: "-180"
     lon_e: "180"
 
-
 timeseries:
   channels:
     CH_01:
