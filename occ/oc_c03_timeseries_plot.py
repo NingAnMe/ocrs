@@ -7,10 +7,12 @@
 
 import os
 import re
+import sys
 
 import h5py
 import numpy as np
-import sys
+from dateutil.relativedelta import relativedelta
+
 from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config, make_sure_path_exists
 from PB.pb_time import ymd2date, time_block
@@ -18,7 +20,6 @@ from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_time_series
 from app.read_data import ReadCrossData
-from dateutil.relativedelta import relativedelta
 
 TIME_TEST = False  # 时间测试
 RED = '#f63240'
@@ -169,10 +170,12 @@ def main(sat_sensor, in_file):
         y_label_series_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
         y_label_series_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
         picture_path = yc.path_opath
-        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
-                                                                         sat_sensor2, channel2)
-        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
-                                                                          sat_sensor2, channel2)
+
+        # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是限制Y轴坐标的图
+        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
@@ -182,6 +185,22 @@ def main(sat_sensor, in_file):
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
         plot_time_series(day_data_x=date_channel, day_data_y=relative_bias,
                          y_range=pdif_y_range,
+                         out_file=picture_file_relative,
+                         title=title_series, y_label=y_label_series_relative,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+
+        # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是不限制Y轴坐标的图
+        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}_NL.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}_NL.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
+        picture_file_relative = os.path.join(picture_path, picture_name_relative)
+        plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
+                         out_file=picture_file_absolute,
+                         title=title_series, y_label=y_label_series_absolute,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+        plot_time_series(day_data_x=date_channel, day_data_y=relative_bias,
                          out_file=picture_file_relative,
                          title=title_series, y_label=y_label_series_relative,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
