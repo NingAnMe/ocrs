@@ -639,7 +639,7 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
                      month_data_y=None, out_file=None, title=None,
                      month_data_y_std=None, x_range=None, y_range=None,
                      y_label=None, y_major_count=None, y_minor_count=None,
-                     ymd_start=None, ymd_end=None, ymd=None):
+                     ymd_start=None, ymd_end=None, ymd=None, zero_line=True):
     main_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     style_file = os.path.join(main_path, "cfg", 'time_series.mplstyle')
     plt.style.use(style_file)
@@ -686,7 +686,8 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
                                )
         ax.plot_background_fill()
     # 绘制 y=0 线配置，在绘制之间设置x轴范围
-    ax.plot_zero_line()
+    if zero_line:
+        ax.plot_zero_line()
 
     # 格式化 ax
     ax.set_ax()

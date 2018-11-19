@@ -131,51 +131,85 @@ timeseries:
     CH_01:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_02:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_03:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_04:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_06:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_07:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-12, 12]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_08:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_09:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_10:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_12:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_13:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-1, 1]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_15:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-1, 1]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_16:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-1, 1]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_17:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_18:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_19:
       dif_y_range: [-0.2, 0.2]
       pdif_y_range: [-1, 1]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
     CH_20:
       dif_y_range: [-0.2, 0.2]
       pdif_y_range: [-1, 1]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
