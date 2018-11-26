@@ -17,10 +17,10 @@ rewrite: ON  # ON覆盖  OFF 关闭H5文件输出
 
 # 全局阈值
 solglint_min : 40   # 太阳耀斑角阈值，保留大于的
-solzenith_max : 180  # 太阳天顶角阈值，保留小于的
+solzenith_max : 75  # 太阳天顶角阈值，保留小于的
 satzenith_max : 35 # 卫星观测角阈值，保留小于的
 timedif_max : 600   # 时间阈值，单位秒
-distdif_max : 2     # 距离阈值，单位 km
+distdif_max : 1     # 距离阈值，单位 km
 angledif_max : 0.03 # 角度阈值，暂时先粗选，每个通道在精细化选择
 
 

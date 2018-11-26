@@ -9,6 +9,7 @@ Created on 2017年9月7日
 
 from datetime import datetime
 import os
+import re
 import sys
 import time
 
@@ -113,7 +114,6 @@ class CLASS_MERSI_L1():
             # FY3A/FY3B MERSI
             # 读取L1文件
             try:
-                print '11111111111111111111111111111111111'
                 h5File_R = h5py.File(L1File, 'r')
                 ary_lon = h5File_R.get('/Longitude')[:]
                 ary_lat = h5File_R.get('/Latitude')[:]
@@ -123,7 +123,6 @@ class CLASS_MERSI_L1():
                 ary_ch5 = h5File_R.get('/EV_250_Aggr.1KM_Emissive')[:]
                 ary_ch6 = h5File_R.get('/EV_1KM_RefSB')[:]
                 ary_Cal_Coeff = h5File_R.attrs['VIR_Cal_Coeff']
-                print '1', ary_Cal_Coeff
 
                 ary_satz = h5File_R.get('/SensorZenith')[:]
                 ary_sata = h5File_R.get('/SensorAzimuth')[:]
@@ -171,22 +170,40 @@ class CLASS_MERSI_L1():
         # 定标系数 19*3 转  20*3
         values = np.array([0, 0, 0])
         K = np.insert(proj_Cal_Coeff, 4, values, 0)
+
+        pat = u'\w{4}_\w{5}_\w{4}_L1_(\d{8})_(\d{4})_\w{5}_MS.HDF$'
+        g = re.match(pat, iname)
+        if g:
+            ymd = g.group(1)
+            hms = g.group(2)
+        else:
+            raise ValueError('Cant get the ymdhms from file name.')
         # 可见
         for i in xrange(self.Band):
             BandName = 'CH_%02d' % (i + 1)
+            print ymd, hms
             if i < 4:
                 DN = np.full(dshape, np.nan)
-                idx = np.logical_and(ary_ch1[i] < 10000, ary_ch1[i] >= 0)
+                idx = np.logical_and(ary_ch1[i] < 10000, ary_ch1[i] > 0)
                 DN[idx] = ary_ch1[i][idx]
-                Ref = (DN ** 2 * K[i, 2] + DN * K[i, 1] + K[i, 0]) / 100.
+                if int(ymd + hms) <= 201303060015:
+
+                    Ref = (DN ** 2 * K[i, 2] + DN * K[i, 1] + K[i, 0]) / 100.
+                    print 'ref', Ref, BandName
+                else:
+                    Ref = (DN ** 2 * K[i, 2] + DN * K[i, 1] + K[i, 0]) / 10000.
                 self.Dn[BandName] = DN
                 self.Ref[BandName] = Ref
             elif i > 4:
                 k = i - 5
                 DN = np.full(dshape, np.nan)
-                idx = np.logical_and(ary_ch6[k] < 10000, ary_ch6[k] >= 0)
+                idx = np.logical_and(ary_ch6[k] < 10000, ary_ch6[k] > 0)
                 DN[idx] = ary_ch6[k][idx]
-                Ref = (DN ** 2 * K[i, 2] + DN * K[i, 1] + K[i, 0]) / 100.
+                if int(ymd + hms) <= 201303060015:
+                    Ref = (DN ** 2 * K[i, 2] + DN * K[i, 1] + K[i, 0]) / 100.
+                    print 'ref', Ref, BandName
+                else:
+                    Ref = (DN ** 2 * K[i, 2] + DN * K[i, 1] + K[i, 0]) / 10000.
                 self.Dn[BandName] = DN
                 self.Ref[BandName] = Ref
             # 红外

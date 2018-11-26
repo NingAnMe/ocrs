@@ -440,6 +440,76 @@ def job_0711(job_exe, sat_pair, date_s, date_e, job_id):
     return arg_list
 
 
+def job_0810(job_exe, sat_pair, date_s, date_e, job_id):
+    '''
+    :年合成
+    '''
+    Log.info(u'%s: %s 年合成处理开始...' % (job_id, job_exe))
+    cfg_path = cfg_body['PATH']['MID']['incfg']
+    month_path = cfg_body['PATH']['OUT']['monthly']
+    yearly_path = cfg_body['PATH']['OUT']['yearly']
+
+    # 清理配置
+    if os.path.isdir(cfg_path):
+        shutil.rmtree(cfg_path)
+    arg_list = []
+
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+
+        # 输出
+        com_filename = '%s_%s_GBAL_L3_OCC_MLT_GLL_%s_YEAR_5000M.HDF' % (
+            cfg_body['PATH']['sat'], cfg_body['PATH']['sensor'], ymd)
+
+        yearly_path_use = pb_io.path_replace_ymd(yearly_path, ymd)
+        com_out_file = os.path.join(yearly_path_use, com_filename)
+
+        # 输入
+        reg = '.*_%s.*.HDF' % ymd[0:4]
+        month_path_use = pb_io.path_replace_ymd(month_path, ymd)
+        data_list_use = pb_io.find_file(month_path_use, reg)
+
+        if len(data_list_use) > 0:
+            com_dict = {
+                'PATH': {'ipath': data_list_use, 'opath': com_out_file}}
+            cfgFile = os.path.join(cfg_path, '%s.yaml' % ymd)
+            CreateYamlCfg(com_dict, cfgFile)
+
+        date_s = date_s + relativedelta(years=1)
+
+    reg = '.*.yaml'
+    FileLst = pb_io.find_file(cfg_path, reg)
+    for in_file in FileLst:
+        cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
+        arg_list.append(cmd_list)
+    return arg_list
+
+
+def job_0811(job_exe, sat_pair, date_s, date_e, job_id):
+    '''
+    :年成后文件绘图
+    '''
+    Log.info(u'%s: %s 年合成出图处理开始...' % (job_id, job_exe))
+
+    ipath = cfg_body['PATH']['OUT']['yearly']
+    FileLst = []
+    arg_list = []
+
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+        path_use = pb_io.path_replace_ymd(ipath, ymd)
+        reg = '.*_%s_.*.HDF' % ymd[0:4]
+        mlist = pb_io.find_file(path_use, reg)
+        FileLst.extend(mlist)
+        date_s = date_s + relativedelta(years=1)
+
+    for in_file in FileLst:
+        cmd_list = '%s %s %s %s' % (python, job_exe, sat_pair, in_file)
+        arg_list.append(cmd_list)
+
+    return arg_list
+
+
 def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
 
     if reload is None:
