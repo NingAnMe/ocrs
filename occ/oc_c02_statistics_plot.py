@@ -246,7 +246,7 @@ def main(sat_sensor, in_file):
         plot_bias_map(lat=lat, lon=lon, data=absolute_bias, out_file=picture_file_map_absolute,
                       title=title_map_absolute)
         plot_bias_map(lat=lat, lon=lon, data=relative_bias, out_file=picture_file_map_relative,
-                      title=title_map_relative)
+                      title=title_map_relative, vmin=-0.2, vmax=0.2)
 
     keys = info.keys()
     keys.sort()

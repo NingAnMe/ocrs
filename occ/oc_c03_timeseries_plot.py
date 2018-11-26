@@ -73,6 +73,7 @@ def main(sat_sensor, in_file):
     date = dict()
     ref_s1_all = dict()
     ref_s2_all = dict()
+    amount_all = dict()
     date_start = ymd2date(yc.info_ymd_s)
     date_end = ymd2date(yc.info_ymd_e)
 
@@ -97,6 +98,8 @@ def main(sat_sensor, in_file):
                 ref_s1_all[channel] = list()
             if channel not in ref_s2_all:
                 ref_s2_all[channel] = list()
+            if channel not in amount_all:
+                amount_all[channel] = list()
             if channel not in result:
                 result[channel] = dict()
 
@@ -134,16 +137,17 @@ def main(sat_sensor, in_file):
             amount_ref_s2 = len(ref_s2)
             median_ref_s2 = np.nanmedian(ref_s2)
             ref_s2_all[channel].append(mean_ref_s2)
+            amount_all[channel].append(amount_ref_s1)
 
             result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
                             'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
                             'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
                             'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
                             'Date']
-            datas = [mean_absolute, std_absolute, amount_absolute, median_absolute,
-                     mean_relative, std_relative, amount_relative, median_relative,
-                     mean_ref_s1, std_ref_s1, amount_ref_s1, median_ref_s1,
-                     mean_ref_s2, std_ref_s2, amount_ref_s2, median_ref_s2,
+            datas = [mean_absolute, std_absolute, median_absolute, amount_absolute,
+                     mean_relative, std_relative, median_relative, amount_relative,
+                     mean_ref_s1, std_ref_s1, median_ref_s1, amount_ref_s1,
+                     mean_ref_s2, std_ref_s2, median_ref_s2, amount_ref_s2,
                      ymd_now]
             for result_name, data in zip(result_names, datas):
                 if result_name not in result[channel]:
@@ -169,6 +173,7 @@ def main(sat_sensor, in_file):
         date_channel = date[channel]
         ref_s1_channel = ref_s1_all[channel]
         ref_s2_channel = ref_s2_all[channel]
+        amount_channel = amount_all[channel]
         # 绘制时间序列图
         channel1 = channel
         index_channel1 = s_channel1.index(channel1)
@@ -177,6 +182,8 @@ def main(sat_sensor, in_file):
                                                         channel2)
         title_ref_s1 = '{}_{} REF Time Series'.format(sat_sensor1, channel1)
         title_ref_s2 = '{}_{} REF Time Series'.format(sat_sensor2, channel2)
+        title_amount = '{}_{} {}_{} Matched Points Count Time Series'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
         y_label_series_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
         y_label_series_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
         y_label_ref_s1 = 'REF'
@@ -225,10 +232,13 @@ def main(sat_sensor, in_file):
             sat_sensor1, channel1, sat_sensor2, channel2)
         picture_name_ref_s1 = 'Time_Series_REF_{}_{}_NL.png'.format(sat_sensor1, channel1)
         picture_name_ref_s2 = 'Time_Series_REF_{}_{}_NL.png'.format(sat_sensor2, channel2)
+        picture_name_amount = 'Time_Series_Count_{}_{}_{}_{}_NL.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         picture_file_ref_s1 = os.path.join(picture_path, picture_name_ref_s1)
         picture_file_ref_s2 = os.path.join(picture_path, picture_name_ref_s2)
+        picture_file_amount = os.path.join(picture_path, picture_name_amount)
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
                          out_file=picture_file_absolute,
                          title=title_series, y_label=y_label_series_absolute,
@@ -244,6 +254,10 @@ def main(sat_sensor, in_file):
         plot_time_series(day_data_x=date_channel, day_data_y=ref_s2_channel,
                          out_file=picture_file_ref_s2,
                          title=title_ref_s2, y_label=y_label_ref_s2,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+        plot_time_series(day_data_x=date_channel, day_data_y=amount_channel,
+                         out_file=picture_file_amount,
+                         title=title_amount, y_label=y_label_ref_s2,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
 
     # 输出HDF5

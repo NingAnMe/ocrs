@@ -549,20 +549,24 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
 
 
 def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
-                  title=None):
+                  title=None, vmin=None, vmax=None):
     if title:
         title = title
     else:
         title = "Map"
 
     # 绘制偏差的全球分布图，保持0值永远在bar的中心
-    datamax = np.max(data)
-    if datamax >= 0:
-        vmin = -1.0 * datamax
-        vmax = datamax
+    if vmin is not None and vmax is not None:
+        vmin = vmin
+        vmax = vmax
     else:
-        vmin = datamax
-        vmax = -1.0 * datamax
+        datamax = np.max(data)
+        if datamax >= 0:
+            vmin = -1.0 * datamax
+            vmax = datamax
+        else:
+            vmin = datamax
+            vmax = -1.0 * datamax
 
     p = dv_map.dv_map()
     p.colorbar_fmt = '%0.3f'
