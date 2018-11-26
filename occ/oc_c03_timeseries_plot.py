@@ -164,6 +164,7 @@ def main(sat_sensor, in_file):
         pdif_y_range = plot_config.get('pdif_y_range')
         ref_s1_y_range = plot_config.get('ref_s1_y_range')
         ref_s2_y_range = plot_config.get('ref_s2_y_range')
+        count_y_range = plot_config.get('count_y_range')
 
         absolute_bias = data_absolute[channel]
         if len(absolute_bias) == 0:
@@ -197,10 +198,13 @@ def main(sat_sensor, in_file):
             sat_sensor1, channel1, sat_sensor2, channel2)
         picture_name_ref_s1 = 'Time_Series_REF_{}_{}.png'.format(sat_sensor1, channel1)
         picture_name_ref_s2 = 'Time_Series_REF_{}_{}.png'.format(sat_sensor2, channel2)
+        picture_name_amount = 'Time_Series_Count_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
         picture_file_ref_s1 = os.path.join(picture_path, picture_name_ref_s1)
         picture_file_ref_s2 = os.path.join(picture_path, picture_name_ref_s2)
+        picture_file_amount = os.path.join(picture_path, picture_name_amount)
 
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
                          y_range=dif_y_range,
@@ -224,6 +228,11 @@ def main(sat_sensor, in_file):
                          title=title_ref_s2, y_label=y_label_ref_s2,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
                          zero_line=False)
+        plot_time_series(day_data_x=date_channel, day_data_y=amount_channel,
+                         y_range=count_y_range,
+                         out_file=picture_file_amount,
+                         title=title_amount, y_label=y_label_ref_s2,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
 
         # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是不限制Y轴坐标的图
         picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}_NL.png'.format(
