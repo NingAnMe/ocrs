@@ -549,20 +549,24 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
 
 
 def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
-                  title=None):
+                  title=None, vmin=None, vmax=None):
     if title:
         title = title
     else:
         title = "Map"
 
     # 绘制偏差的全球分布图，保持0值永远在bar的中心
-    datamax = np.max(data)
-    if datamax >= 0:
-        vmin = -1.0 * datamax
-        vmax = datamax
+    if vmin is not None and vmax is not None:
+        vmin = vmin
+        vmax = vmax
     else:
-        vmin = datamax
-        vmax = -1.0 * datamax
+        datamax = np.max(data)
+        if datamax >= 0:
+            vmin = -1.0 * datamax
+            vmax = datamax
+        else:
+            vmin = datamax
+            vmax = -1.0 * datamax
 
     p = dv_map.dv_map()
     p.colorbar_fmt = '%0.3f'
@@ -639,7 +643,7 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
                      month_data_y=None, out_file=None, title=None,
                      month_data_y_std=None, x_range=None, y_range=None,
                      y_label=None, y_major_count=None, y_minor_count=None,
-                     ymd_start=None, ymd_end=None, ymd=None):
+                     ymd_start=None, ymd_end=None, ymd=None, zero_line=True):
     main_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     style_file = os.path.join(main_path, "cfg", 'time_series.mplstyle')
     plt.style.use(style_file)
@@ -686,7 +690,8 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
                                )
         ax.plot_background_fill()
     # 绘制 y=0 线配置，在绘制之间设置x轴范围
-    ax.plot_zero_line()
+    if zero_line:
+        ax.plot_zero_line()
 
     # 格式化 ax
     ax.set_ax()

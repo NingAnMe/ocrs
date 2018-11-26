@@ -7,17 +7,19 @@
 
 import os
 import re
-
-import numpy as np
 import sys
+
+import h5py
+import numpy as np
+from dateutil.relativedelta import relativedelta
+
 from PB.CSC.pb_csc_console import LogServer
-from PB.pb_io import Config
+from PB.pb_io import Config, make_sure_path_exists
 from PB.pb_time import ymd2date, time_block
 from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_time_series
 from app.read_data import ReadCrossData
-from dateutil.relativedelta import relativedelta
 
 TIME_TEST = False  # 时间测试
 RED = '#f63240'
@@ -52,6 +54,7 @@ def main(sat_sensor, in_file):
     # 加载卫星配置信息
     s_channel1 = sc.chan1
     s_channel2 = sc.chan2
+    timseries_channels_config = sc.timeseries_channels
     # 加载业务配置信息
     # ######################## 开始处理 ###########################
     print "-" * 100
@@ -68,8 +71,13 @@ def main(sat_sensor, in_file):
     data_absolute = dict()
     data_relative = dict()
     date = dict()
+    ref_s1_all = dict()
+    ref_s2_all = dict()
+    amount_all = dict()
     date_start = ymd2date(yc.info_ymd_s)
     date_end = ymd2date(yc.info_ymd_e)
+
+    result = dict()
     while date_start <= date_end:
         ymd_now = date_start.strftime('%Y%m%d')
         in_files = get_one_day_files(all_files=all_files, ymd=ymd_now, ext='.h5',
@@ -79,15 +87,25 @@ def main(sat_sensor, in_file):
 
         # 循环通道数据
         for channel in cross_data.data:
+
             if channel not in data_absolute:
                 data_absolute[channel] = list()
             if channel not in data_relative:
                 data_relative[channel] = list()
             if channel not in date:
                 date[channel] = list()
+            if channel not in ref_s1_all:
+                ref_s1_all[channel] = list()
+            if channel not in ref_s2_all:
+                ref_s2_all[channel] = list()
+            if channel not in amount_all:
+                amount_all[channel] = list()
+            if channel not in result:
+                result[channel] = dict()
+
             ref_s1 = cross_data.data[channel]['S1_FovRefMean']
             if len(ref_s1) == 0:
-                print 'Dont have enough point to plot, is 0: {}'.format(channel)
+                print '{} {} : Dont have enough point, is 0'.format(ymd_now, channel)
                 continue
             ref_s2 = cross_data.data[channel]['S2_FovRefMean']
             # 计算相对偏差和绝对偏差
@@ -98,30 +116,129 @@ def main(sat_sensor, in_file):
             data_relative[channel].append(np.mean(relative_bias))
             date[channel].append(date_start)
 
+            mean_absolute = np.nanmean(absolute_bias)
+            std_absolute = np.nanstd(absolute_bias)
+            amount_absolute = len(absolute_bias)
+            median_absolute = np.nanmedian(absolute_bias)
+
+            mean_relative = np.nanmean(relative_bias)
+            std_relative = np.nanstd(relative_bias)
+            amount_relative = len(relative_bias)
+            median_relative = np.nanmedian(relative_bias)
+
+            mean_ref_s1 = np.nanmean(ref_s1)
+            std_ref_s1 = np.nanstd(ref_s1)
+            amount_ref_s1 = len(ref_s1)
+            median_ref_s1 = np.nanmedian(ref_s1)
+            ref_s1_all[channel].append(mean_ref_s1)
+
+            mean_ref_s2 = np.nanmean(ref_s2)
+            std_ref_s2 = np.nanstd(ref_s2)
+            amount_ref_s2 = len(ref_s2)
+            median_ref_s2 = np.nanmedian(ref_s2)
+            ref_s2_all[channel].append(mean_ref_s2)
+            amount_all[channel].append(amount_ref_s1)
+
+            result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
+                            'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
+                            'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
+                            'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
+                            'Date']
+            datas = [mean_absolute, std_absolute, median_absolute, amount_absolute,
+                     mean_relative, std_relative, median_relative, amount_relative,
+                     mean_ref_s1, std_ref_s1, median_ref_s1, amount_ref_s1,
+                     mean_ref_s2, std_ref_s2, median_ref_s2, amount_ref_s2,
+                     ymd_now]
+            for result_name, data in zip(result_names, datas):
+                if result_name not in result[channel]:
+                    result[channel][result_name] = list()
+                else:
+                    result[channel][result_name].append(data)
+
         date_start = date_start + relativedelta(days=1)
 
     for channel in data_absolute:
+
+        plot_config = timseries_channels_config[channel]
+        dif_y_range = plot_config.get('dif_y_range')
+        pdif_y_range = plot_config.get('pdif_y_range')
+        ref_s1_y_range = plot_config.get('ref_s1_y_range')
+        ref_s2_y_range = plot_config.get('ref_s2_y_range')
+
         absolute_bias = data_absolute[channel]
         if len(absolute_bias) == 0:
             print 'Dont have enough point to plot, is 0: {}'.format(channel)
             continue
         relative_bias = data_relative[channel]
         date_channel = date[channel]
+        ref_s1_channel = ref_s1_all[channel]
+        ref_s2_channel = ref_s2_all[channel]
+        amount_channel = amount_all[channel]
         # 绘制时间序列图
         channel1 = channel
         index_channel1 = s_channel1.index(channel1)
         channel2 = s_channel2[index_channel1]
         title_series = '{}_{} {}_{} Time Series'.format(sat_sensor1, channel1, sat_sensor2,
                                                         channel2)
+        title_ref_s1 = '{}_{} REF Time Series'.format(sat_sensor1, channel1)
+        title_ref_s2 = '{}_{} REF Time Series'.format(sat_sensor2, channel2)
+        title_amount = '{}_{} {}_{} Matched Points Count Time Series'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
         y_label_series_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
         y_label_series_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
+        y_label_ref_s1 = 'REF'
+        y_label_ref_s2 = 'REF'
         picture_path = yc.path_opath
-        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
-                                                                         sat_sensor2, channel2)
-        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}.png'.format(sat_sensor1, channel1,
-                                                                          sat_sensor2, channel2)
+
+        # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是限制Y轴坐标的图
+        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_name_ref_s1 = 'Time_Series_REF_{}_{}.png'.format(sat_sensor1, channel1)
+        picture_name_ref_s2 = 'Time_Series_REF_{}_{}.png'.format(sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
+        picture_file_ref_s1 = os.path.join(picture_path, picture_name_ref_s1)
+        picture_file_ref_s2 = os.path.join(picture_path, picture_name_ref_s2)
+
+        plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
+                         y_range=dif_y_range,
+                         out_file=picture_file_absolute,
+                         title=title_series, y_label=y_label_series_absolute,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+        plot_time_series(day_data_x=date_channel, day_data_y=relative_bias,
+                         y_range=pdif_y_range,
+                         out_file=picture_file_relative,
+                         title=title_series, y_label=y_label_series_relative,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+        plot_time_series(day_data_x=date_channel, day_data_y=ref_s1_channel,
+                         y_range=ref_s1_y_range,
+                         out_file=picture_file_ref_s1,
+                         title=title_ref_s1, y_label=y_label_ref_s1,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
+                         zero_line=False)
+        plot_time_series(day_data_x=date_channel, day_data_y=ref_s2_channel,
+                         y_range=ref_s2_y_range,
+                         out_file=picture_file_ref_s2,
+                         title=title_ref_s2, y_label=y_label_ref_s2,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
+                         zero_line=False)
+
+        # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是不限制Y轴坐标的图
+        picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}_NL.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}_NL.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_name_ref_s1 = 'Time_Series_REF_{}_{}_NL.png'.format(sat_sensor1, channel1)
+        picture_name_ref_s2 = 'Time_Series_REF_{}_{}_NL.png'.format(sat_sensor2, channel2)
+        picture_name_amount = 'Time_Series_Count_{}_{}_{}_{}_NL.png'.format(
+            sat_sensor1, channel1, sat_sensor2, channel2)
+        picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
+        picture_file_relative = os.path.join(picture_path, picture_name_relative)
+        picture_file_ref_s1 = os.path.join(picture_path, picture_name_ref_s1)
+        picture_file_ref_s2 = os.path.join(picture_path, picture_name_ref_s2)
+        picture_file_amount = os.path.join(picture_path, picture_name_amount)
         plot_time_series(day_data_x=date_channel, day_data_y=absolute_bias,
                          out_file=picture_file_absolute,
                          title=title_series, y_label=y_label_series_absolute,
@@ -130,6 +247,25 @@ def main(sat_sensor, in_file):
                          out_file=picture_file_relative,
                          title=title_series, y_label=y_label_series_relative,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+        plot_time_series(day_data_x=date_channel, day_data_y=ref_s1_channel,
+                         out_file=picture_file_ref_s1,
+                         title=title_ref_s1, y_label=y_label_ref_s1,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+        plot_time_series(day_data_x=date_channel, day_data_y=ref_s2_channel,
+                         out_file=picture_file_ref_s2,
+                         title=title_ref_s2, y_label=y_label_ref_s2,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+        plot_time_series(day_data_x=date_channel, day_data_y=amount_channel,
+                         out_file=picture_file_amount,
+                         title=title_amount, y_label=y_label_ref_s2,
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+
+    # 输出HDF5
+    hdf5_name = '{}_{}_Dif_PDif.HDF'.format(sat_sensor1, sat_sensor2)
+    out_path = yc.path_opath
+    out_file_hdf5 = os.path.join(out_path, hdf5_name)
+    make_sure_path_exists(out_path)
+    write_hdf5(out_file_hdf5, result)
 
     print '-' * 100
 
@@ -164,7 +300,38 @@ def get_one_day_files(all_files, ymd, ext=None, pattern_ymd=None):
     return files_found
 
 
-######################### 程序全局入口 ##############################
+def write_hdf5(out_file, datas):
+    """
+    :param out_file: (str)
+    :param datas: (dict)
+    :return:
+    """
+    if not datas:
+        return
+    with h5py.File(out_file, 'w') as hdf5:
+        for key in datas:
+            if isinstance(datas[key], dict):
+                group_name = key
+                group_data = datas[key]
+                if isinstance(group_data, dict):
+                    for dataset_name in group_data:
+                        data = group_data[dataset_name]
+                        # 处理
+                        if dataset_name != 'Date':
+                            hdf5.create_dataset('/{}/{}'.format(group_name, dataset_name),
+                                                dtype=np.float32, data=data)
+                        else:
+                            hdf5.create_dataset('/{}/{}'.format(group_name, dataset_name),
+                                                data=data)
+            else:
+                dataset_name = key
+                data = datas[dataset_name]
+                # 处理
+                hdf5.create_dataset(dataset_name, data=data)
+    print '>>> {}'.format(out_file)
+
+
+# ######################## 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
     ARGS = sys.argv[1:]

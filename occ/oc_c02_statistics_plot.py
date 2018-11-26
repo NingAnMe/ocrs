@@ -66,10 +66,15 @@ def main(sat_sensor, in_file):
     cross_data.read_cross_data(in_files=in_files)
 
     # 循环通道数据
+    info = {}
     for channel in cross_data.data:
+        point_count_min = 10
         ref_s1 = cross_data.data[channel]['S1_FovRefMean']
-        if len(ref_s1) == 0:
-            print 'Dont have enough point to plot, is 0: {}'.format(channel)
+        point_count = len(ref_s1)
+        info[channel] = point_count
+        print '---INFO--- {} Points: {}'.format(channel, point_count)
+        if point_count < point_count_min:
+            print '***WARNING***Dont have enough point to plot: < {}'.format(point_count_min)
             continue
         ref_s2 = cross_data.data[channel]['S2_FovRefMean']
         lat = cross_data.data[channel]['S1_Lat']
@@ -82,22 +87,22 @@ def main(sat_sensor, in_file):
         mean_absolute = np.nanmean(absolute_bias)
         std_absolute = np.nanstd(absolute_bias)
         amount_absolute = len(absolute_bias)
-        medina_absolute = np.nanmedian(absolute_bias)
+        median_absolute = np.nanmedian(absolute_bias)
 
         mean_relative = np.nanmean(relative_bias)
         std_relative = np.nanstd(relative_bias)
         amount_relative = len(relative_bias)
-        medina_relative = np.nanmedian(relative_bias)
+        median_relative = np.nanmedian(relative_bias)
 
         mean_ref_s1 = np.nanmean(ref_s1)
         std_ref_s1 = np.nanstd(ref_s1)
         amount_ref_s1 = len(ref_s1)
-        medina_ref_s1 = np.nanmedian(ref_s1)
+        median_ref_s1 = np.nanmedian(ref_s1)
 
         mean_ref_s2 = np.nanmean(ref_s2)
         std_ref_s2 = np.nanstd(ref_s2)
         amount_ref_s2 = len(ref_s2)
-        medina_ref_s2 = np.nanmedian(ref_s2)
+        median_ref_s2 = np.nanmedian(ref_s2)
 
         # 绘制偏差直方图
         channel1 = channel
@@ -116,12 +121,12 @@ def main(sat_sensor, in_file):
                                                                         sat_sensor2, channel2)
         annotate_hist_absolute = {'left_top': ['Dif@Mean={:.4f}'.format(mean_absolute),
                                                'Dif@Std={:.4f}'.format(std_absolute),
-                                               'Dif@Medina={:.4f}'.format(medina_absolute),
+                                               'Dif@Median={:.4f}'.format(median_absolute),
                                                'Dif@Amount={:4d}'.format(amount_absolute),
                                                ]}
         annotate_hist_relative = {'left_top': ['PDif@Mean={:.4f}'.format(mean_relative),
                                                'PDif@Std={:.4f}'.format(std_relative),
-                                               'PDif@Medina={:.4f}'.format(medina_relative),
+                                               'PDif@Median={:.4f}'.format(median_relative),
                                                'PDif@Amount={:4d}'.format(amount_relative),
                                                ]}
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
@@ -149,12 +154,12 @@ def main(sat_sensor, in_file):
         picture_name_sat2 = 'Histogram_REF_{}_{}.png'.format(sat_sensor2, channel2)
         annotate_hist_sat1 = {'left_top': ['REF@Mean={:.4f}'.format(mean_ref_s1),
                                            'REF@Std={:.4f}'.format(std_ref_s1),
-                                           'REF@Medina={:.4f}'.format(medina_ref_s1),
+                                           'REF@Median={:.4f}'.format(median_ref_s1),
                                            'REF@Amount={:4d}'.format(amount_ref_s1),
                                            ]}
         annotate_hist_sat2 = {'left_top': ['REF@Mean={:.4f}'.format(mean_ref_s2),
                                            'REF@Std={:.4f}'.format(std_ref_s2),
-                                           'REF@Medina={:.4f}'.format(medina_ref_s2),
+                                           'REF@Median={:.4f}'.format(median_ref_s2),
                                            'REF@Amount={:4d}'.format(amount_ref_s2),
                                            ]}
         picture_file_sat1 = os.path.join(picture_path, picture_name_sat1)
@@ -178,13 +183,13 @@ def main(sat_sensor, in_file):
         annotate_scatter_absolute = {'left_top': ['Dif@{:.2f}={:.4f}'.format(fix_point, fix_dif),
                                                   'Dif@Mean={:.4f}'.format(mean_absolute),
                                                   'Dif@Std={:.4f}'.format(std_absolute),
-                                                  'Dif@Medina={:.4f}'.format(medina_absolute),
+                                                  'Dif@Median={:.4f}'.format(median_absolute),
                                                   'Dif@Amount={:4d}'.format(amount_absolute),
                                                   ]}
         annotate_scatter_relative = {'left_top': ['PDif@{:.2f}={:.4f}'.format(fix_point, fix_pdif),
                                                   'PDif@Mean={:.4f}'.format(mean_relative),
                                                   'PDif@Std={:.4f}'.format(std_relative),
-                                                  'PDif@Medina={:.4f}'.format(medina_relative),
+                                                  'PDif@Median={:.4f}'.format(median_relative),
                                                   'PDif@Amount={:4d}'.format(amount_relative),
                                                   ]}
         picture_path = yc.path_opath
@@ -212,7 +217,7 @@ def main(sat_sensor, in_file):
         y_label_regression = 'REF {}'.format(sat_sensor2)
         annotate_regression = {'left_top': ['MERSI@Mean={:.4f}'.format(mean_ref_s1),
                                             'MERSI@Std={:.4f}'.format(std_ref_s1),
-                                            'MERSI@Medina={:.4f}'.format(medina_ref_s1),
+                                            'MERSI@Median={:.4f}'.format(median_ref_s1),
                                             'MERSI@Amount={:4d}'.format(amount_ref_s1),
                                             ]}
         picture_path = yc.path_opath
@@ -241,8 +246,12 @@ def main(sat_sensor, in_file):
         plot_bias_map(lat=lat, lon=lon, data=absolute_bias, out_file=picture_file_map_absolute,
                       title=title_map_absolute)
         plot_bias_map(lat=lat, lon=lon, data=relative_bias, out_file=picture_file_map_relative,
-                      title=title_map_relative)
+                      title=title_map_relative, vmin=-0.2, vmax=0.2)
 
+    keys = info.keys()
+    keys.sort()
+    for channel in keys:
+        print 'CHANNEL: {} POINT: {}'.format(channel, info[channel])
     print '-' * 100
 
 
@@ -266,7 +275,7 @@ def get_dif_pdif(data1, data2, fix_point):
     return fix_dif, fix_pdif
 
 
-######################### 程序全局入口 ##############################
+# ######################## 程序全局入口 ##############################
 if __name__ == "__main__":
     # 获取程序参数接口
     ARGS = sys.argv[1:]

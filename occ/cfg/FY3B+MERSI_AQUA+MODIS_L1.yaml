@@ -126,7 +126,6 @@ plt_combine:
     lon_w: "-180"
     lon_e: "180"
 
-
 timeseries:
   channels:
     CH_01:
@@ -156,7 +155,7 @@ timeseries:
       ref_s2_y_range: [-0.01, 0.8]
     CH_07:
       dif_y_range: [-0.05, 0.05]
-      pdif_y_range: [-0.2, 0.2]
+      pdif_y_range: [-12, 12]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
     CH_08:
@@ -181,17 +180,17 @@ timeseries:
       ref_s2_y_range: [-0.01, 0.8]
     CH_13:
       dif_y_range: [-0.05, 0.05]
-      pdif_y_range: [-0.2, 0.2]
+      pdif_y_range: [-1, 1]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
     CH_15:
       dif_y_range: [-0.05, 0.05]
-      pdif_y_range: [-0.2, 0.2]
+      pdif_y_range: [-1, 1]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
     CH_16:
       dif_y_range: [-0.05, 0.05]
-      pdif_y_range: [-0.2, 0.2]
+      pdif_y_range: [-1, 1]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
     CH_17:
@@ -206,11 +205,11 @@ timeseries:
       ref_s2_y_range: [-0.01, 0.8]
     CH_19:
       dif_y_range: [-0.2, 0.2]
-      pdif_y_range: [-0.2, 0.2]
+      pdif_y_range: [-1, 1]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
     CH_20:
       dif_y_range: [-0.2, 0.2]
-      pdif_y_range: [-0.2, 0.2]
+      pdif_y_range: [-1, 1]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]

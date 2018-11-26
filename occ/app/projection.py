@@ -5,17 +5,13 @@
 @Author  : AnNing
 """
 import os
-import re
-import sys
 
 import h5py
-
+import numpy as np
 from DP.dp_prj import prj_core
 from DV import dv_map
-from PB import pb_io, pb_time
+from PB import pb_io
 from PB.pb_time import time_block
-import numpy as np
-
 
 TIME_TEST = False  # 时间测试
 
@@ -89,10 +85,32 @@ class Projection(object):
         # 获取数据的索引信息
         idx = np.logical_and(self.ii >= 0, self.jj >= 0)  # 行列 >= 0 说明投在地图上面
         idx = np.where(idx)  # 全球投影的行列索引信息
-        self.lut_ii = idx[0].T
-        self.lut_jj = idx[1].T
+        self.lut_ii = idx[0].T  # 相当于 proj_i
+        self.lut_jj = idx[1].T  # 相当于 proj_j
         self.data_ii = self.ii[idx]  # 数据行索引信息
         self.data_jj = self.jj[idx]  # 数据列索引信息
+
+    # TODO _create_lut, _get_index 可以优化为 _get_proj_info
+    def _get_proj_info(self):
+        if self.error:
+            return
+        # 创建查找表
+        proj = prj_core(
+            self.cmd, self.res, unit="deg", row=self.row, col=self.col)
+        # 通过查找表和经纬度数据生成数据在全球的行列信息
+        proj_i, proj_j = proj.lonslats2ij(self.lons, self.lats)  # 数据在全球投底图行列号
+        data_row, data_col = self.lons.shape
+        data_i, data_j = np.mgrid[0:data_row:1, 0:data_col:1]  # 数据在数据中的行列号
+
+        # 过滤有效行列号
+        condition = np.logical_and.reduce((proj_i >= 0, proj_i < self.row,
+                                           proj_j >= 0, proj_j < self.col))
+        self.lut_ii = proj_i[condition]  # 有效数据在全球投底图行列号
+        self.lut_jj = proj_j[condition]  # 有效数据在全球投底图行列号
+        self.data_ii = data_i[condition]  # 有效数据在数据中的行列号
+        self.data_jj = data_j[condition]  # 有效数据在数据中的行列号
+        # global_data = np.fill((self.row, self.col), np.nan, dtype=np.float32)
+        # global_data[self.lut_ii, self.lut_jj] = data[self.data_ii, self.jj]
 
     def _write(self, out_file):
         if self.error:
