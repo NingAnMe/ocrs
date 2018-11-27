@@ -189,6 +189,7 @@ def main(sat_sensor, in_file):
         y_label_series_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
         y_label_ref_s1 = 'REF'
         y_label_ref_s2 = 'REF'
+        y_label_amount = 'Count'
         picture_path = yc.path_opath
 
         # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是限制Y轴坐标的图
@@ -231,7 +232,7 @@ def main(sat_sensor, in_file):
         plot_time_series(day_data_x=date_channel, day_data_y=amount_channel,
                          y_range=count_y_range,
                          out_file=picture_file_amount,
-                         title=title_amount, y_label=y_label_ref_s2,
+                         title=title_amount, y_label=y_label_amount,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
 
         # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是不限制Y轴坐标的图
@@ -266,7 +267,7 @@ def main(sat_sensor, in_file):
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
         plot_time_series(day_data_x=date_channel, day_data_y=amount_channel,
                          out_file=picture_file_amount,
-                         title=title_amount, y_label=y_label_ref_s2,
+                         title=title_amount, y_label=y_label_amount,
                          ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
 
     # 输出HDF5
