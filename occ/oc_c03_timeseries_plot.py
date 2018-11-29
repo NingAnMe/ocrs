@@ -108,6 +108,16 @@ def main(sat_sensor, in_file):
                 print '{} {} : Dont have enough point, is 0'.format(ymd_now, channel)
                 continue
             ref_s2 = cross_data.data[channel]['S2_FovRefMean']
+
+            # 过滤 3 倍std之外的点
+            mean_ref_s1 = np.nanmean(ref_s1)
+            std_ref_s1 = np.nanstd(ref_s1)
+            min_ref_s1 = mean_ref_s1 - 3 * std_ref_s1
+            max_ref_s1 = mean_ref_s1 + 3 * std_ref_s1
+            idx = np.logical_and(ref_s1 >= min_ref_s1, ref_s1 <= max_ref_s1)
+            ref_s1 = ref_s1[idx]
+            ref_s2 = ref_s2[idx]
+
             # 计算相对偏差和绝对偏差
             bias = Bias()
             absolute_bias = bias.absolute_deviation(ref_s1, ref_s2)

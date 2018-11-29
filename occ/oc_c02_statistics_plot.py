@@ -79,6 +79,18 @@ def main(sat_sensor, in_file):
         ref_s2 = cross_data.data[channel]['S2_FovRefMean']
         lat = cross_data.data[channel]['S1_Lat']
         lon = cross_data.data[channel]['S1_Lon']
+
+        # 过滤 3 倍std之外的点
+        mean_ref_s1 = np.nanmean(ref_s1)
+        std_ref_s1 = np.nanstd(ref_s1)
+        min_ref_s1 = mean_ref_s1 - 3 * std_ref_s1
+        max_ref_s1 = mean_ref_s1 + 3 * std_ref_s1
+        idx = np.logical_and(ref_s1 >= min_ref_s1, ref_s1 <= max_ref_s1)
+        ref_s1 = ref_s1[idx]
+        ref_s2 = ref_s2[idx]
+        lat = lat[idx]
+        lon = lon[idx]
+
         # 计算相对偏差和绝对偏差
         bias = Bias()
         absolute_bias = bias.absolute_deviation(ref_s1, ref_s2)
