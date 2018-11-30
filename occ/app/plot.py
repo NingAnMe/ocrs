@@ -528,7 +528,7 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     # kde 是否绘制密度点颜色
     ax.plot_scatter(data_x=data_x, data_y=data_y, kde=True)
 
-    # plt.colorbar(ax.plot_result)
+    plt.colorbar(ax.plot_result)
     # --------------------
     plt.tight_layout()
     fig.suptitle(title, fontsize=11, fontproperties=FONT0)
