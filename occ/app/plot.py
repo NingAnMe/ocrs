@@ -572,7 +572,7 @@ def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
     p.colorbar_fmt = '%0.3f'
     p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
                ptype=None, markersize=0.05, marker='s',
-               colormap=plt.get_cmap('bwr'))
+               colormap=plt.get_cmap('jet'))
     p.title = title
     make_sure_path_exists(os.path.dirname(out_file))
     p.savefig(out_file)
