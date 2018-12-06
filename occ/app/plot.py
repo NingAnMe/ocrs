@@ -11,7 +11,7 @@ import numpy as np
 from DV import dv_map
 from DV import dv_map_oc
 from DV.dv_img import dv_rgb
-from DV.dv_plot import plt, FONT0, Histogram, TimeSeries, Scatter
+from DV.dv_plot import plt, FONT0, Histogram, TimeSeries, Scatter, colors
 from PB import pb_io
 from PB.pb_io import make_sure_path_exists
 from PB.pb_time import time_block
@@ -473,6 +473,7 @@ def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
 def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
                     x_label=None, y_label=None, annotate=None,
                     ymd_start=None, ymd_end=None, ymd=None,
+                    point_color=True,
                     ):
     main_path = os.path.dirname(os.path.dirname(__file__))
     style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
@@ -514,10 +515,11 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     if y_label:
         ax.set_y_label(y_label)
 
-    annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
-                                 'Offset={:.4f}'.format(ab[1])]}
-    annotate_new['left_top'].extend(annotate['left_top'])
-    ax.set_annotate(annotate=annotate_new)
+    if annotate:
+        annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
+                                     'Offset={:.4f}'.format(ab[1])]}
+        annotate_new['left_top'].extend(annotate['left_top'])
+        ax.set_annotate(annotate=annotate_new)
 
     size = 1
     alpha = 0.8  # 透明度
@@ -526,9 +528,11 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     ax.set_scatter(size=size, alpha=alpha, marker=marker, color=color)
 
     # kde 是否绘制密度点颜色
-    ax.plot_scatter(data_x=data_x, data_y=data_y, kde=True)
-
-    plt.colorbar(ax.plot_result)
+    if point_color:
+        ax.plot_scatter(data_x=data_x, data_y=data_y, kde=True)
+        plt.colorbar(ax.plot_result)
+    else:
+        ax.plot_scatter(data_x=data_x, data_y=data_y, kde=False)
     # --------------------
     plt.tight_layout()
     fig.suptitle(title, fontsize=11, fontproperties=FONT0)
@@ -570,9 +574,12 @@ def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
 
     p = dv_map.dv_map()
     p.colorbar_fmt = '%0.3f'
+    color_list = ['#000081', '#0000C8', '#1414FF', '#A3A3FF', '#FFA3A3', '#FF1414',
+                  '#C70000', '#810000']
+    cmap = colors.ListedColormap(color_list, 'indexed')
     p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
                ptype=None, markersize=0.05, marker='s',
-               colormap=plt.get_cmap('jet'))
+               colormap=cmap)
     p.title = title
     make_sure_path_exists(os.path.dirname(out_file))
     p.savefig(out_file)
@@ -582,7 +589,7 @@ def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
 def plot_histogram(data=None, out_file=None,
                    title=None, x_label=None, y_label=None,
                    bins_count=200, x_range=None, hist_label=None,
-                   annotate=None, ymd_start=None, ymd_end=None):
+                   annotate=None, ymd_start=None, ymd_end=None, ymd=None):
     """
     :param ymd_end:
     :param ymd_start:
@@ -629,8 +636,12 @@ def plot_histogram(data=None, out_file=None,
     fig.suptitle(title, fontsize=11, fontproperties=FONT0)
     fig.subplots_adjust(bottom=0.2, top=0.88)
 
-    fig.text(0.50, 0.02, '{}-{}'.format(ymd_start, ymd_end), fontproperties=FONT0)
-    fig.text(0.80, 0.02, 'OCC', fontproperties=FONT0)
+    if ymd_start and ymd_end:
+        fig.text(0.50, 0.02, '%s-%s' % (ymd_start, ymd_end), fontproperties=FONT0)
+    elif ymd:
+        fig.text(0.50, 0.02, '%s' % ymd, fontproperties=FONT0)
+
+    fig.text(0.8, 0.02, 'OCC', fontproperties=FONT0)
     # ---------------
     make_sure_path_exists(os.path.dirname(out_file))
     plt.savefig(out_file)
