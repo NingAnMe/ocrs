@@ -5,6 +5,7 @@
 @Author  : AnNing
 """
 import os
+from dateutil.relativedelta import relativedelta
 
 import h5py
 import numpy as np
@@ -473,7 +474,7 @@ def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
 def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
                     x_label=None, y_label=None, annotate=None,
                     ymd_start=None, ymd_end=None, ymd=None,
-                    point_color=True,
+                    point_color=True, plot_slope=True,
                     ):
     main_path = os.path.dirname(os.path.dirname(__file__))
     style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
@@ -516,9 +517,12 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
         ax.set_y_label(y_label)
 
     if annotate:
-        annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
-                                     'Offset={:.4f}'.format(ab[1])]}
-        annotate_new['left_top'].extend(annotate['left_top'])
+        if plot_slope:
+            annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
+                                         'Offset={:.4f}'.format(ab[1])]}
+            annotate_new['left_top'].extend(annotate['left_top'])
+        else:
+            annotate_new = annotate
         ax.set_annotate(annotate=annotate_new)
 
     size = 1
@@ -650,11 +654,11 @@ def plot_histogram(data=None, out_file=None,
     print '>>> {}'.format(out_file)
 
 
-def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
-                     month_data_y=None, out_file=None, title=None,
-                     month_data_y_std=None, x_range=None, y_range=None,
+def plot_time_series(day_data_x=None, day_data_y=None, out_file=None, title=None,
+                     x_range=None, y_range=None,
                      y_label=None, y_major_count=None, y_minor_count=None,
-                     ymd_start=None, ymd_end=None, ymd=None, zero_line=True):
+                     ymd_start=None, ymd_end=None, ymd=None, zero_line=True,
+                     plot_background=True):
     main_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     style_file = os.path.join(main_path, "cfg", 'time_series.mplstyle')
     plt.style.use(style_file)
@@ -683,19 +687,18 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
                        label="Daily"
                        )
     ax.plot_time_series(day_data_x, day_data_y)
-    # 绘制月数据长时间序列
-    if month_data_x and month_data_y:
+
+    # 绘制背景填充
+    if plot_background:
+        month_data_x, month_data_y, month_data_std = get_month_avg_std(day_data_x, day_data_y)
         ax.set_time_series(maker='o-', color=RED, line_width=0.6, marker_size=3,
                            marker_facecolor=None,
                            marker_edgecolor=RED, marker_edgewidth=0, alpha=0.8,
                            label="Monthly")
         ax.plot_time_series(month_data_x, month_data_y)
-
-    # 绘制背景填充
-    if month_data_y_std and month_data_x and month_data_y and month_data_y_std:
         ax.set_background_fill(x=month_data_x,
-                               y1=month_data_y - month_data_y_std,
-                               y2=month_data_y + month_data_y_std,
+                               y1=month_data_y - month_data_std,
+                               y2=month_data_y + month_data_std,
                                color=RED,
                                alpha=0.1,
                                )
@@ -724,3 +727,39 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
     fig.clear()
     plt.close()
     print '>>> {}'.format(out_file)
+
+
+def get_month_avg_std(date_day, value_day):
+    """
+    由日数据生成月平均数据
+    :param date_day: (list) [datetime 实例]
+    :param value_day: (list)
+    :return: (date_month, avg_month, std_month)
+    """
+    date_month = []
+    avg_month = []
+    std_month = []
+
+    date_day = np.array(date_day)
+    value_day = np.array(value_day)
+
+    ymd_start = np.nanmin(date_day)  # 第一天日期
+    ymd_end = np.nanmax(date_day)  # 最后一天日期
+    month_date_start = ymd_start - relativedelta(days=(ymd_start.day - 1))  # 第一个月第一天日期
+
+    while month_date_start <= ymd_end:
+        # 当月最后一天日期
+        month_date_end = month_date_start + relativedelta(months=1) - relativedelta(days=1)
+
+        # 查找当月所有数据
+        month_idx = np.logical_and(date_day >= month_date_start, date_day <= month_date_end)
+        value_month = value_day[month_idx]
+
+        avg = np.nanmean(value_month)
+        std = np.nanstd(value_month)
+        date_month = np.append(date_month, month_date_start + relativedelta(days=14))
+        avg_month = np.append(avg_month, avg)
+        std_month = np.append(std_month, std)
+
+        month_date_start = month_date_start + relativedelta(months=1)
+    return date_month, avg_month, std_month

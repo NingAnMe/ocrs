@@ -243,7 +243,8 @@ def main(sat_sensor, in_file):
                          y_range=count_y_range,
                          out_file=picture_file_amount,
                          title=title_amount, y_label=y_label_amount,
-                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
+                         plot_background=False)
 
         # 孙凌添加,出两张图,限制Y轴坐标的图和不限制Y轴坐标的图,这里是不限制Y轴坐标的图
         picture_name_absolute = 'Time_Series_Dif_{}_{}_{}_{}_NL.png'.format(
@@ -278,7 +279,8 @@ def main(sat_sensor, in_file):
         plot_time_series(day_data_x=date_channel, day_data_y=amount_channel,
                          out_file=picture_file_amount,
                          title=title_amount, y_label=y_label_amount,
-                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e, )
+                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
+                         plot_background=False)
 
     # 输出HDF5
     hdf5_name = '{}_{}_Dif_PDif.HDF'.format(sat_sensor1, sat_sensor2)
