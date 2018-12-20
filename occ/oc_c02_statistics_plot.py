@@ -44,7 +44,8 @@ def main(sat_sensor, in_file):
     log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
-    sat_sensor1, sat_sensor2 = sat_sensor.split('_')
+    sat_sensor1 = sat_sensor.split('_')[0]
+    sat_sensor2 = sat_sensor.split('_')[1]
     sat1, sensor1 = sat_sensor1.split('+')
     sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息

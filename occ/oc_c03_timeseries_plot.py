@@ -48,7 +48,8 @@ def main(sat_sensor, in_file):
     log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
-    sat_sensor1, sat_sensor2 = sat_sensor.split('_')
+    sat_sensor1 = sat_sensor.split('_')[0]
+    sat_sensor2 = sat_sensor.split('_')[1]
     sat1, sensor1 = sat_sensor1.split('+')
     sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息
@@ -130,34 +131,42 @@ def main(sat_sensor, in_file):
             std_absolute = np.nanstd(absolute_bias)
             amount_absolute = len(absolute_bias)
             median_absolute = np.nanmedian(absolute_bias)
+            rms_absolute = rms(absolute_bias)
 
             mean_relative = np.nanmean(relative_bias)
             std_relative = np.nanstd(relative_bias)
             amount_relative = len(relative_bias)
             median_relative = np.nanmedian(relative_bias)
+            rms_relative = rms(relative_bias)
 
             mean_ref_s1 = np.nanmean(ref_s1)
             std_ref_s1 = np.nanstd(ref_s1)
             amount_ref_s1 = len(ref_s1)
             median_ref_s1 = np.nanmedian(ref_s1)
+            rms_ref_s1 = rms(ref_s1)
             ref_s1_all[channel].append(mean_ref_s1)
 
             mean_ref_s2 = np.nanmean(ref_s2)
             std_ref_s2 = np.nanstd(ref_s2)
             amount_ref_s2 = len(ref_s2)
             median_ref_s2 = np.nanmedian(ref_s2)
+            rms_ref_s2 = rms(ref_s2)
             ref_s2_all[channel].append(mean_ref_s2)
             amount_all[channel].append(amount_ref_s1)
 
             result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
+                            'Dif_rms',
                             'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
+                            'PDif_rms',
                             'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
+                            'Ref_s1_rms',
                             'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
+                            'Ref_s2_rms',
                             'Date']
-            datas = [mean_absolute, std_absolute, median_absolute, amount_absolute,
-                     mean_relative, std_relative, median_relative, amount_relative,
-                     mean_ref_s1, std_ref_s1, median_ref_s1, amount_ref_s1,
-                     mean_ref_s2, std_ref_s2, median_ref_s2, amount_ref_s2,
+            datas = [mean_absolute, std_absolute, median_absolute, amount_absolute, rms_absolute,
+                     mean_relative, std_relative, median_relative, amount_relative, rms_relative,
+                     mean_ref_s1, std_ref_s1, median_ref_s1, amount_ref_s1, rms_ref_s1,
+                     mean_ref_s2, std_ref_s2, median_ref_s2, amount_ref_s2, rms_ref_s2,
                      ymd_now]
             for result_name, data in zip(result_names, datas):
                 if result_name not in result[channel]:
@@ -290,6 +299,15 @@ def main(sat_sensor, in_file):
     write_hdf5(out_file_hdf5, result)
 
     print '-' * 100
+
+
+def rms(x):
+    """
+    计算 数据的 RMS
+    :param x:
+    :return:
+    """
+    return np.sqrt(np.mean(x ** 2))
 
 
 def get_one_day_files(all_files, ymd, ext=None, pattern_ymd=None):
