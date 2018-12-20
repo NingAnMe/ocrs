@@ -483,17 +483,23 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     # fig.subplots_adjust(top=0.88, bottom=0.11, left=0.12, right=0.97)
 
     ax1 = plt.subplot2grid((1, 1), (0, 0))
-    # 绘制回归线
-    max_value = np.nanmax(data_x)
-    min_value = np.nanmin(data_x)
-    color_regression = '#ff0000'
-    width_regression = 1.0
-    ab = np.polyfit(data_x, data_y, 1)
-    p1 = np.poly1d(ab)
-    p1_max = p1(max_value)
-    p1_min = p1(min_value)
-    ax1.plot([min_value, max_value], [p1_min, p1_max], color=color_regression,
-             linewidth=width_regression, zorder=100)
+
+    annotate_new = {'left_top': []}
+    if plot_slope:
+        # 绘制回归线
+        max_value = np.nanmax(data_x)
+        min_value = np.nanmin(data_x)
+        color_regression = '#ff0000'
+        width_regression = 1.0
+        ab = np.polyfit(data_x, data_y, 1)
+        p1 = np.poly1d(ab)
+        p1_max = p1(max_value)
+        p1_min = p1(min_value)
+        ax1.plot([min_value, max_value], [p1_min, p1_max], color=color_regression,
+                 linewidth=width_regression, zorder=100)
+
+        annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
+                                     'Offset={:.4f}'.format(ab[1])]}
 
     # 绘制对角线
     color_diagonal = '#888888'
@@ -518,8 +524,6 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
 
     if annotate:
         if plot_slope:
-            annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
-                                         'Offset={:.4f}'.format(ab[1])]}
             annotate_new['left_top'].extend(annotate['left_top'])
         else:
             annotate_new = annotate
