@@ -474,7 +474,7 @@ def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
 def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
                     x_label=None, y_label=None, annotate=None,
                     ymd_start=None, ymd_end=None, ymd=None,
-                    point_color=True, plot_slope=True,
+                    point_color=True, plot_slope=True, plot_zero=True,
                     ):
     main_path = os.path.dirname(os.path.dirname(__file__))
     style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
@@ -502,12 +502,13 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
                                      'Offset={:.4f}'.format(ab[1])]}
 
     # 绘制对角线
-    color_diagonal = '#888888'
-    width_diagonal = 1.0
-    max_value = abs(np.nanmax(np.concatenate((data_x, data_y))))
-    min_value = -1 * max_value
-    ax1.plot([min_value, max_value], [min_value, max_value], color=color_diagonal,
-             linewidth=width_diagonal, zorder=80)
+    if plot_zero:
+        color_diagonal = '#888888'
+        width_diagonal = 1.0
+        max_value = abs(np.nanmax(np.concatenate((data_x, data_y))))
+        min_value = -1 * max_value
+        ax1.plot([min_value, max_value], [min_value, max_value], color=color_diagonal,
+                 linewidth=width_diagonal, zorder=80)
 
     ax = Scatter(ax1)
     x_min_value = np.min(data_x)
