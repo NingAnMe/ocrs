@@ -298,6 +298,10 @@ def main(sat_sensor, in_file):
     make_sure_path_exists(out_path)
     write_hdf5(out_file_hdf5, result)
 
+    keys = amount_all.keys()
+    keys.sort()
+    for channel in keys:
+        print 'CHANNEL: {} POINT: {}'.format(channel, np.sum(amount_all[channel]))
     print '-' * 100
 
 
