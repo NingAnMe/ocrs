@@ -696,18 +696,20 @@ def plot_time_series(day_data_x=None, day_data_y=None, out_file=None, title=None
     # 绘制背景填充
     if plot_background:
         month_data_x, month_data_y, month_data_std = get_month_avg_std(day_data_x, day_data_y)
-        ax.set_time_series(maker='o-', color=RED, line_width=0.6, marker_size=3,
-                           marker_facecolor=None,
-                           marker_edgecolor=RED, marker_edgewidth=0, alpha=0.8,
-                           label="Monthly")
-        ax.plot_time_series(month_data_x, month_data_y)
-        ax.set_background_fill(x=month_data_x,
-                               y1=month_data_y - month_data_std,
-                               y2=month_data_y + month_data_std,
-                               color=RED,
-                               alpha=0.1,
-                               )
-        ax.plot_background_fill()
+        ax1.errorbar(month_data_x, month_data_y, yerr=month_data_std, fmt='-o', color=RED,
+                     alpha=0.3)
+        # ax.set_time_series(maker='o-', color=RED, line_width=0.6, marker_size=3,
+        #                    marker_facecolor=None,
+        #                    marker_edgecolor=RED, marker_edgewidth=0, alpha=0.8,
+        #                    label="Monthly")
+        # ax.plot_time_series(month_data_x, month_data_y)
+        # ax.set_background_fill(x=month_data_x,
+        #                        y1=month_data_y - month_data_std,
+        #                        y2=month_data_y + month_data_std,
+        #                        color=RED,
+        #                        alpha=0.1,
+        #                        )
+        # ax.plot_background_fill()
     # 绘制 y=0 线配置，在绘制之间设置x轴范围
     if zero_line:
         ax.plot_zero_line()
