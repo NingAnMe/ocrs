@@ -54,12 +54,23 @@ def main(yyyymm, level):
         cross_data = ReadCrossData()
         cross_data.read_cross_data(in_files=[in_file])
 
+        # 获取绘图范围
+        lat_s1 = cross_data.data['MERSI_Lats']
+        lon_s1 = cross_data.data['MERSI_Lons']
+
+        lat_s2 = cross_data.data['MODIS_Lats']
+        lon_s2 = cross_data.data['MODIS_Lons']
+
+        lat_all = np.append(lat_s1, lat_s2)
+        lon_all = np.append(lon_s1, lon_s2)
+
+        box = get_box(lat_all, lon_all)
+
         # 循环通道数据
         for channel in cross_data.data:
 
             if not isinstance(cross_data.data[channel], dict):
                 continue
-
             for sensor in ['MERSI', 'MODIS']:
 
                 ref_s1_all = cross_data.data[channel]['{}_FovMean'.format(sensor)]
@@ -81,8 +92,6 @@ def main(yyyymm, level):
 
                     print_statistics(ref_s1_all, channel, sensor)
 
-                    box = get_box(lat_s1_all, lon_s1_all)
-
                     filename1 = "{}_{}.png".format(channel, sensor)
                     out_file1 = os.path.join(dir_pic, filename1)
                     plot_map(lat_s1_all, lon_s1_all, ref_s1_all, out_file1, box=box)
@@ -96,11 +105,6 @@ def plot_map(lats, lons, values, out_file, box=None):
 
     title = ''
 
-    # 绘制经纬度线
-    p.delat = 10  # 30
-    p.delon = 10  # 30
-    p.show_line_of_latlon = True
-
     # 是否绘制某个区域
     if box:
         lat_s = float(box[0])
@@ -110,6 +114,15 @@ def plot_map(lats, lons, values, out_file, box=None):
         box = [lat_s, lat_n, lon_w, lon_e]
     else:
         box = [90, -90, -180, 180]
+
+    # 绘制经纬度线
+    p.delat = 10
+    p.delon = 10
+    if box[0] - box[1] > 90:
+        p.delat = 30  # 30
+    elif box[2] - box[3] > 180:
+        p.delon = 30  # 30
+    p.show_line_of_latlon = True
 
     # 是否设置 colorbar 范围
     if len(values) == 0:
