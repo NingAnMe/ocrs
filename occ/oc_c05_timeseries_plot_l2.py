@@ -104,11 +104,19 @@ def main(sat_sensor, in_file):
             if channel not in result:
                 result[channel] = dict()
 
-            ref_s1 = cross_data.data[channel]['MERSI_FovMean']
-            if len(ref_s1) == 0:
-                print '{} {} : Dont have enough point, is 0'.format(ymd_now, channel)
+            if not isinstance(cross_data.data[channel], dict):
                 continue
-            ref_s2 = cross_data.data[channel]['MODIS_FovMean']
+
+            mask_fine = cross_data.data[channel]['MaskFine']
+            fine_idx = np.where(mask_fine > 0)
+
+            ref_s1_all = cross_data.data[channel]['MERSI_FovMean']
+
+            ref_s1 = ref_s1_all[fine_idx]
+
+            ref_s2_all = cross_data.data[channel]['MODIS_FovMean']
+
+            ref_s2 = ref_s2_all[fine_idx]
 
             # 过滤 3 倍std之外的点
             mean_ref_s1 = np.nanmean(ref_s1)
@@ -404,4 +412,3 @@ if __name__ == "__main__":
 # if __name__ == '__main__':
 #     yaml_file = r'20110101_20181231.yaml'
 #     main('FY3B+MERSI_AQUA+MODIS', yaml_file)
-
