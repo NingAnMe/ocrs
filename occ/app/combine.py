@@ -250,9 +250,11 @@ class CombineL2(object):
                 data_ii, data_jj = self.data_ij[k]
                 with h5py.File(in_file, 'r') as hdf5:
                     data_read = hdf5.get(data_name)[:][data_ii, data_jj]
-                    np.append(data, data_read)
+                    data = np.append(data, data_read)
             data = np.reshape(data, -1)
-            out_data[self.lut_ii, self.lut_jj] = data
+            lut_ii = self.lut_ii.astype(np.int16)
+            lut_jj = self.lut_jj.astype(np.int16)
+            out_data[lut_ii, lut_jj] = data
             self.write(out_data, data_name, self.ofile)
 
         # 输出数据集有效数据的数量

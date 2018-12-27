@@ -44,10 +44,12 @@ def main(sat_sensor, in_file):
 
     # 加载卫星配置信息
     res = sc.project_res
-    half_res = deg2meter(res)/ 2.
+    half_res = deg2meter(res) / 2.
     cmd = sc.project_cmd % (half_res, half_res)
     row = sc.project_row
     col = sc.project_col
+
+    combine_quick = sc.combine_quick
 
     # ######################## 开始处理 ###########################
     print "-" * 100
@@ -59,9 +61,7 @@ def main(sat_sensor, in_file):
 
     print "<<< {}".format(in_file)
 
-    is_quick = False
-
-    if not is_quick:
+    if not combine_quick:
         combine = CombineL2()  # 初始化一个投影实例
         combine.load_cmd_info(cmd=cmd, res=res, row=row, col=col)
         combine.load_yaml(in_file)  # 加载 yaml 文件
