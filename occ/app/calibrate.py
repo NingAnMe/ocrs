@@ -441,7 +441,6 @@ class CalibrateFY3B(object):
                     ev_intercept = h5.get(ev_name).attrs.get("Intercept")[k]
 
                 sv_dn_obc = self.sv_extract_obc[i]
-
                 k0, k1, k2 = self.coeff[i]
 
                 # 除去 sv 数据中 0 对应的 dn 值
@@ -549,7 +548,8 @@ class CalibrateFY3B(object):
                         channel_name = 'CH_{:02}'.format(i + 1)
 
                         name = '{}/Dn'.format(channel_name)
-                        if i != 4:
+                        k = i
+                        if k != 4:
                             data = self.Dn[channel_name].astype('u2')
                         else:
                             data = m1000.get('EV_250_Aggr.1KM_Emissive')[:]
@@ -557,35 +557,38 @@ class CalibrateFY3B(object):
                         self._create_dataset(name, data, dtype, hdf5)
 
                         name = '{}/Ref'.format(channel_name)
-                        if i < 4:
-                            data = self.ev_250m_ref[i]
-                        elif i == 4:
+                        k = i
+                        if k < 4:
+                            data = self.ev_250m_ref[k]
+                        elif k == 4:
                             data = m1000.get('EV_250_Aggr.1KM_Emissive')[:]
                         else:
-                            i = i - 5
-                            data = self.ev_1000m_ref[i]
+                            k = k - 5
+                            data = self.ev_1000m_ref[k]
                         dtype = 'u2'
                         self._create_dataset(name, data, dtype, hdf5)
 
                         name = '{}/SV'.format(channel_name)
-                        if i < 4:
-                            data = self.sv_extract_obc[i]
-                        elif i == 4:
+                        k = i
+                        if k < 4:
+                            data = self.sv_extract_obc[k]
+                        elif k == 4:
                             data = obc.get('SV_250m_EMIS')[:]
                         else:
-                            i = i - 1
-                            data = self.sv_extract_obc[i]
+                            k = k - 1
+                            data = self.sv_extract_obc[k]
                         dtype = 'u2'
                         self._create_dataset(name, data, dtype, hdf5)
 
                         name = '{}/CalCoeff'.format(channel_name)
-                        if i < 4:
-                            data = self.coeff[i].reshape(-1, 1)
-                        elif i == 4:
+                        k = i
+                        if k < 4:
+                            data = self.coeff[k].reshape(-1, 1)
+                        elif k == 4:
                             data = np.array([1., 0., 0.]).reshape(-1, 1)
                         else:
-                            i = i - 1
-                            data = self.coeff[i].reshape(-1, 1)
+                            k = k - 1
+                            data = self.coeff[k].reshape(-1, 1)
                         dtype = 'f4'
                         self._create_dataset(name, data, dtype, hdf5)
 
