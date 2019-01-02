@@ -53,6 +53,7 @@ class ReadYaml():
         self.ifile1 = cfg['PATH']['ipath1']
         self.ifile2 = cfg['PATH']['ipath2']
         self.ofile = cfg['PATH']['opath']
+        self.coeff_file = cfg['PATH']['ipath_coeff']
 
         self.cmd = cfg['PROJ']['cmd']
         self.col = cfg['PROJ']['col']
@@ -590,11 +591,15 @@ def main(inYamlFile, mode):
             if '1' in mode:
                 print 'L1'
                 D1 = CLASS_MERSI_L1()
+                D1.Load(inFile)
+                D1.sun_earth(ICFG.ymd[0:8])
             elif '0' in mode:
                 print 'L1 PRE'
                 D1 = CLASS_MERSI_L1_PRE()
-            D1.Load(inFile)
-            D1.sun_earth(ICFG.ymd[0:8])
+                D1.Load(inFile)
+                D1.get_coeff(ICFG.coeff_file)
+                D1.get_new_ref()
+                D1.sun_earth(ICFG.ymd[0:8])
 
             # 04 投影，简历查找表  ##########
             print ICFG.cmd

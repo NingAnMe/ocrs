@@ -8,6 +8,8 @@ launch_date: "20101105"
 chan1: [CH_01,CH_02,CH_03,CH_04,CH_06,CH_07,CH_08,CH_09,CH_10,CH_12,CH_13,CH_15,CH_16,CH_17,CH_18,CH_19]
 chan2: [CH_03,CH_04,CH_01,CH_02,CH_06,CH_07,CH_08,CH_09,CH_10,CH_12,CH_13,CH_15,CH_16,CH_17,CH_18,CH_19]
 
+name: [CHL1,Kd490,POC,Rw412,Rw443,Rw490,Rw565,a490]
+
 ################################ HDF5 压缩复制配置#################################
 plot_scatter:
   fix_ref: 0.25
@@ -134,83 +136,152 @@ timeseries:
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_02:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_03:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_04:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_06:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_07:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_08:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_09:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_10:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_12:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_13:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_15:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_16:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_17:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_18:
       dif_y_range: [-0.05, 0.05]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_19:
       dif_y_range: [-0.2, 0.2]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
     CH_20:
       dif_y_range: [-0.2, 0.2]
       pdif_y_range: [-0.2, 0.2]
       ref_s1_y_range: [-0.01, 0.8]
       ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+
+
+timeseries_l2:
+  channels:
+    CHL1:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Kd490:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    POC:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw412:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw443:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw490:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw565:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    a490:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]

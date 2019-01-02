@@ -181,7 +181,6 @@ class CLASS_MERSI_L1():
         # 可见
         for i in xrange(self.Band):
             BandName = 'CH_%02d' % (i + 1)
-            print ymd, hms
             if i < 4:
                 DN = np.full(dshape, np.nan)
                 idx = np.logical_and(ary_ch1[i] < 10000, ary_ch1[i] > 0)

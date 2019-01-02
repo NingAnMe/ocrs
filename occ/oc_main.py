@@ -5,7 +5,9 @@ from multiprocessing import Pool, Lock
 from time import ctime
 import calendar
 import getopt
+import glob
 import os
+import pdb
 import re
 import shutil
 import subprocess
@@ -24,7 +26,7 @@ __description__ = u'交叉主调度处理的函数'
 __author__ = 'wangpeng'
 __date__ = '2018-05-30'
 __version__ = '1.0.0_beat'
-__updated__ = '2018-08-02'
+__updated__ = '2018-12-14'
 
 
 # python = 'python2.7  -W ignore'
@@ -234,7 +236,7 @@ def job_0311(job_exe, sat_pair, date_s, date_e, job_id):
     # 去掉路径信息
 
     in_path = cfg_body['PATH']['MID']['granule']
-    out_path = cfg_body['PATH']['OUT']['occ']
+    out_path = in_path
     arg_list = []
 
     while date_s <= date_e:
@@ -510,6 +512,250 @@ def job_0811(job_exe, sat_pair, date_s, date_e, job_id):
     return arg_list
 
 
+def job_0910(job_exe, sat_pair, date_s, date_e, job_id):
+    """
+       基于aqua(modis)和fy3b（mersi）的l2数据匹配结果
+    """
+#     date_s, date_e = time.split("-")
+#     date_s = datetime.strptime(date_s, '%Y%m%d%H%M')
+#     date_e = datetime.strptime(date_e, '%Y%m%d%H%M')
+    Log.info(u'%s: %s 检验l2产品 开始...' % (job_id, job_exe))
+    # 解析global.cfg中的信息
+    sec1 = cfg_body['PAIRS'][sat_pair]['sec1']
+    sec2 = cfg_body['PAIRS'][sat_pair]['sec2']
+
+    reg_fy3b = 'FY3B_MERSI_ORBT_L2_OCC_MLT_NUL_.*._1000M.HDF'
+    reg_aqua_iop = 'A.*.L2_LAC_IOP.nc'
+    reg_aqua_oc = 'A.*.L2_LAC_OC.nc'
+
+    fy3b_l2 = cfg_body['PATH']['MID']['granule']  # fy3b_l2 apth
+    modis_l2 = cfg_body['PATH']['IN']['data']       # modis_l2
+    jobcfg_path = cfg_body['PATH']['IN']['jobCfg']
+    out_path = cfg_body['PATH']['MID']['match']
+    arg_list = []
+    while date_s <= date_e:
+        #         ymd_HM = date_s.strftime('%Y%m%d_%H%M')
+        ymd = date_s.strftime('%Y%m%d')
+        # 解析mathcing: FY3A+MERSI_AQUA+MODIS FY3B+MERSI_AQUA+MODIS_check
+        sat1 = (sat_pair.split('_')[0]).split('+')[0]
+        sat2 = (sat_pair.split('_')[1]).split('+')[0]
+        fy3b_l2_path_use = pb_io.path_replace_ymd(fy3b_l2, ymd)
+        modis_l2_path_use = modis_l2 + '/AQUA/MODIS/L2/ORBIT' + \
+            os.sep + date_s.strftime('%Y%m')
+        file_list1 = pb_io.find_file(fy3b_l2_path_use, reg_fy3b)
+        file_list2 = pb_io.find_file(modis_l2_path_use, reg_aqua_iop)
+#         file_list3 = pb_io.find_file(modis_l2_path_use, reg_aqua_oc)
+
+        timeList = ReadCrossFile_LEO_LEO('FENGYUN-3B', 'AQUA', ymd)
+#         print timeList, CROSS_DIR, sat1, sat2, ymd
+        for crossTime in timeList:
+            ymdhms = crossTime[2].strftime('%Y%m%d%H%M%S')
+            s_cross_time1 = crossTime[2] - relativedelta(seconds=int(sec1))
+            e_cross_time1 = crossTime[2] + relativedelta(seconds=int(sec1))
+            s_cross_time2 = crossTime[3] - relativedelta(seconds=int(sec2))
+            e_cross_time2 = crossTime[3] + relativedelta(seconds=int(sec2))
+        # 从数据列表中查找过此交叉点时间的数据块,两颗卫星的数据
+            match_fy3b_file = Find_data_fy_FromCrossTime(
+                file_list1, s_cross_time1, e_cross_time1)
+            match_iop_file = Find_data_aqua_FromCrossTime(
+                file_list2, s_cross_time2, e_cross_time2)
+#             match_oc_file = Find_data_aqua_FromCrossTime(
+#                 file_list3, s_cross_time2, e_cross_time2)
+            # 判断当前五分钟的数据是否都存在
+            if len(match_fy3b_file) > 0 and len(match_iop_file) > 0:
+                for match_fy3b in match_fy3b_file:
+                    for match_iop in match_iop_file:
+                        com_dict = {
+                            'PATH': {'ipath1': [match_fy3b],
+                                     'ipath2': [match_iop],
+                                     'out_path': out_path},
+                            'INFO': {'time': ymdhms,
+                                     'pair': sat_pair,
+                                     'lat': crossTime[0],
+                                     'lon': crossTime[1]}
+                        }
+                        cfgFile = os.path.join(
+                            jobcfg_path, sat_pair, job_id, '%s.yaml' % ymdhms)
+                        CreateYamlCfg(com_dict, cfgFile)
+                        #             check_fy_aqual2 = CheckFyAqual2()
+                        #             check_fy_aqual2.main(
+                        # match_fy3b_file, match_iop_file, match_oc_file, ymd_HM,
+                        # out_path)
+                        cmd = '%s %s %s %s' % (
+                            python, job_exe, sat_pair, cfgFile)
+                        arg_list.append(cmd)
+
+        date_s = date_s + relativedelta(days=1)
+
+    return arg_list
+
+
+def job_0911(job_exe, sat_pair, date_s, date_e, job_id):
+    """
+       基于aqua(modis)和fy3b（mersi）的l3数据匹配结果
+    """
+#     date_s, date_e = time.split("-")
+#     date_s = datetime.strptime(date_s, '%Y%m%d%H%M')
+#     date_e = datetime.strptime(date_e, '%Y%m%d%H%M')
+    Log.info(u'%s: %s 检验l3产品 开始...' % (job_id, job_exe))
+
+    reg_fy3b = 'FY3B_MERSI_GBAL_L3_OCC_MLT_GLL_%s_AOAD_5000M.HDF'
+    reg_aqua_chl1 = 'L3m_%s__GLOB_4_GSM-MOD_%s_DAY_00.nc'
+    reg_aqua = 'L3m_%s__GLOB_4_AV-MOD_%s_DAY_00.nc'
+    fy3b_l3 = cfg_body['PATH']['OUT']['daily']  # fy3b_l3 apth
+    modis_l3 = cfg_body['PATH']['IN']['modis_l3']       # modis_l3
+    jobcfg_path = cfg_body['PATH']['IN']['jobCfg']
+    out_path = cfg_body['PATH']['MID']['match']
+    arg_list = []
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+
+        # 查找fy3b_mersi文件
+        match_fy3b_file = []
+        fy3b_l3_path_use = pb_io.path_replace_ymd(fy3b_l3, ymd)
+        file_fy3b = pb_io.find_file(fy3b_l3_path_use, reg_fy3b % (ymd))
+        match_fy3b_file.extend(file_fy3b)
+
+        # 检查是否已经生成产品
+        pruc_names = ['KD490', 'CHL1', 'POC', 'ZSD']
+        match_aqua = []
+        for pruc_name in pruc_names:
+            #             outfile = out_path + pruc_name + os.sep + \
+            #                 ymd + '_' + pruc_name + "_5000.hdf"
+            #             if os.path.isfile(outfile):
+            #                 print u'产品已经存在'
+            #                 pass
+            #             else:
+                # 查找对应的aqua_modis产品文件
+            if pruc_name != 'CHL1':
+                file_aqua = pb_io.find_file(
+                    modis_l3, reg_aqua % (ymd, pruc_name))
+                match_aqua.extend(file_aqua)
+            else:
+                file_aqua = pb_io.find_file(
+                    modis_l3, reg_aqua % (ymd, pruc_name))
+                if len(file_aqua) > 0:
+                    match_aqua.extend(file_aqua)
+                else:
+                    file_aqua1 = pb_io.find_file(
+                        modis_l3, reg_aqua_chl1 % (ymd, pruc_name))
+                    match_aqua.extend(file_aqua1)
+
+        # 判断当前五分钟的数据是否都存在
+        if len(match_fy3b_file) > 0 and len(match_aqua) > 0:
+            com_dict = {
+                'PATH': {'ipath1': match_fy3b_file,
+                         'ipath2': match_aqua,
+                         'out_path': out_path},
+                'INFO': {'time': ymd, 'pair': sat_pair},
+            }
+            cfgFile = os.path.join(
+                jobcfg_path, sat_pair, job_id, '%s.yaml' % ymd)
+            CreateYamlCfg(com_dict, cfgFile)
+#             check_fy_aqual2 = CheckFyAqual2()
+#             check_fy_aqual2.main(
+#             match_fy3b_file, match_iop_file, match_oc_file, ymd_HM, out_path)
+            cmd = '%s %s %s %s' % (python, job_exe, sat_pair, cfgFile)
+            arg_list.append(cmd)
+        date_s = date_s + relativedelta(days=1)
+
+    return arg_list
+
+
+def job_0912(job_exe, sat_pair, date_s, date_e, job_id):
+
+    Log.info(u'%s: %s occ检验日合成...' % (job_id, job_exe))
+
+    # 解析mathcing: FY3A+MERSI_AQUA+MODIS_check  ,根据下划线分割获取 卫星+传感器 ,再次分割获取俩颗卫星短名
+    sat1 = (sat_pair.split('_')[0]).split('+')[0]
+    sensor1 = (sat_pair.split('_')[0]).split('+')[1]
+    sat2 = (sat_pair.split('_')[1]).split('+')[0]
+    sensor2 = (sat_pair.split('_')[1]).split('+')[1]
+
+    jobcfg_path = cfg_body['PATH']['IN']['jobCfg']
+    match_path = cfg_body['PATH']['MID']['match']
+
+    # 存放分发列表
+    arg_list = []
+    all_file_list = []
+
+    stime = date_s.strftime('%Y%m%d')
+    etime = date_e.strftime('%Y%m%d')
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+
+        use_match_path = os.path.join(match_path, sat_pair, ymd)
+        use_path_out = os.path.join(match_path, sat_pair)
+        reg1 = '.*_%s.*.HDF' % ymd
+        print use_match_path
+        file_list = pb_io.find_file(use_match_path, reg1)
+
+        date_s = date_s + relativedelta(days=1)
+
+        dict = {'INFO': {'sat1': sat1, 'sensor1': sensor1, 'sat2': sat2, 'sensor2': sensor2,
+                         'pair': sat_pair, 'ymd': ymd},
+                'PATH': {'opath': use_path_out, 'ipath': file_list}}
+
+        if len(file_list) > 0:
+
+            cfgFile = os.path.join(
+                jobcfg_path, sat_pair, job_id, '%s.yaml' % (ymd))
+            CreateYamlCfg(dict, cfgFile)
+            cmd = '%s %s %s %s' % (python, job_exe, sat_pair, cfgFile)
+            arg_list.append(cmd)
+
+    return arg_list
+
+
+def job_0913(job_exe, sat_pair, date_s, date_e, job_id):
+
+    Log.info(u'%s: %s l3长时间序列绘图开始...' % (job_id, job_exe))
+
+    # 解析mathcing: FY3A+MERSI_AQUA+MODIS_check  ,根据下划线分割获取 卫星+传感器 ,再次分割获取俩颗卫星短名
+    sat1 = (sat_pair.split('_')[0]).split('+')[0]
+    sensor1 = (sat_pair.split('_')[0]).split('+')[1]
+    sat2 = (sat_pair.split('_')[1]).split('+')[0]
+    sensor2 = (sat_pair.split('_')[1]).split('+')[1]
+
+    jobcfg_path = cfg_body['PATH']['IN']['jobCfg']
+    match_path = cfg_body['PATH']['MID']['match']
+
+    # 存放分发列表
+    arg_list = []
+    all_file_list = []
+
+    stime = date_s.strftime('%Y%m%d')
+    etime = date_e.strftime('%Y%m%d')
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+
+        use_match_path = os.path.join(match_path, sat_pair)
+        use_path_out = os.path.join(match_path, sat_pair + '_map')
+#         reg1 = '.*_%s.*.HDF' % ymd
+        print use_match_path
+        file_list = glob.glob(use_match_path + '/*%s*.HDF' % ymd)
+#         file_list = pb_io.find_file(use_match_path, reg1)
+        all_file_list.extend(file_list)
+
+        date_s = date_s + relativedelta(days=1)
+
+    dict = {'INFO': {'sat1': sat1, 'sensor1': sensor1, 'sat2': sat2, 'sensor2': sensor2,
+                     'pair': sat_pair, 'stime': stime, 'etime': etime},
+            'PATH': {'opath': use_path_out, 'ipath': all_file_list}}
+
+    if len(all_file_list) > 0:
+        Log.info('%s %s-%s create l3 product  success' %
+                 (sat_pair, stime, etime))
+
+        cfgFile = os.path.join(
+            jobcfg_path, sat_pair, job_id, '%s_%s.yaml' % (stime, etime))
+        CreateYamlCfg(dict, cfgFile)
+        cmd = '%s %s %s %s' % (python, job_exe, sat_pair, cfgFile)
+        arg_list.append(cmd)
+
+    return arg_list
+
+
 def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
 
     if reload is None:
@@ -526,9 +772,11 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
     sec2 = cfg_body['PAIRS'][sat_pair]['sec2']
 
     DATA_DIR = cfg_body['PATH']['IN']['data']
+    CALI_DIR = cfg_body['PATH']['MID']['calibrate']
     jobCfg = cfg_body['PATH']['IN']['jobCfg']
     match_path = cfg_body['PATH']['MID']['match']
     L1_data_dir = cfg_body['PATH']['IN']['l1']
+    coeff_path = cfg_body['PATH']['IN']['coeff']
 
     # 存放分发列表
     arg_list = []
@@ -536,21 +784,24 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
     while date_s <= date_e:
         ymd = date_s.strftime('%Y%m%d')
         jjj = date_s.strftime('%j')
-
+        coeff_file = os.path.join(coeff_path, '%s.txt' % ymd[:4])
         print ymd
         # 存放俩颗卫星的原始数据目录位置
 
         if reload is None:
-            inpath1 = os.path.join(DATA_DIR, '%s/%s/L1/ORBIT' %
-                                   (sat1, sensor1), ymd[:6])
+            # inpath1 = os.path.join(DATA_DIR, '%s/%s/L1/ORBIT' %
+            #                       (sat1, sensor1), ymd[:6])
+            FINAL_DIR = pb_io.path_replace_ymd(CALI_DIR, ymd)
+            inpath1 = os.path.join(FINAL_DIR)
         else:
             inpath1 = pb_io.path_replace_ymd(L1_data_dir, ymd)
         inpath2 = os.path.join(DATA_DIR, '%s/%s/L1/ORBIT' %
                                (sat2, sensor2, ), ymd[:6])
+        print "inpath1", inpath1
+        print "inpath2", inpath2
 
         sat11 = cfg_body['SAT_S2L'][sat1]
         sat22 = cfg_body['SAT_S2L'][sat2]
-
         # 读取交叉点上的俩颗卫星的交叉时间，1列=经度  2列=纬度  3列=卫星1时间  4列=卫星2时间
         timeList = ReadCrossFile_LEO_LEO(sat11, sat22, ymd)
         print 'cross', len(timeList)
@@ -606,7 +857,7 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
                 res = 8000
 
                 dict3 = {'INFO': {'sat1': sat1, 'sensor1': sensor1, 'sat2': sat2, 'sensor2': sensor2, 'ymd': ymdhms},
-                         'PATH': {'opath': full_filename3, 'ipath1': list1, 'ipath2': list2},
+                         'PATH': {'opath': full_filename3, 'ipath1': list1, 'ipath2': list2, 'ipath_coeff': coeff_file},
                          'PROJ': {'cmd': cmd, 'row': row, 'col': col, 'res': res}}
 
                 Log.info('%s %s create collocation cfg success' %
@@ -619,13 +870,6 @@ def job_0211(job_exe, sat_pair, date_s, date_e, job_id, reload=None):
                 arg_list.append(cmd)
 
         date_s = date_s + relativedelta(days=1)
-
-#     # 开始遍历yaml
-#     yaml_path = os.path.join(jobCfg, sat_pair, job_id)
-#     yaml_list = pb_io.find_file(yaml_path, '.*.yaml')
-#     for in_file in yaml_list:
-#         cmd = '%s %s %s' % (python, job_exe, in_file)
-#         arg_list.append(cmd)
 
     return arg_list
 
@@ -695,6 +939,222 @@ def job_0214(job_exe, sat_pair, date_s, date_e, job_id):
     return job_0213(job_exe, sat_pair, date_s, date_e, job_id)
 
 
+def job_0215(job_exe, sat_pair, date_s, date_e, job_id):
+
+    Log.info(u'%s: %s 水色L2产品检验处理开始...' % (job_id, job_exe))
+    # 解析mathcing: FY3A+MERSI_AQUA+MODIS ,根据下划线分割获取 卫星+传感器 ,再次分割获取俩颗卫星短名
+    sat1 = (sat_pair.split('_')[0]).split('+')[0]
+    sensor1 = (sat_pair.split('_')[0]).split('+')[1]
+    sat2 = (sat_pair.split('_')[1]).split('+')[0]
+    sensor2 = (sat_pair.split('_')[1]).split('+')[1]
+    # 解析global.cfg中的信息
+    sec1 = cfg_body['PAIRS'][sat_pair]['sec1']
+    sec2 = cfg_body['PAIRS'][sat_pair]['sec2']
+
+    in_path1 = cfg_body['PATH']['MID']['granule']
+    in_path2 = cfg_body['PATH']['IN']['data']
+    out_path_cfg = cfg_body['PATH']['IN']['jobCfg']
+    out_path_match = cfg_body['PATH']['MID']['match']
+
+    # 存放分发列表
+    arg_list = []
+
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+        jjj = date_s.strftime('%j')
+        # 存放俩颗卫星的原始数据目录位置
+
+        full_in_path1 = pb_io.path_replace_ymd(in_path1, ymd)
+        full_in_path2 = os.path.join(in_path2, '%s/%s/L2/ORBIT' %
+                                     (sat2, sensor2, ), ymd[:6])
+        print "inpath1", full_in_path1
+        print "inpath2", full_in_path2
+
+        sat11 = cfg_body['SAT_S2L'][sat1]
+        sat22 = cfg_body['SAT_S2L'][sat2]
+        # 读取交叉点上的俩颗卫星的交叉时间，1列=经度  2列=纬度  3列=卫星1时间  4列=卫星2时间
+        timeList = ReadCrossFile_LEO_LEO(sat11, sat22, ymd)
+        print 'cross', len(timeList)
+
+        reg1 = 'FY3B_MERSI.*_%s_.*.HDF' % ymd
+        reg2 = 'A%s%s.*.nc' % (ymd[0:4], jjj)
+        file_list1 = pb_io.find_file(inpath1, reg1)
+        file_list2 = pb_io.find_file(inpath2, reg2)
+        print file_list1
+        print file_list2
+        break
+        # 根据交叉点时间，找到数据列表中需要的数据 select File
+        for crossTime in timeList:
+            Lat = crossTime[0]
+            Lon = crossTime[1]
+            ymdhms = crossTime[2].strftime('%Y%m%d%H%M%S')
+            s_cross_time1 = crossTime[2] - relativedelta(seconds=int(sec1))
+            e_cross_time1 = crossTime[2] + relativedelta(seconds=int(sec1))
+            s_cross_time2 = crossTime[3] - relativedelta(seconds=int(sec2))
+            e_cross_time2 = crossTime[3] + relativedelta(seconds=int(sec2))
+
+            # 从数据列表中查找过此交叉点时间的数据块,两颗卫星的数据
+            list1 = Find_data_FromCrossTime(
+                file_list1, s_cross_time1, e_cross_time1)
+            list2 = Find_data_FromCrossTime(
+                file_list2, s_cross_time2, e_cross_time2)
+            print 'fy', len(list1)
+            print 'mo', len(list2)
+            # 存放匹配信息的yaml配置文件存放位置
+
+            yaml_file3 = os.path.join(
+                out_path_cfg, sat_pair, job_id, ymdhms[:8], '%s_%s_%s.yaml' % (ymdhms, sensor1, sensor2))
+
+            filename3 = '%s_MATCHEDPOINTS_%s.H5' % (sat_pair, ymdhms)
+
+            # 输出完整路径
+            # FY3B+MERSI_AQUA+MODIS_L1  和 FY3B+MERSI_AQUA+MODIS 两种支持  wangpeng
+            # add 2018-09-14
+            full_filename3 = os.path.join(
+                out_path_match, sat_pair, ymdhms[:6], filename3)
+#             if reload is None:
+#                 full_filename3 = os.path.join(
+#                     match_path, sat_pair, ymdhms[:6], filename3)
+#             else:
+#                 full_filename3 = os.path.join(
+#                     match_path, sat_pair + '_L1', ymdhms[:6], filename3)
+
+            # 投影参数
+            cmd = '+proj=laea  +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84' % (
+                Lat, Lon)
+
+            if len(list1) > 0 and len(list2) > 0:
+                print '111111'
+                row = 128
+                col = 128
+                res = 8000
+
+                dict3 = {'INFO': {'sat1': sat1, 'sensor1': sensor1, 'sat2': sat2, 'sensor2': sensor2, 'ymd': ymdhms},
+                         'PATH': {'opath': full_filename3, 'ipath1': list1, 'ipath2': list2},
+                         'PROJ': {'cmd': cmd, 'row': row, 'col': col, 'res': res}}
+
+                Log.info('%s %s create collocation cfg success' %
+                         (sat_pair, ymdhms))
+                CreateYamlCfg(dict3, yaml_file3)
+                if reload is None:
+                    cmd = '%s %s %s 0' % (python, job_exe, yaml_file3)
+                else:
+                    cmd = '%s %s %s 1' % (python, job_exe, yaml_file3)
+                arg_list.append(cmd)
+
+        date_s = date_s + relativedelta(days=1)
+
+    return arg_list
+
+
+def job_0216(job_exe, sat_pair, date_s, date_e, job_id):
+
+    Log.info(u'%s: %s 水色L3产品检验处理开始...' % (job_id, job_exe))
+    # 解析mathcing: FY3A+MERSI_AQUA+MODIS ,根据下划线分割获取 卫星+传感器 ,再次分割获取俩颗卫星短名
+    sat1 = (sat_pair.split('_')[0]).split('+')[0]
+    sensor1 = (sat_pair.split('_')[0]).split('+')[1]
+    sat2 = (sat_pair.split('_')[1]).split('+')[0]
+    sensor2 = (sat_pair.split('_')[1]).split('+')[1]
+    # 解析global.cfg中的信息
+    sec1 = cfg_body['PAIRS'][sat_pair]['sec1']
+    sec2 = cfg_body['PAIRS'][sat_pair]['sec2']
+
+    in_path1 = cfg_body['PATH']['OUT']['Daily']
+    in_path2 = cfg_body['PATH']['IN']['data']
+    out_path_cfg = cfg_body['PATH']['IN']['jobCfg']
+    out_path_match = cfg_body['PATH']['MID']['match']
+
+    # 存放分发列表
+    arg_list = []
+
+    while date_s <= date_e:
+        ymd = date_s.strftime('%Y%m%d')
+        jjj = date_s.strftime('%j')
+        # 存放俩颗卫星的原始数据目录位置
+
+        full_in_path1 = pb_io.path_replace_ymd(in_path1, ymd)
+        full_in_path2 = os.path.join(in_path2, '%s/%s/L3/ORBIT' %
+                                     (sat2, sensor2, ), ymd[:6])
+        print "inpath1", full_in_path1
+        print "inpath2", full_in_path2
+
+        sat11 = cfg_body['SAT_S2L'][sat1]
+        sat22 = cfg_body['SAT_S2L'][sat2]
+        # 读取交叉点上的俩颗卫星的交叉时间，1列=经度  2列=纬度  3列=卫星1时间  4列=卫星2时间
+        timeList = ReadCrossFile_LEO_LEO(sat11, sat22, ymd)
+        print 'cross', len(timeList)
+
+        reg1 = 'FY3B_MERSI.*_%s_.*.HDF' % ymd
+        reg2 = 'A%s%s.*.nc' % (ymd[0:4], jjj)
+        file_list1 = pb_io.find_file(inpath1, reg1)
+        file_list2 = pb_io.find_file(inpath2, reg2)
+        print file_list1
+        print file_list2
+        break
+        # 根据交叉点时间，找到数据列表中需要的数据 select File
+        for crossTime in timeList:
+            Lat = crossTime[0]
+            Lon = crossTime[1]
+            ymdhms = crossTime[2].strftime('%Y%m%d%H%M%S')
+            s_cross_time1 = crossTime[2] - relativedelta(seconds=int(sec1))
+            e_cross_time1 = crossTime[2] + relativedelta(seconds=int(sec1))
+            s_cross_time2 = crossTime[3] - relativedelta(seconds=int(sec2))
+            e_cross_time2 = crossTime[3] + relativedelta(seconds=int(sec2))
+
+            # 从数据列表中查找过此交叉点时间的数据块,两颗卫星的数据
+            list1 = Find_data_FromCrossTime(
+                file_list1, s_cross_time1, e_cross_time1)
+            list2 = Find_data_FromCrossTime(
+                file_list2, s_cross_time2, e_cross_time2)
+            print 'fy', len(list1)
+            print 'mo', len(list2)
+            # 存放匹配信息的yaml配置文件存放位置
+
+            yaml_file3 = os.path.join(
+                out_path_cfg, sat_pair, job_id, ymdhms[:8], '%s_%s_%s.yaml' % (ymdhms, sensor1, sensor2))
+
+            filename3 = '%s_MATCHEDPOINTS_%s.H5' % (sat_pair, ymdhms)
+
+            # 输出完整路径
+            # FY3B+MERSI_AQUA+MODIS_L1  和 FY3B+MERSI_AQUA+MODIS 两种支持  wangpeng
+            # add 2018-09-14
+            full_filename3 = os.path.join(
+                out_path_match, sat_pair, ymdhms[:6], filename3)
+#             if reload is None:
+#                 full_filename3 = os.path.join(
+#                     match_path, sat_pair, ymdhms[:6], filename3)
+#             else:
+#                 full_filename3 = os.path.join(
+#                     match_path, sat_pair + '_L1', ymdhms[:6], filename3)
+
+            # 投影参数
+            cmd = '+proj=laea  +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84' % (
+                Lat, Lon)
+
+            if len(list1) > 0 and len(list2) > 0:
+                print '111111'
+                row = 128
+                col = 128
+                res = 8000
+
+                dict3 = {'INFO': {'sat1': sat1, 'sensor1': sensor1, 'sat2': sat2, 'sensor2': sensor2, 'ymd': ymdhms},
+                         'PATH': {'opath': full_filename3, 'ipath1': list1, 'ipath2': list2},
+                         'PROJ': {'cmd': cmd, 'row': row, 'col': col, 'res': res}}
+
+                Log.info('%s %s create collocation cfg success' %
+                         (sat_pair, ymdhms))
+                CreateYamlCfg(dict3, yaml_file3)
+                if reload is None:
+                    cmd = '%s %s %s 0' % (python, job_exe, yaml_file3)
+                else:
+                    cmd = '%s %s %s 1' % (python, job_exe, yaml_file3)
+                arg_list.append(cmd)
+
+        date_s = date_s + relativedelta(days=1)
+
+    return arg_list
+
+
 def ReadCrossFile_LEO_LEO(sat1, sat2, ymd):
 
     # 拼接cross, snox预报文件
@@ -748,6 +1208,35 @@ def Find_data_FromCrossTime(FileList, start_crossTime, end_crossTime):
         # 获取数据时间段
         data_stime1 = info.dt_s
         data_etime1 = info.dt_e
+        if InCrossTime(data_stime1, data_etime1, start_crossTime, end_crossTime):
+            dataList.append(FileName)
+    return dataList
+
+
+def Find_data_fy_FromCrossTime(FileList, start_crossTime, end_crossTime):
+    dataList = []
+    for FileName in FileList:
+        filename = os.path.basename(FileName)
+        strtime = filename.split("_")[-3] + filename.split("_")[-2] + '00'
+
+        data_stime1 = datetime.strptime(strtime, "%Y%m%d%H%M%S")
+        data_etime1 = data_stime1 + relativedelta(minutes=5)
+#         print strtime, data_stime1, data_etime1, start_crossTime, end_crossTime
+        # 获取数据时间段
+        if InCrossTime(data_stime1, data_etime1, start_crossTime, end_crossTime):
+            dataList.append(FileName)
+    return dataList
+
+
+def Find_data_aqua_FromCrossTime(FileList, start_crossTime, end_crossTime):
+    dataList = []
+    for FileName in FileList:
+        filename = os.path.basename(FileName)
+        strtime = filename.split(".")[0][1:]
+        data_stime1 = datetime.strptime(strtime, '%Y%j%H%M%S')
+        data_etime1 = data_stime1 + relativedelta(minutes=5)
+#         print strtime, data_stime1, data_etime1, start_crossTime, end_crossTime
+        # 获取数据时间段
         if InCrossTime(data_stime1, data_etime1, start_crossTime, end_crossTime):
             dataList.append(FileName)
     return dataList

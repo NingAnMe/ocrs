@@ -52,12 +52,35 @@ class CLASS_MERSI_L1_PRE():
         self.BB = {}
         self.LandSeaMask = []
         self.LandCover = []
+        self.old_coeff = {}
+        self.new_coeff = {}
+
+    def get_coeff(self, coeff_file):
+        if not os.path.isfile(coeff_file):
+            print "File is not exist: {}".format(coeff_file)
+            return
+        try:
+            new_coeff = np.loadtxt(coeff_file)
+        except Exception as why:
+            print why
+
+        for i in xrange(new_coeff.shape[0]):
+            if i < 4:
+                band = 'CH_{:02d}'.format(i + 1)
+            else:
+                band = 'CH_{:02d}'.format(i + 2)
+            self.new_coeff[band] = new_coeff[i]
+        self.new_coeff['CH_05'] = np.array([1., 0, 0])
+
+        for key in sorted(self.new_coeff.keys()):
+            print key, self.new_coeff[key]
 
     def Load(self, L1File):
         # 读取L1文件 FY3B MERSI
         print (u'读取 L1 %s' % L1File)
         try:
             h5File_R = h5py.File(L1File, 'r')
+            self.dsl = h5File_R.attrs.get('dsl')
             ary_lon = h5File_R.get('/Longitude')[:]
             ary_lat = h5File_R.get('/Latitude')[:]
             ary_times = h5File_R.get('/Times')[:]
@@ -73,6 +96,8 @@ class CLASS_MERSI_L1_PRE():
                 if type(pre_rootgrp).__name__ == "Group":
                     ary_ref = h5File_R.get('/%s/Ref' % key)[:]
                     self.Ref[key] = ary_ref / 10000.
+                    ary_coeff = h5File_R.get('/%s/CalCoeff' % key)[:]
+                    self.old_coeff[key] = ary_coeff
 
         except Exception as e:
             print str(e)
@@ -170,6 +195,27 @@ class CLASS_MERSI_L1_PRE():
             self.sunZenith = np.concatenate(
                 (self.sunZenith, ary_sunz_idx / 100.))
 
+    def get_new_ref(self):
+        dsl = self.dsl
+        for key in self.Ref.keys():
+            k0 = self.old_coeff[key][0]
+            k1 = self.old_coeff[key][1]
+            k2 = self.old_coeff[key][2]
+#             print key, 'old k', k2, k1, k0
+            k22 = self.new_coeff[key][2]
+            k11 = self.new_coeff[key][1]
+            k00 = self.new_coeff[key][0]
+            old_slope = (dsl**2) * k2 + dsl * k1 + k0
+            new_slope = (dsl**2) * k22 + dsl * k11 + k00
+            dn = self.Ref[key] / old_slope
+            new_ref = dn * new_slope
+            print 'ref', self.Ref[key][1000, 1000]
+            self.Ref[key] = new_ref
+            print '################### %s' % key
+
+            print 'dn', dn[1000, 1000]
+            print 'new', new_ref[1000, 1000]
+
     def sun_earth(self, ymd):
         stime = datetime.strptime(ymd, '%Y%m%d')
         jjj = int(stime.strftime('%j'))
@@ -183,10 +229,16 @@ class CLASS_MERSI_L1_PRE():
 
 
 if __name__ == '__main__':
-    L1File = 'D:/data/FY3B_MERSI/FY3B_MERSI_GBAL_L1_20130101_0005_1000M_MS.HDF'
+
+    #     1884
+    #dn * ((dsl ** 2) * k2 + dsl * k1 + k0) * 100.
+    slope_old = (1884**2) * 2.9E-10 + 1884 * -3.468E-7 + 0.02871
+#     print slope_old
+#     print 2701 / slope_old
+#     sys.exit(1)
+    L1File = 'D:/data/MERSI_OCC/FY3B_MERSI_GBAL_L1_20130101_0020_1000M_MS.HDF'
+    coeff_file = 'D:/data/MERSI_OCC/2013.txt'
     mersi = CLASS_MERSI_L1_PRE()
     mersi.Load(L1File)
-    print mersi.Ref['CH_01']
-    mersi.sun_earth('20130101')
-    print mersi.Ref['CH_01']
-    pass
+    mersi.get_coeff(coeff_file)
+    mersi.get_new_ref()
