@@ -53,9 +53,9 @@ def main(sat_sensor, in_file):
     sat1, sensor1 = sat_sensor1.split('+')
     sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息
-    s_channel1 = sc.chan1
-    s_channel2 = sc.chan2
-    timseries_channels_config = sc.timeseries_channels
+    s_channel1 = sc.name
+    s_channel2 = sc.name
+    timseries_channels_config = sc.timeseries_l2_channels
     # 加载业务配置信息
     # ######################## 开始处理 ###########################
     print "-" * 100
@@ -104,11 +104,19 @@ def main(sat_sensor, in_file):
             if channel not in result:
                 result[channel] = dict()
 
-            ref_s1 = cross_data.data[channel]['S1_FovRefMean']
-            if len(ref_s1) == 0:
-                print '{} {} : Dont have enough point, is 0'.format(ymd_now, channel)
+            if not isinstance(cross_data.data[channel], dict):
                 continue
-            ref_s2 = cross_data.data[channel]['S2_FovRefMean']
+
+            mask_fine = cross_data.data[channel]['MaskFine']
+            fine_idx = np.where(mask_fine > 0)
+
+            ref_s1_all = cross_data.data[channel]['MERSI_FovMean']
+
+            ref_s1 = ref_s1_all[fine_idx]
+
+            ref_s2_all = cross_data.data[channel]['MODIS_FovMean']
+
+            ref_s2 = ref_s2_all[fine_idx]
 
             # 过滤 3 倍std之外的点
             mean_ref_s1 = np.nanmean(ref_s1)
@@ -298,6 +306,10 @@ def main(sat_sensor, in_file):
     make_sure_path_exists(out_path)
     write_hdf5(out_file_hdf5, result)
 
+    keys = amount_all.keys()
+    keys.sort()
+    for channel in keys:
+        print 'CHANNEL: {} POINT: {}'.format(channel, np.sum(amount_all[channel]))
     print '-' * 100
 
 
@@ -398,5 +410,5 @@ if __name__ == "__main__":
 
 # ######################### TEST ##############################
 # if __name__ == '__main__':
-#     yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
+#     yaml_file = r'20110101_20181231.yaml'
 #     main('FY3B+MERSI_AQUA+MODIS', yaml_file)

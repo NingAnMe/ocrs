@@ -5,13 +5,14 @@
 @Author  : AnNing
 """
 import os
+from dateutil.relativedelta import relativedelta
 
 import h5py
 import numpy as np
 from DV import dv_map
 from DV import dv_map_oc
 from DV.dv_img import dv_rgb
-from DV.dv_plot import plt, FONT0, Histogram, TimeSeries, Scatter
+from DV.dv_plot import plt, FONT0, Histogram, TimeSeries, Scatter, colors
 from PB import pb_io
 from PB.pb_io import make_sure_path_exists
 from PB.pb_time import time_block
@@ -473,6 +474,7 @@ def plot_scatter(data_x=None, data_y=None, out_file=None, title=None,
 def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
                     x_label=None, y_label=None, annotate=None,
                     ymd_start=None, ymd_end=None, ymd=None,
+                    point_color=True, plot_slope=True, plot_zero=True,
                     ):
     main_path = os.path.dirname(os.path.dirname(__file__))
     style_file = os.path.join(main_path, "cfg", 'histogram.mplstyle')
@@ -481,25 +483,32 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     # fig.subplots_adjust(top=0.88, bottom=0.11, left=0.12, right=0.97)
 
     ax1 = plt.subplot2grid((1, 1), (0, 0))
-    # 绘制回归线
-    max_value = np.nanmax(data_x)
-    min_value = np.nanmin(data_x)
-    color_regression = '#ff0000'
-    width_regression = 1.0
-    ab = np.polyfit(data_x, data_y, 1)
-    p1 = np.poly1d(ab)
-    p1_max = p1(max_value)
-    p1_min = p1(min_value)
-    ax1.plot([min_value, max_value], [p1_min, p1_max], color=color_regression,
-             linewidth=width_regression, zorder=100)
+
+    annotate_new = {'left_top': []}
+    if plot_slope:
+        # 绘制回归线
+        max_value = np.nanmax(data_x)
+        min_value = np.nanmin(data_x)
+        color_regression = '#ff0000'
+        width_regression = 1.0
+        ab = np.polyfit(data_x, data_y, 1)
+        p1 = np.poly1d(ab)
+        p1_max = p1(max_value)
+        p1_min = p1(min_value)
+        ax1.plot([min_value, max_value], [p1_min, p1_max], color=color_regression,
+                 linewidth=width_regression, zorder=100)
+
+        annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
+                                     'Offset={:.4f}'.format(ab[1])]}
 
     # 绘制对角线
-    color_diagonal = '#888888'
-    width_diagonal = 1.0
-    max_value = abs(np.nanmax(np.concatenate((data_x, data_y))))
-    min_value = -1 * max_value
-    ax1.plot([min_value, max_value], [min_value, max_value], color=color_diagonal,
-             linewidth=width_diagonal, zorder=80)
+    if plot_zero:
+        color_diagonal = '#888888'
+        width_diagonal = 1.0
+        max_value = abs(np.nanmax(np.concatenate((data_x, data_y))))
+        min_value = -1 * max_value
+        ax1.plot([min_value, max_value], [min_value, max_value], color=color_diagonal,
+                 linewidth=width_diagonal, zorder=80)
 
     ax = Scatter(ax1)
     x_min_value = np.min(data_x)
@@ -514,10 +523,12 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     if y_label:
         ax.set_y_label(y_label)
 
-    annotate_new = {'left_top': ['Slope={:.4f}'.format(ab[0]),
-                                 'Offset={:.4f}'.format(ab[1])]}
-    annotate_new['left_top'].extend(annotate['left_top'])
-    ax.set_annotate(annotate=annotate_new)
+    if annotate:
+        if plot_slope:
+            annotate_new['left_top'].extend(annotate['left_top'])
+        else:
+            annotate_new = annotate
+        ax.set_annotate(annotate=annotate_new)
 
     size = 1
     alpha = 0.8  # 透明度
@@ -526,9 +537,11 @@ def plot_regression(data_x=None, data_y=None, out_file=None, title=None,
     ax.set_scatter(size=size, alpha=alpha, marker=marker, color=color)
 
     # kde 是否绘制密度点颜色
-    ax.plot_scatter(data_x=data_x, data_y=data_y, kde=True)
-
-    # plt.colorbar(ax.plot_result)
+    if point_color:
+        ax.plot_scatter(data_x=data_x, data_y=data_y, kde=True)
+        plt.colorbar(ax.plot_result)
+    else:
+        ax.plot_scatter(data_x=data_x, data_y=data_y, kde=False)
     # --------------------
     plt.tight_layout()
     fig.suptitle(title, fontsize=11, fontproperties=FONT0)
@@ -570,9 +583,12 @@ def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
 
     p = dv_map.dv_map()
     p.colorbar_fmt = '%0.3f'
+    color_list = ['#000081', '#0000C8', '#1414FF', '#A3A3FF', '#FFA3A3', '#FF1414',
+                  '#C70000', '#810000']
+    cmap = colors.ListedColormap(color_list, 'indexed')
     p.easyplot(lat, lon, data, vmin=vmin, vmax=vmax,
                ptype=None, markersize=0.05, marker='s',
-               colormap=plt.get_cmap('bwr'))
+               colormap=cmap)
     p.title = title
     make_sure_path_exists(os.path.dirname(out_file))
     p.savefig(out_file)
@@ -582,7 +598,7 @@ def plot_bias_map(lat=None, lon=None, data=None, out_file=None,
 def plot_histogram(data=None, out_file=None,
                    title=None, x_label=None, y_label=None,
                    bins_count=200, x_range=None, hist_label=None,
-                   annotate=None, ymd_start=None, ymd_end=None):
+                   annotate=None, ymd_start=None, ymd_end=None, ymd=None):
     """
     :param ymd_end:
     :param ymd_start:
@@ -629,8 +645,12 @@ def plot_histogram(data=None, out_file=None,
     fig.suptitle(title, fontsize=11, fontproperties=FONT0)
     fig.subplots_adjust(bottom=0.2, top=0.88)
 
-    fig.text(0.50, 0.02, '{}-{}'.format(ymd_start, ymd_end), fontproperties=FONT0)
-    fig.text(0.80, 0.02, 'OCC', fontproperties=FONT0)
+    if ymd_start and ymd_end:
+        fig.text(0.50, 0.02, '%s-%s' % (ymd_start, ymd_end), fontproperties=FONT0)
+    elif ymd:
+        fig.text(0.50, 0.02, '%s' % ymd, fontproperties=FONT0)
+
+    fig.text(0.8, 0.02, 'OCC', fontproperties=FONT0)
     # ---------------
     make_sure_path_exists(os.path.dirname(out_file))
     plt.savefig(out_file)
@@ -639,11 +659,11 @@ def plot_histogram(data=None, out_file=None,
     print '>>> {}'.format(out_file)
 
 
-def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
-                     month_data_y=None, out_file=None, title=None,
-                     month_data_y_std=None, x_range=None, y_range=None,
+def plot_time_series(day_data_x=None, day_data_y=None, out_file=None, title=None,
+                     x_range=None, y_range=None,
                      y_label=None, y_major_count=None, y_minor_count=None,
-                     ymd_start=None, ymd_end=None, ymd=None, zero_line=True):
+                     ymd_start=None, ymd_end=None, ymd=None, zero_line=True,
+                     plot_background=True):
     main_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     style_file = os.path.join(main_path, "cfg", 'time_series.mplstyle')
     plt.style.use(style_file)
@@ -672,23 +692,24 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
                        label="Daily"
                        )
     ax.plot_time_series(day_data_x, day_data_y)
-    # 绘制月数据长时间序列
-    if month_data_x and month_data_y:
-        ax.set_time_series(maker='o-', color=RED, line_width=0.6, marker_size=3,
-                           marker_facecolor=None,
-                           marker_edgecolor=RED, marker_edgewidth=0, alpha=0.8,
-                           label="Monthly")
-        ax.plot_time_series(month_data_x, month_data_y)
 
     # 绘制背景填充
-    if month_data_y_std and month_data_x and month_data_y and month_data_y_std:
-        ax.set_background_fill(x=month_data_x,
-                               y1=month_data_y - month_data_y_std,
-                               y2=month_data_y + month_data_y_std,
-                               color=RED,
-                               alpha=0.1,
-                               )
-        ax.plot_background_fill()
+    if plot_background:
+        month_data_x, month_data_y, month_data_std = get_month_avg_std(day_data_x, day_data_y)
+        ax1.errorbar(month_data_x, month_data_y, yerr=month_data_std, fmt='-o', color=RED,
+                     alpha=0.3)
+        # ax.set_time_series(maker='o-', color=RED, line_width=0.6, marker_size=3,
+        #                    marker_facecolor=None,
+        #                    marker_edgecolor=RED, marker_edgewidth=0, alpha=0.8,
+        #                    label="Monthly")
+        # ax.plot_time_series(month_data_x, month_data_y)
+        # ax.set_background_fill(x=month_data_x,
+        #                        y1=month_data_y - month_data_std,
+        #                        y2=month_data_y + month_data_std,
+        #                        color=RED,
+        #                        alpha=0.1,
+        #                        )
+        # ax.plot_background_fill()
     # 绘制 y=0 线配置，在绘制之间设置x轴范围
     if zero_line:
         ax.plot_zero_line()
@@ -713,3 +734,39 @@ def plot_time_series(day_data_x=None, day_data_y=None, month_data_x=None,
     fig.clear()
     plt.close()
     print '>>> {}'.format(out_file)
+
+
+def get_month_avg_std(date_day, value_day):
+    """
+    由日数据生成月平均数据
+    :param date_day: (list) [datetime 实例]
+    :param value_day: (list)
+    :return: (date_month, avg_month, std_month)
+    """
+    date_month = []
+    avg_month = []
+    std_month = []
+
+    date_day = np.array(date_day)
+    value_day = np.array(value_day)
+
+    ymd_start = np.nanmin(date_day)  # 第一天日期
+    ymd_end = np.nanmax(date_day)  # 最后一天日期
+    month_date_start = ymd_start - relativedelta(days=(ymd_start.day - 1))  # 第一个月第一天日期
+
+    while month_date_start <= ymd_end:
+        # 当月最后一天日期
+        month_date_end = month_date_start + relativedelta(months=1) - relativedelta(days=1)
+
+        # 查找当月所有数据
+        month_idx = np.logical_and(date_day >= month_date_start, date_day <= month_date_end)
+        value_month = value_day[month_idx]
+
+        avg = np.nanmean(value_month)
+        std = np.nanstd(value_month)
+        date_month = np.append(date_month, month_date_start + relativedelta(days=14))
+        avg_month = np.append(avg_month, avg)
+        std_month = np.append(std_month, std)
+
+        month_date_start = month_date_start + relativedelta(months=1)
+    return date_month, avg_month, std_month

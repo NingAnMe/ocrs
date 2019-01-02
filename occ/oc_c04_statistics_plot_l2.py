@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-@Time    : 2018/7/24 10:17
+@Time    : 2018/12/24 10:17
 @Author  : AnNing
 """
 import os
@@ -49,8 +49,8 @@ def main(sat_sensor, in_file):
     sat1, sensor1 = sat_sensor1.split('+')
     sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息
-    s_channel1 = sc.chan1
-    s_channel2 = sc.chan2
+    s_channel1 = sc.name
+    s_channel2 = sc.name
     # 加载业务配置信息
     # ######################## 开始处理 ###########################
     print "-" * 100
@@ -71,16 +71,29 @@ def main(sat_sensor, in_file):
     info = {}
     for channel in cross_data.data:
         point_count_min = 10
-        ref_s1 = cross_data.data[channel]['S1_FovRefMean']
-        point_count = len(ref_s1)
-        info[channel] = point_count
-        print '---INFO--- {} Points: {}'.format(channel, point_count)
-        if point_count < point_count_min:
+
+        if not isinstance(cross_data.data[channel], dict):
+            continue
+
+        mask_fine = cross_data.data[channel]['MaskFine']
+        fine_idx = np.where(mask_fine > 0)
+        fine_count = len(mask_fine[fine_idx])
+        print '---INFO--- {} Points: {}'.format(channel, fine_count)
+        if fine_count < point_count_min:
             print '***WARNING***Dont have enough point to plot: < {}'.format(point_count_min)
             continue
-        ref_s2 = cross_data.data[channel]['S2_FovRefMean']
-        lat = cross_data.data[channel]['S1_Lat']
-        lon = cross_data.data[channel]['S1_Lon']
+
+        ref_s1_all = cross_data.data[channel]['MERSI_FovMean']
+        lat_s1_all = cross_data.data['MERSI_Lats']
+        lon_s1_all = cross_data.data['MERSI_Lons']
+
+        ref_s1 = ref_s1_all[fine_idx]
+        lat = lat_s1_all[fine_idx]
+        lon = lon_s1_all[fine_idx]
+
+        ref_s2_all = cross_data.data[channel]['MODIS_FovMean']
+
+        ref_s2 = ref_s2_all[fine_idx]
 
         # 过滤 3 倍std之外的点
         mean_ref_s1 = np.nanmean(ref_s1)
@@ -179,7 +192,7 @@ def main(sat_sensor, in_file):
                         title=title_regression, x_label=x_label_regression,
                         y_label=y_label_regression,
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
-                        annotate=annotate_regression,)
+                        annotate=annotate_regression, plot_zero=False)
 
         ################################### REF 偏差 #######################################
         fix_point = sc.plot_scatter_fix_ref
@@ -247,12 +260,12 @@ def main(sat_sensor, in_file):
                         title=title_scatter, x_label=x_label_scatter,
                         y_label=y_label_scatter_absolute,
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
-                        annotate=annotate_scatter_absolute, plot_slope=False)
+                        annotate=annotate_scatter_absolute, plot_slope=False, plot_zero=False)
         plot_regression(data_x=ref_s1, data_y=relative_bias, out_file=picture_file_relative,
                         title=title_scatter, x_label=x_label_scatter,
                         y_label=y_label_scatter_relative,
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
-                        annotate=annotate_scatter_relative, plot_slope=False)
+                        annotate=annotate_scatter_relative, plot_slope=False, plot_zero=False)
         # 绘制偏差全球分布图
         title_map_absolute = '{}_{} {}_{} Global Distribution Dif {}-{}'.format(
             sat_sensor1, channel1, sat_sensor2, channel2, sensor1, sensor2)
@@ -335,5 +348,5 @@ if __name__ == "__main__":
 
 # ######################### TEST ##############################
 # if __name__ == '__main__':
-#     yaml_file = r'D:\nsmc\occ_data\20130103154613_MERSI_MODIS.yaml'
+#     yaml_file = r'20110101_20181231.yaml'
 #     main('FY3B+MERSI_AQUA+MODIS', yaml_file)

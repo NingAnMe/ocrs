@@ -14,7 +14,7 @@ from PB.pb_space import deg2meter
 from PB.CSC.pb_csc_console import LogServer
 
 from app.config import InitApp
-from app.combine import CombineL2
+from app.combine import CombineL2, CombineL2Quick
 
 TIME_TEST = False  # 时间测试
 
@@ -44,10 +44,12 @@ def main(sat_sensor, in_file):
 
     # 加载卫星配置信息
     res = sc.project_res
-    half_res = deg2meter(res)/ 2.
+    half_res = deg2meter(res) / 2.
     cmd = sc.project_cmd % (half_res, half_res)
     row = sc.project_row
     col = sc.project_col
+
+    combine_quick = sc.combine_quick
 
     # ######################## 开始处理 ###########################
     print "-" * 100
@@ -59,15 +61,23 @@ def main(sat_sensor, in_file):
 
     print "<<< {}".format(in_file)
 
-    combine = CombineL2()  # 初始化一个投影实例
-    combine.load_cmd_info(cmd=cmd, res=res, row=row, col=col)
-    combine.load_yaml(in_file)  # 加载 yaml 文件
+    if not combine_quick:
+        combine = CombineL2()  # 初始化一个投影实例
+        combine.load_cmd_info(cmd=cmd, res=res, row=row, col=col)
+        combine.load_yaml(in_file)  # 加载 yaml 文件
 
-    with time_block("One combine time:", switch=TIME_TEST):
-        combine.combine()
+        with time_block("One combine time:", switch=TIME_TEST):
+            combine.combine()
+    else:
+        combine = CombineL2Quick()  # 初始化一个投影实例
+        combine.load_cmd_info(cmd=cmd, res=res, row=row, col=col)
+        combine.load_yaml(in_file)  # 加载 yaml 文件
 
-    with time_block("One write time:", switch=TIME_TEST):
-        combine.write()
+        with time_block("One combine time:", switch=TIME_TEST):
+            combine.combine()
+
+        with time_block("One write time:", switch=TIME_TEST):
+            combine.write()
 
     if not combine.error:
         print ">>> {}".format(combine.ofile)
