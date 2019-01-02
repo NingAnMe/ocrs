@@ -1,0 +1,54 @@
+# FY传感器和国外传感器名称
+sensor1: MERSI
+sensor2: MODIS
+
+# chan1的通道序号 CH_01 对应mersi的1通道 依此类推
+# chan2的通道序号 CH_01 对应modis的1通道 依此类推
+chan1: [Rw412, Rw443, Rw490, Rw565, a490, Kd490, POC, CHL1]
+chan2: [Rw412, Rw443, Rw490, Rw565, a490, Kd490, POC, CHL1]
+
+# 窗口大小 Fov 和 Env ,只能是奇数,针对所有通道（DN REF/TBB/RAD）Mean std
+FovWind1: [7, 7]
+FovWind2: [7, 7]
+
+rewrite: ON  # ON覆盖  OFF 关闭H5文件输出
+
+# 全局阈值
+solglint_min : 40   # 太阳耀斑角阈值，保留大于的
+solzenith_max : 75  # 太阳天顶角阈值，保留小于的
+satzenith_max : 35 # 卫星观测角阈值，保留小于的
+distdif_max : 1     # 距离阈值，单位 km
+
+# 对应各个通道阈值 ,根据FY通道顺序书写
+#######################################可见##########################################
+Rw412:
+  value_max: 10000              # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  homodif_fov_max: 0.1         # 靶区均匀性
+  
+Rw443:
+  value_max: 10000               # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  homodif_fov_max: 0.1         # 靶区均匀性
+
+Rw490:
+  value_max: 10000                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  homodif_fov_max: 0.1         # 靶区均匀性
+  
+Rw565:
+  value_max: 10000                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  homodif_fov_max: 0.1         # 靶区均匀性
+  
+a490:
+  value_max: 10000                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  homodif_fov_max: 0.03         # 靶区均匀性
+
+Kd490:
+  value_max : 10000
+  homodif_fov_max : 0.05         # 靶区均匀性
+  
+POC:
+  value_max : 10000
+  homodif_fov_max : 0.05         # 靶区均匀性
+  
+CHL1:
+  value_max: 10000                # 饱和值，匹配时超出此值的所有匹配点都将过滤掉
+  homodif_fov_max: 0.02         # 靶区均匀性

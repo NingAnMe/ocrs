@@ -1,0 +1,62 @@
+####################################################################################
+################################## 卫星配置文件 #####################################
+###################################################################################
+
+################################ 发星时间配置 ####################################
+launch_date: "20101105"
+
+name: [CHL1,Kd490,POC,Rw412,Rw443,Rw490,Rw565,a490]
+
+plot_scatter:
+  fix_ref: 0.25
+  
+timeseries_l2:
+  channels:
+    CHL1:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Kd490:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    POC:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw412:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw443:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw490:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    Rw565:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
+    a490:
+      dif_y_range: [-0.05, 0.05]
+      pdif_y_range: [-0.2, 0.2]
+      ref_s1_y_range: [-0.01, 0.8]
+      ref_s2_y_range: [-0.01, 0.8]
+      count_y_range: [-0.01, 3500]
