@@ -50,7 +50,7 @@ class CLASS_MODIS_L2():
                 dataset = h5r.get('/geophysical_data/%s' % key)
                 dataset_value = dataset[:]
                 if 'Rrs' in key:
-                    print key
+                    #                     print key
                     condition = np.logical_or(
                         dataset_value <= -30000, dataset_value > 25000)
                 elif 'Kd_490' in key:
@@ -89,7 +89,7 @@ class CLASS_MODIS_L2():
             h5r = h5py.File(file_name_iop, 'r')
 
             for key in self.dset_list2:
-                print key
+                #                 print key
                 dataset = h5r.get('/geophysical_data/%s' % key)
                 dataset_value = dataset[:]
                 if 'a_488_giop' in key:
@@ -105,7 +105,7 @@ class CLASS_MODIS_L2():
                 else:
                     slope = 1.
                     intercept = 0.
-                print slope, intercept
+#                 print slope, intercept
                 new_value = value * slope + intercept
                 self.Ref[key] = new_value
 

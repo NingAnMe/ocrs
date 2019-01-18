@@ -8,8 +8,8 @@ chan1: [Rw412, Rw443, Rw490, Rw565, a490, Kd490, POC, CHL1]
 chan2: [Rw412, Rw443, Rw490, Rw565, a490, Kd490, POC, CHL1]
 
 # 窗口大小 Fov 和 Env ,只能是奇数,针对所有通道（DN REF/TBB/RAD）Mean std
-FovWind1: [7, 7]
-FovWind2: [7, 7]
+FovWind1: [1, 1]
+FovWind2: [1, 1]
 
 rewrite: ON  # ON覆盖  OFF 关闭H5文件输出
 

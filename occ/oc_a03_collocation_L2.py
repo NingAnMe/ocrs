@@ -242,7 +242,7 @@ class COLLOC_COMM(object):
         idx_Rough = np.logical_and(
             idx_Rough, self.MERSI_SoZ <= modeCfg.solzenith_max)
         idx1 = np.where(idx_Rough)
-        print u'3. 太阳天顶角过滤后剩余点 ', len(idx1[0])
+        print u'2. 太阳天顶角过滤后剩余点 ', len(idx1[0])
 
         # 计算耀斑角 ###############
         glint1 = np.full_like(self.MERSI_SatZ, -999.)
@@ -253,12 +253,12 @@ class COLLOC_COMM(object):
         idx_Rough = np.logical_and(idx_Rough, glint1 > modeCfg.solglint_min)
         print np.nanmin(glint1[idx]), np.nanmax(glint1[idx])
         idx1 = np.where(idx_Rough)
-        print u'4. 太阳耀斑角过滤后剩余点 ', len(idx1[0])
+        print u'3. 太阳耀斑角过滤后剩余点 ', len(idx1[0])
 
         idx_Rough = np.logical_and(
             idx_Rough, self.MERSI_SatZ <= modeCfg.satzenith_max)
         idx1 = np.where(idx_Rough)
-        print u'6. FY卫星观测角(天顶角)滤后剩余点 ', len(idx1[0])
+        print u'4. FY卫星观测角(天顶角)滤后剩余点 ', len(idx1[0])
         self.MaskRough[idx1] = 1
 
         for Band1 in modeCfg.chan1:
@@ -273,6 +273,7 @@ class COLLOC_COMM(object):
             # 可见光通道
             if hasattr(self, 'MERSI_FovMean') and Band1 in self.MERSI_FovMean.keys():
                 flag = 'vis'
+                print '1111', Band1
                 homoFov1 = np.abs(
                     self.MERSI_FovStd[Band1] / self.MERSI_FovMean[Band1])
                 homoValue1 = self.MERSI_FovMean[Band1]
@@ -280,10 +281,6 @@ class COLLOC_COMM(object):
                 homoFov2 = np.abs(
                     self.MODIS_FovStd[Band1] / self.MODIS_FovMean[Band1])
                 homoValue2 = self.MODIS_FovMean[Band1]
-
-#             ccc1 = np.logical_and(self.MaskRough > 0, homoValue1 < 0)
-#
-#             print homoValue1[ccc1]
 
             condition = np.logical_and(self.MaskRough > 0, True)
             condition = np.logical_and(homoValue1 < th_vaue_max, condition)
@@ -318,7 +315,7 @@ class COLLOC_COMM(object):
                 break
         if DCLC_nums == 0:
             print('colloc point is zero')
-            sys.exit(-1)
+#             sys.exit(-1)
 
         # 创建文件夹
         MainPath, _ = os.path.split(ICFG.ofile)
@@ -352,7 +349,6 @@ class COLLOC_COMM(object):
                     dset = h5File_W.create_dataset(
                         str_dname, data=dname[band], compression='gzip', compression_opts=5, shuffle=True)
             if isinstance(dname, np.ndarray):
-                print 'nd'
                 if 'MaskRough' in member:
                     continue
                 elif 'PubIdx' in member:
@@ -365,18 +361,17 @@ class COLLOC_COMM(object):
 
         for Band in MCFG.chan1:
             idx = np.where(self.MaskFine[Band] > 0)
-            x = self.MERSI_FovMean[Band][idx]  # / np.pi
+            x = self.MERSI_FovMean[Band][idx] / np.pi
             y = self.MODIS_FovMean[Band][idx]
             if len(x) >= 2:
                 value_min = value_max = None
                 flag = 'Ref'
                 print('ref', Band, len(x), np.min(x), np.max(x),
                       np.min(y), np.max(y))
-                value_min = 0.001
+                value_min = 0.0
                 value_max = 0.05
-                if value_min is not None and value_max is not None:
-                    regression(x, y, value_min, value_max,
-                               flag, ICFG, MCFG, Band)
+                regression(x, y, value_min, value_max,
+                           flag, ICFG, MCFG, Band)
 
 
 def regression(x, y, value_min, value_max, flag, ICFG, MCFG, Band):

@@ -361,8 +361,11 @@ class CLASS_MERSI_L1():
     def sun_earth(self, ymd):
         stime = datetime.strptime(ymd, '%Y%m%d')
         jjj = int(stime.strftime('%j'))
-        EarthSunDist = (1.00014 - 0.01671 * np.cos(1.0 * 2 * np.pi * (0.9856002831 * jjj - 3.4532868) /
-                                                   360.0) - 0.00014 * np.cos(2.0 * 2 * np.pi * (0.9856002831 * jjj - 3.4532868) / 360.0))
+        EarthSunDist = (1.00014 - 0.01671 *
+                        np.cos(1.0 * 2 * np.pi *
+                               (0.9856002831 * jjj - 3.4532868) / 360.0) -
+                        0.00014 * np.cos(2.0 * 2 * np.pi *
+                                         (0.9856002831 * jjj - 3.4532868) / 360.0))
 
         f_jday = np.power(1.0 / EarthSunDist, 2)
 

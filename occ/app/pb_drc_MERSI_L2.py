@@ -52,19 +52,19 @@ class CLASS_MERSI_L2():
 
             condition = np.logical_or(ary_satz == 32767, ary_satz == -32767)
             ary_satz = ary_satz.astype(np.float32)
-            ary_satz = np.nan
+            ary_satz[condition] = np.nan
 
             condition = np.logical_or(ary_sata == 32767, ary_sata == -32767)
             ary_sata = ary_sata.astype(np.float32)
-            ary_sata = np.nan
+            ary_sata[condition] = np.nan
 
             condition = np.logical_or(ary_sunz == 32767, ary_sunz == -32767)
             ary_sunz = ary_sunz.astype(np.float32)
-            ary_sunz = np.nan
+            ary_sunz[condition] = np.nan
 
             condition = np.logical_or(ary_suna == 32767, ary_suna == -32767)
             ary_suna = ary_suna.astype(np.float32)
-            ary_suna = np.nan
+            ary_suna[condition] = np.nan
 
             self.satAzimuth = ary_sata / 100.
             self.satZenith = ary_satz / 100.
@@ -94,3 +94,4 @@ if __name__ == '__main__':
     modis = CLASS_MERSI_L2()
     modis.Load(L1File)
     print modis.Ref.keys()
+    print modis.satAzimuth.shape
