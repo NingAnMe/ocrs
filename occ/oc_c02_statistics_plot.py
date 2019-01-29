@@ -247,12 +247,12 @@ def main(sat_sensor, in_file):
                         title=title_scatter, x_label=x_label_scatter,
                         y_label=y_label_scatter_absolute,
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
-                        annotate=annotate_scatter_absolute, plot_slope=False)
+                        annotate=annotate_scatter_absolute, plot_slope=False, plot_zero=False)
         plot_regression(data_x=ref_s1, data_y=relative_bias, out_file=picture_file_relative,
                         title=title_scatter, x_label=x_label_scatter,
                         y_label=y_label_scatter_relative,
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
-                        annotate=annotate_scatter_relative, plot_slope=False)
+                        annotate=annotate_scatter_relative, plot_slope=False, plot_zero=False)
         # 绘制偏差全球分布图
         title_map_absolute = '{}_{} {}_{} Global Distribution Dif {}-{}'.format(
             sat_sensor1, channel1, sat_sensor2, channel2, sensor1, sensor2)

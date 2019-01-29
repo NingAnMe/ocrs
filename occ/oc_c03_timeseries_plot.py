@@ -154,19 +154,25 @@ def main(sat_sensor, in_file):
             ref_s2_all[channel].append(mean_ref_s2)
             amount_all[channel].append(amount_ref_s1)
 
+            fix_point = sc.plot_scatter_fix_ref
+            f025_absolute, f025_relative = get_dif_pdif(ref_s1, ref_s2, fix_point)
             result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
-                            'Dif_rms',
-                            'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
-                            'PDif_rms',
+                            'Dif_rms', 'Dif_025'
+                                       'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
+                            'PDif_rms', 'Dif_025',
                             'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
                             'Ref_s1_rms',
                             'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
                             'Ref_s2_rms',
                             'Date']
-            datas = [mean_absolute, std_absolute, median_absolute, amount_absolute, rms_absolute,
-                     mean_relative, std_relative, median_relative, amount_relative, rms_relative,
-                     mean_ref_s1, std_ref_s1, median_ref_s1, amount_ref_s1, rms_ref_s1,
-                     mean_ref_s2, std_ref_s2, median_ref_s2, amount_ref_s2, rms_ref_s2,
+            datas = [mean_absolute, std_absolute, median_absolute, amount_absolute,
+                     rms_absolute, f025_absolute,
+                     mean_relative, std_relative, median_relative, amount_relative,
+                     rms_relative, f025_relative,
+                     mean_ref_s1, std_ref_s1, median_ref_s1, amount_ref_s1,
+                     rms_ref_s1,
+                     mean_ref_s2, std_ref_s2, median_ref_s2, amount_ref_s2,
+                     rms_ref_s2,
                      ymd_now]
             for result_name, data in zip(result_names, datas):
                 if result_name not in result[channel]:
@@ -299,6 +305,26 @@ def main(sat_sensor, in_file):
     write_hdf5(out_file_hdf5, result)
 
     print '-' * 100
+
+
+def get_dif_pdif(data1, data2, fix_point):
+    """
+    关于偏差的计算，请增加特定反射率处的偏差量计算，
+    匹配后MERSI反射率为x，MODIS反射率为y, 拟合线yfit=ax+b
+    特定反射率x_typical若取0.25
+    Dif@0.25=x_typical-yfit(x_typical)
+    PDif@0.25=x_typical/yfit(x_typical)-1
+    :param data1:
+    :param data2:
+    :param fix_point:
+    :return:
+    """
+    # ----- 计算回归直线特殊值的绝对偏差和相对偏差
+    p1 = np.poly1d(np.polyfit(data1, data2, 1))
+    ploy_fix_point = p1(fix_point)
+    fix_dif = fix_point - ploy_fix_point
+    fix_pdif = fix_point / ploy_fix_point - 1
+    return fix_dif, fix_pdif
 
 
 def rms(x):
