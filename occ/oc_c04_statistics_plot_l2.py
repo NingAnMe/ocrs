@@ -15,7 +15,7 @@ from PB.pb_time import time_block
 from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_bias_map, plot_histogram, plot_regression
-from app.read_data import ReadCrossData
+from app.read_data import ReadCrossDataL2
 
 TIME_TEST = False  # 时间测试
 RED = '#f63240'
@@ -64,7 +64,7 @@ def main(sat_sensor, in_file):
 
     in_files = yc.path_ipath
     # 加载数据
-    cross_data = ReadCrossData()
+    cross_data = ReadCrossDataL2()
     cross_data.read_cross_data(in_files=in_files)
 
     # 循环通道数据
@@ -75,25 +75,17 @@ def main(sat_sensor, in_file):
         if not isinstance(cross_data.data[channel], dict):
             continue
 
-        mask_fine = cross_data.data[channel]['MaskFine']
-        fine_idx = np.where(mask_fine > 0)
-        fine_count = len(mask_fine[fine_idx])
+        ref_s1 = cross_data.data[channel]['MERSI_FovMean']
+
+        fine_count = len(ref_s1)
         print '---INFO--- {} Points: {}'.format(channel, fine_count)
         if fine_count < point_count_min:
             print '***WARNING***Dont have enough point to plot: < {}'.format(point_count_min)
             continue
 
-        ref_s1_all = cross_data.data[channel]['MERSI_FovMean']
-        lat_s1_all = cross_data.data['MERSI_Lats']
-        lon_s1_all = cross_data.data['MERSI_Lons']
-
-        ref_s1 = ref_s1_all[fine_idx]
-        lat = lat_s1_all[fine_idx]
-        lon = lon_s1_all[fine_idx]
-
-        ref_s2_all = cross_data.data[channel]['MODIS_FovMean']
-
-        ref_s2 = ref_s2_all[fine_idx]
+        ref_s2 = cross_data.data[channel]['MODIS_FovMean']
+        lat = cross_data.data[channel]['MERSI_Lats']
+        lon = cross_data.data[channel]['MERSI_Lons']
 
         # 过滤 3 倍std之外的点
         mean_ref_s1 = np.nanmean(ref_s1)

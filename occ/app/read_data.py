@@ -74,7 +74,6 @@ class ReadHDF5(object):
         """
         with h5py.File(self.file_path, 'r') as hdf5_file:
             for dataset in datasets:
-                print dataset
                 hdf5_dataset = hdf5_file[dataset]
                 self.read_dataset(hdf5_dataset)
 
@@ -116,6 +115,47 @@ class ReadHDF5(object):
 
     def read_dataset_attr(self):
         pass
+
+
+class ReadCrossDataL2(object):
+    """
+    读取L2的交叉匹配信息
+    """
+    def __init__(self):
+        self.data = dict()
+
+    def read_cross_data(self, in_files):
+
+        for in_file in in_files:
+            read_hdf5 = ReadHDF5(in_file)
+            read_hdf5.read_hdf5()
+            print in_file
+            self.concatenate(read_hdf5.data, axis=0)
+
+    def concatenate(self, data, axis=0):
+        for channel in data:
+            if isinstance(data[channel], dict):
+                mask_fine = data[channel]["MaskFine"]
+                idx_fine = np.where(mask_fine > 0)
+                if len(idx_fine[0]) <= 0:
+                    continue
+                ref_s1 = data[channel]["MERSI_FovMean"][idx_fine]
+                ref_s2 = data[channel]["MODIS_FovMean"][idx_fine]
+                lon_s1 = data["MERSI_Lats"][idx_fine]
+                lat_s1 = data["MERSI_Lons"][idx_fine]
+
+                if channel not in self.data:
+                    self.data[channel] = dict()
+                    self.data[channel]["MERSI_FovMean"] = ref_s1
+                    self.data[channel]["MODIS_FovMean"] = ref_s2
+                    self.data[channel]["MERSI_Lons"] = lon_s1
+                    self.data[channel]["MERSI_Lats"] = lat_s1
+                else:
+                    d_c = self.data[channel]
+                    d_c["MERSI_FovMean"] = np.concatenate((d_c["MERSI_FovMean"], ref_s1), axis=axis)
+                    d_c["MODIS_FovMean"] = np.concatenate((d_c["MODIS_FovMean"], ref_s2), axis=axis)
+                    d_c["MERSI_Lons"] = np.concatenate((d_c["MERSI_Lons"], lon_s1), axis=axis)
+                    d_c["MERSI_Lats"] = np.concatenate((d_c["MERSI_Lats"], lat_s1), axis=axis)
 
 
 class ReadCrossData(object):

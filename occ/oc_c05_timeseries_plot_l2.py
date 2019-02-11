@@ -19,7 +19,7 @@ from PB.pb_time import ymd2date, time_block
 from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_time_series
-from app.read_data import ReadCrossData
+from app.read_data import ReadCrossDataL2
 
 TIME_TEST = False  # 时间测试
 RED = '#f63240'
@@ -78,12 +78,14 @@ def main(sat_sensor, in_file):
     date_start = ymd2date(yc.info_ymd_s)
     date_end = ymd2date(yc.info_ymd_e)
 
+    point_count_min = 2
+
     result = dict()
     while date_start <= date_end:
         ymd_now = date_start.strftime('%Y%m%d')
         in_files = get_one_day_files(all_files=all_files, ymd=ymd_now, ext='.h5',
                                      pattern_ymd=r'.*_(\d{8})')
-        cross_data = ReadCrossData()
+        cross_data = ReadCrossDataL2()
         cross_data.read_cross_data(in_files=in_files)
 
         # 循环通道数据
@@ -107,17 +109,17 @@ def main(sat_sensor, in_file):
             if not isinstance(cross_data.data[channel], dict):
                 continue
 
-            print cross_data.data[channel].keys()
-            mask_fine = cross_data.data[channel]['MaskFine']
-            fine_idx = np.where(mask_fine > 0)
+            print channel
+            print cross_data.data[channel]
+            ref_s1 = cross_data.data[channel]['MERSI_FovMean']
 
-            ref_s1_all = cross_data.data[channel]['MERSI_FovMean']
+            fine_count = len(ref_s1)
+            print '---INFO--- {} Points: {}'.format(channel, fine_count)
+            if fine_count < point_count_min:
+                print '***WARNING***Dont have enough point to plot: < {}'.format(point_count_min)
+                continue
 
-            ref_s1 = ref_s1_all[fine_idx]
-
-            ref_s2_all = cross_data.data[channel]['MODIS_FovMean']
-
-            ref_s2 = ref_s2_all[fine_idx]
+            ref_s2 = cross_data.data[channel]['MODIS_FovMean']
 
             # 过滤 3 倍std之外的点
             mean_ref_s1 = np.nanmean(ref_s1)
