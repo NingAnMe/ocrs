@@ -109,8 +109,6 @@ def main(sat_sensor, in_file):
             if not isinstance(cross_data.data[channel], dict):
                 continue
 
-            print channel
-            print cross_data.data[channel]
             ref_s1 = cross_data.data[channel]['MERSI_FovMean']
 
             fine_count = len(ref_s1)
@@ -170,7 +168,7 @@ def main(sat_sensor, in_file):
             result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
                             'Dif_rms', 'Dif_025',
                             'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
-                            'PDif_rms', 'Dif_025',
+                            'PDif_rms', 'PDif_025',
                             'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
                             'Ref_s1_rms',
                             'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
@@ -309,7 +307,7 @@ def main(sat_sensor, in_file):
                          plot_background=False)
 
     # 输出HDF5
-    hdf5_name = '{}_{}_Dif_PDif.HDF'.format(sat_sensor1, sat_sensor2)
+    hdf5_name = '{}_{}_Dif_PDif_Daily.HDF'.format(sat_sensor1, sat_sensor2)
     out_path = yc.path_opath
     out_file_hdf5 = os.path.join(out_path, hdf5_name)
     make_sure_path_exists(out_path)
@@ -413,7 +411,7 @@ def main(sat_sensor, in_file):
             result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
                             'Dif_rms', 'Dif_025',
                             'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
-                            'PDif_rms', 'Dif_025',
+                            'PDif_rms', 'PDif_025',
                             'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
                             'Ref_s1_rms',
                             'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
