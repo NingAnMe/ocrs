@@ -11,11 +11,11 @@ import sys
 
 import h5py
 import numpy as np
-from dateutil.relativedelta import relativedelta
-
 from PB.CSC.pb_csc_console import LogServer
 from PB.pb_io import Config, make_sure_path_exists
 from PB.pb_time import ymd2date, time_block
+from dateutil.relativedelta import relativedelta
+
 from app.bias import Bias
 from app.config import InitApp
 from app.plot import plot_time_series
@@ -157,8 +157,8 @@ def main(sat_sensor, in_file):
             fix_point = sc.plot_scatter_fix_ref
             f025_absolute, f025_relative = get_dif_pdif(ref_s1, ref_s2, fix_point)
             result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
-                            'Dif_rms', 'Dif_025'
-                                       'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
+                            'Dif_rms', 'Dif_025',
+                            'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
                             'PDif_rms', 'Dif_025',
                             'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
                             'Ref_s1_rms',

@@ -168,7 +168,7 @@ def main(sat_sensor, in_file):
             fix_point = sc.plot_scatter_fix_ref
             f025_absolute, f025_relative = get_dif_pdif(ref_s1, ref_s2, fix_point)
             result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
-                            'Dif_rms', 'Dif_025'
+                            'Dif_rms', 'Dif_025',
                             'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
                             'PDif_rms', 'Dif_025',
                             'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
