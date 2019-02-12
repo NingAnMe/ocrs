@@ -298,7 +298,131 @@ def main(sat_sensor, in_file):
                          plot_background=False)
 
     # 输出HDF5
-    hdf5_name = '{}_{}_Dif_PDif.HDF'.format(sat_sensor1, sat_sensor2)
+    hdf5_name = '{}_{}_Dif_PDif_Daily.HDF'.format(sat_sensor1, sat_sensor2)
+    out_path = yc.path_opath
+    out_file_hdf5 = os.path.join(out_path, hdf5_name)
+    make_sure_path_exists(out_path)
+    write_hdf5(out_file_hdf5, result)
+
+    print '-' * 100
+
+    # 输出月的HDF5
+    # 加载数据
+    data_absolute = dict()
+    data_relative = dict()
+    date = dict()
+    ref_s1_all = dict()
+    ref_s2_all = dict()
+    amount_all = dict()
+    date_start = ymd2date(yc.info_ymd_s)
+    date_end = ymd2date(yc.info_ymd_e)
+
+    result = dict()
+    while date_start <= date_end:
+        ymd_now = date_start.strftime('%Y%m')
+        in_files = get_one_day_files(all_files=all_files, ymd=ymd_now, ext='.h5',
+                                     pattern_ymd=r'.*_(\d{6})')
+        cross_data = ReadCrossData()
+        cross_data.read_cross_data(in_files=in_files)
+
+        # 循环通道数据
+        for channel in cross_data.data:
+
+            if channel not in data_absolute:
+                data_absolute[channel] = list()
+            if channel not in data_relative:
+                data_relative[channel] = list()
+            if channel not in date:
+                date[channel] = list()
+            if channel not in ref_s1_all:
+                ref_s1_all[channel] = list()
+            if channel not in ref_s2_all:
+                ref_s2_all[channel] = list()
+            if channel not in amount_all:
+                amount_all[channel] = list()
+            if channel not in result:
+                result[channel] = dict()
+
+            ref_s1 = cross_data.data[channel]['S1_FovRefMean']
+            if len(ref_s1) == 0:
+                print '{} {} : Dont have enough point, is 0'.format(ymd_now, channel)
+                continue
+            ref_s2 = cross_data.data[channel]['S2_FovRefMean']
+
+            # 过滤 3 倍std之外的点
+            mean_ref_s1 = np.nanmean(ref_s1)
+            std_ref_s1 = np.nanstd(ref_s1)
+            min_ref_s1 = mean_ref_s1 - 3 * std_ref_s1
+            max_ref_s1 = mean_ref_s1 + 3 * std_ref_s1
+            idx = np.logical_and(ref_s1 >= min_ref_s1, ref_s1 <= max_ref_s1)
+            ref_s1 = ref_s1[idx]
+            ref_s2 = ref_s2[idx]
+
+            # 计算相对偏差和绝对偏差
+            bias = Bias()
+            absolute_bias = bias.absolute_deviation(ref_s1, ref_s2)
+            relative_bias = bias.relative_deviation(ref_s1, ref_s2)
+            data_absolute[channel].append(np.mean(absolute_bias))
+            data_relative[channel].append(np.mean(relative_bias))
+            date[channel].append(date_start)
+
+            mean_absolute = np.nanmean(absolute_bias)
+            std_absolute = np.nanstd(absolute_bias)
+            amount_absolute = len(absolute_bias)
+            median_absolute = np.nanmedian(absolute_bias)
+            rms_absolute = rms(absolute_bias)
+
+            mean_relative = np.nanmean(relative_bias)
+            std_relative = np.nanstd(relative_bias)
+            amount_relative = len(relative_bias)
+            median_relative = np.nanmedian(relative_bias)
+            rms_relative = rms(relative_bias)
+
+            mean_ref_s1 = np.nanmean(ref_s1)
+            std_ref_s1 = np.nanstd(ref_s1)
+            amount_ref_s1 = len(ref_s1)
+            median_ref_s1 = np.nanmedian(ref_s1)
+            rms_ref_s1 = rms(ref_s1)
+            ref_s1_all[channel].append(mean_ref_s1)
+
+            mean_ref_s2 = np.nanmean(ref_s2)
+            std_ref_s2 = np.nanstd(ref_s2)
+            amount_ref_s2 = len(ref_s2)
+            median_ref_s2 = np.nanmedian(ref_s2)
+            rms_ref_s2 = rms(ref_s2)
+            ref_s2_all[channel].append(mean_ref_s2)
+            amount_all[channel].append(amount_ref_s1)
+
+            fix_point = sc.plot_scatter_fix_ref
+            f025_absolute, f025_relative = get_dif_pdif(ref_s1, ref_s2, fix_point)
+            result_names = ['Dif_mean', 'Dif_std', 'Dif_median', 'Dif_count',
+                            'Dif_rms', 'Dif_025',
+                            'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
+                            'PDif_rms', 'Dif_025',
+                            'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
+                            'Ref_s1_rms',
+                            'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
+                            'Ref_s2_rms',
+                            'Date']
+            datas = [mean_absolute, std_absolute, median_absolute, amount_absolute,
+                     rms_absolute, f025_absolute,
+                     mean_relative, std_relative, median_relative, amount_relative,
+                     rms_relative, f025_relative,
+                     mean_ref_s1, std_ref_s1, median_ref_s1, amount_ref_s1,
+                     rms_ref_s1,
+                     mean_ref_s2, std_ref_s2, median_ref_s2, amount_ref_s2,
+                     rms_ref_s2,
+                     ymd_now]
+            for result_name, data in zip(result_names, datas):
+                if result_name not in result[channel]:
+                    result[channel][result_name] = list()
+                else:
+                    result[channel][result_name].append(data)
+
+        date_start = date_start + relativedelta(months=1)
+
+    # 输出HDF5
+    hdf5_name = '{}_{}_Dif_PDif_Monthly.HDF'.format(sat_sensor1, sat_sensor2)
     out_path = yc.path_opath
     out_file_hdf5 = os.path.join(out_path, hdf5_name)
     make_sure_path_exists(out_path)
