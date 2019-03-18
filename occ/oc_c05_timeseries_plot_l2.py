@@ -48,8 +48,8 @@ def main(sat_sensor, in_file):
     log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
-    sat_sensor1 = sat_sensor.split('_')[0]
-    sat_sensor2 = sat_sensor.split('_')[1]
+    sat_sensor1 = sat_sensor.split('_')[1]
+    sat_sensor2 = sat_sensor.split('_')[0]
     sat1, sensor1 = sat_sensor1.split('+')
     sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息
@@ -109,24 +109,24 @@ def main(sat_sensor, in_file):
             if not isinstance(cross_data.data[channel], dict):
                 continue
 
-            ref_s1 = cross_data.data[channel]['MERSI_FovMean']
+            ref_s2 = cross_data.data[channel]['MERSI_FovMean']
 
-            fine_count = len(ref_s1)
+            fine_count = len(ref_s2)
             print '---INFO--- {} Points: {}'.format(channel, fine_count)
             if fine_count < point_count_min:
                 print '***WARNING***Dont have enough point to plot: < {}'.format(point_count_min)
                 continue
 
-            ref_s2 = cross_data.data[channel]['MODIS_FovMean']
+            ref_s1 = cross_data.data[channel]['MODIS_FovMean']
 
             # 过滤 3 倍std之外的点
-            mean_ref_s1 = np.nanmean(ref_s1)
-            std_ref_s1 = np.nanstd(ref_s1)
-            min_ref_s1 = mean_ref_s1 - 3 * std_ref_s1
-            max_ref_s1 = mean_ref_s1 + 3 * std_ref_s1
-            idx = np.logical_and(ref_s1 >= min_ref_s1, ref_s1 <= max_ref_s1)
-            ref_s1 = ref_s1[idx]
+            mean_ref_s2 = np.nanmean(ref_s2)
+            std_ref_s2 = np.nanstd(ref_s2)
+            min_ref_s2 = mean_ref_s2 - 3 * std_ref_s2
+            max_ref_s2 = mean_ref_s2 + 3 * std_ref_s2
+            idx = np.logical_and(ref_s2 >= min_ref_s2, ref_s2 <= max_ref_s2)
             ref_s2 = ref_s2[idx]
+            ref_s1 = ref_s1[idx]
 
             # 计算相对偏差和绝对偏差
             bias = Bias()
@@ -169,10 +169,10 @@ def main(sat_sensor, in_file):
                             'Dif_rms', 'Dif_025',
                             'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
                             'PDif_rms', 'PDif_025',
-                            'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
-                            'Ref_s1_rms',
-                            'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
-                            'Ref_s2_rms',
+                            '{}_MODIS_mean'.format(channel), '{}_MODIS_std'.format(channel), '{}_MODIS_median'.format(channel), '{}_MODIS_count'.format(channel),
+                            '{}_MODIS_rms'.format(channel),
+                            '{}_MERSI_mean'.format(channel), '{}_MERSI_std'.format(channel), '{}_MERSI_median'.format(channel), '{}_MERSI_count'.format(channel),
+                            '{}_MERSI_rms'.format(channel),
                             'Date']
             datas = [mean_absolute, std_absolute, median_absolute, amount_absolute,
                      rms_absolute, f025_absolute,
@@ -215,14 +215,14 @@ def main(sat_sensor, in_file):
         channel2 = s_channel2[index_channel1]
         title_series = '{}_{} {}_{} Time Series'.format(sat_sensor1, channel1, sat_sensor2,
                                                         channel2)
-        title_ref_s1 = '{}_{} REF Time Series'.format(sat_sensor1, channel1)
-        title_ref_s2 = '{}_{} REF Time Series'.format(sat_sensor2, channel2)
+        title_ref_s1 = '{}_{} {} Time Series'.format(channel1, sat_sensor1, channel1)
+        title_ref_s2 = '{}_{} {} Time Series'.format(channel2, sat_sensor2, channel2)
         title_amount = '{}_{} {}_{} Matched Points Count Time Series'.format(
             sat_sensor1, channel1, sat_sensor2, channel2)
         y_label_series_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
         y_label_series_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
-        y_label_ref_s1 = 'REF'
-        y_label_ref_s2 = 'REF'
+        y_label_ref_s1 = '{}'.format(channel1)
+        y_label_ref_s2 = '{}'.format(channel2)
         y_label_amount = 'Count'
         picture_path = yc.path_opath
 
@@ -231,8 +231,8 @@ def main(sat_sensor, in_file):
             sat_sensor1, channel1, sat_sensor2, channel2)
         picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}.png'.format(
             sat_sensor1, channel1, sat_sensor2, channel2)
-        picture_name_ref_s1 = 'Time_Series_REF_{}_{}.png'.format(sat_sensor1, channel1)
-        picture_name_ref_s2 = 'Time_Series_REF_{}_{}.png'.format(sat_sensor2, channel2)
+        picture_name_ref_s1 = 'Time_Series_{}_{}.png'.format(sat_sensor1, channel1)
+        picture_name_ref_s2 = 'Time_Series_{}_{}.png'.format(sat_sensor2, channel2)
         picture_name_amount = 'Time_Series_Count_{}_{}_{}_{}.png'.format(
             sat_sensor1, channel1, sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
@@ -275,8 +275,8 @@ def main(sat_sensor, in_file):
             sat_sensor1, channel1, sat_sensor2, channel2)
         picture_name_relative = 'Time_Series_PDif_{}_{}_{}_{}_NL.png'.format(
             sat_sensor1, channel1, sat_sensor2, channel2)
-        picture_name_ref_s1 = 'Time_Series_REF_{}_{}_NL.png'.format(sat_sensor1, channel1)
-        picture_name_ref_s2 = 'Time_Series_REF_{}_{}_NL.png'.format(sat_sensor2, channel2)
+        picture_name_ref_s1 = 'Time_Series_{}_{}_NL.png'.format(sat_sensor1, channel1)
+        picture_name_ref_s2 = 'Time_Series_{}_{}_NL.png'.format(sat_sensor2, channel2)
         picture_name_amount = 'Time_Series_Count_{}_{}_{}_{}_NL.png'.format(
             sat_sensor1, channel1, sat_sensor2, channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
@@ -412,10 +412,10 @@ def main(sat_sensor, in_file):
                             'Dif_rms', 'Dif_025',
                             'PDif_mean', 'PDif_std', 'PDif_median', 'PDif_count',
                             'PDif_rms', 'PDif_025',
-                            'Ref_s1_mean', 'Ref_s1_std', 'Ref_s1_median', 'Ref_s1_count',
-                            'Ref_s1_rms',
-                            'Ref_s2_mean', 'Ref_s2_std', 'Ref_s2_median', 'Ref_s2_count',
-                            'Ref_s2_rms',
+                            '{}_MODIS_mean'.format(channel), '{}_MODIS_std'.format(channel), '{}_MODIS_median'.format(channel), '{}_MODIS_count'.format(channel),
+                            '{}_MODIS_rms'.format(channel),
+                            '{}_MERSI_mean'.format(channel), '{}_MERSI_std'.format(channel), '{}_MERSI_median'.format(channel), '{}_MERSI_count'.format(channel),
+                            '{}_MERSI_rms'.format(channel),
                             'Date']
             datas = [mean_absolute, std_absolute, median_absolute, amount_absolute,
                      rms_absolute, f025_absolute,

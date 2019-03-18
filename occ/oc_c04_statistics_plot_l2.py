@@ -44,8 +44,8 @@ def main(sat_sensor, in_file):
     log = LogServer(gc.path_out_log)
 
     # 加载全局配置信息
-    sat_sensor1 = sat_sensor.split('_')[0]
-    sat_sensor2 = sat_sensor.split('_')[1]
+    sat_sensor1 = sat_sensor.split('_')[1]
+    sat_sensor2 = sat_sensor.split('_')[0]
     sat1, sensor1 = sat_sensor1.split('+')
     sat2, sensor2 = sat_sensor2.split('+')
     # 加载卫星配置信息
@@ -75,26 +75,26 @@ def main(sat_sensor, in_file):
         if not isinstance(cross_data.data[channel], dict):
             continue
 
-        ref_s1 = cross_data.data[channel]['MERSI_FovMean']
+        ref_s2 = cross_data.data[channel]['MERSI_FovMean']
 
-        fine_count = len(ref_s1)
+        fine_count = len(ref_s2)
         print '---INFO--- {} Points: {}'.format(channel, fine_count)
         if fine_count < point_count_min:
             print '***WARNING***Dont have enough point to plot: < {}'.format(point_count_min)
             continue
 
-        ref_s2 = cross_data.data[channel]['MODIS_FovMean']
+        ref_s1 = cross_data.data[channel]['MODIS_FovMean']
         lat = cross_data.data[channel]['MERSI_Lats']
         lon = cross_data.data[channel]['MERSI_Lons']
 
         # 过滤 3 倍std之外的点
-        mean_ref_s1 = np.nanmean(ref_s1)
-        std_ref_s1 = np.nanstd(ref_s1)
-        min_ref_s1 = mean_ref_s1 - 3 * std_ref_s1
-        max_ref_s1 = mean_ref_s1 + 3 * std_ref_s1
-        idx = np.logical_and(ref_s1 >= min_ref_s1, ref_s1 <= max_ref_s1)
-        ref_s1 = ref_s1[idx]
+        mean_ref_s2 = np.nanmean(ref_s2)
+        std_ref_s2 = np.nanstd(ref_s2)
+        min_ref_s2 = mean_ref_s2 - 3 * std_ref_s2
+        max_ref_s2 = mean_ref_s2 + 3 * std_ref_s2
+        idx = np.logical_and(ref_s2 >= min_ref_s2, ref_s2 <= max_ref_s2)
         ref_s2 = ref_s2[idx]
+        ref_s1 = ref_s1[idx]
         lat = lat[idx]
         lon = lon[idx]
 
@@ -127,32 +127,32 @@ def main(sat_sensor, in_file):
         median_ref_s2 = np.nanmedian(ref_s2)
         rms_ref_s2 = rms(ref_s2)
 
-        ################################### REF #######################################
-        # 绘制REF直方图
+        ###################################  #######################################
+        # 绘制直方图
         channel1 = channel
         index_channel1 = s_channel1.index(channel1)
         channel2 = s_channel2[index_channel1]
         title_hist_sat1 = '{}_{} Histogram'.format(sat_sensor1, channel1)
         title_hist_sat2 = '{}_{} Histogram'.format(sat_sensor2, channel2)
-        x_label_hist_sat1 = 'REF  {}'.format(sat_sensor1)
-        x_label_hist_sat2 = 'REF  {}'.format(sat_sensor2)
+        x_label_hist_sat1 = '{} {}'.format(channel2, sat_sensor1)
+        x_label_hist_sat2 = '{} {}'.format(channel2, sat_sensor2)
         y_label_hist = 'Count'
         bins_count = 200
         picture_path = yc.path_opath
-        picture_name_sat1 = 'Histogram_REF_{}_{}.png'.format(sat_sensor1, channel1)
-        picture_name_sat2 = 'Histogram_REF_{}_{}.png'.format(sat_sensor2, channel2)
+        picture_name_sat1 = 'Histogram_{}_{}.png'.format(sat_sensor1, channel1)
+        picture_name_sat2 = 'Histogram_{}_{}.png'.format(sat_sensor2, channel2)
 
-        annotate_hist_sat1 = {'left_top': ['REF@Mean={:.4f}'.format(mean_ref_s1),
-                                           'REF@Std={:.4f}'.format(std_ref_s1),
-                                           'REF@Median={:.4f}'.format(median_ref_s1),
-                                           'REF@RMS={:.4f}'.format(rms_ref_s1),
-                                           'REF@Count={:4d}'.format(amount_ref_s1),
+        annotate_hist_sat1 = {'left_top': ['{}@Mean={:.4f}'.format(channel1, mean_ref_s1),
+                                           '{}@Std={:.4f}'.format(channel1, std_ref_s1),
+                                           '{}@Median={:.4f}'.format(channel1, median_ref_s1),
+                                           '{}@RMS={:.4f}'.format(channel1, rms_ref_s1),
+                                           '{}@Count={:4d}'.format(channel1, amount_ref_s1),
                                            ]}
-        annotate_hist_sat2 = {'left_top': ['REF@Mean={:.4f}'.format(mean_ref_s2),
-                                           'REF@Std={:.4f}'.format(std_ref_s2),
-                                           'REF@Median={:.4f}'.format(median_ref_s2),
-                                           'REF@RMS={:.4f}'.format(rms_ref_s2),
-                                           'REF@Count={:4d}'.format(amount_ref_s2),
+        annotate_hist_sat2 = {'left_top': ['{}@Mean={:.4f}'.format(channel2, mean_ref_s2),
+                                           '{}@Std={:.4f}'.format(channel2, std_ref_s2),
+                                           '{}@Median={:.4f}'.format(channel2, median_ref_s2),
+                                           '{}@RMS={:.4f}'.format(channel2, rms_ref_s2),
+                                           '{}@Count={:4d}'.format(channel2, amount_ref_s2),
                                            ]}
         picture_file_sat1 = os.path.join(picture_path, picture_name_sat1)
         picture_file_sat2 = os.path.join(picture_path, picture_name_sat2)
@@ -164,17 +164,17 @@ def main(sat_sensor, in_file):
                        y_label=y_label_hist, bins_count=bins_count, out_file=picture_file_sat2,
                        ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
                        annotate=annotate_hist_sat2, )
-        # 绘制REF回归图
+        # 绘制回归图
         title_regression = '{}_{} {}_{} Diagonal Regression'.format(sat_sensor1, channel1,
                                                                     sat_sensor2,
                                                                     channel2)
-        x_label_regression = 'REF {}'.format(sat_sensor1)
-        y_label_regression = 'REF {}'.format(sat_sensor2)
-        annotate_regression = {'left_top': ['MERSI@Mean={:.4f}'.format(mean_ref_s1),
-                                            'MERSI@Std={:.4f}'.format(std_ref_s1),
-                                            'MERSI@Median={:.4f}'.format(median_ref_s1),
-                                            'MERSI@RMS={:.4f}'.format(rms_ref_s1),
-                                            'MERSI@Count={:4d}'.format(amount_ref_s1),
+        x_label_regression = '{} {}'.format(channel1, sat_sensor1)
+        y_label_regression = '{} {}'.format(channel2, sat_sensor2)
+        annotate_regression = {'left_top': ['MERSI@Mean={:.4f}'.format(mean_ref_s2),
+                                            'MERSI@Std={:.4f}'.format(std_ref_s2),
+                                            'MERSI@Median={:.4f}'.format(median_ref_s2),
+                                            'MERSI@RMS={:.4f}'.format(rms_ref_s2),
+                                            'MERSI@Count={:4d}'.format(amount_ref_s2),
                                             ]}
         picture_path = yc.path_opath
         picture_name_regression = 'Diagonal_Regression_{}_{}_{}_{}.png'.format(
@@ -186,7 +186,7 @@ def main(sat_sensor, in_file):
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
                         annotate=annotate_regression, plot_zero=False)
 
-        ################################### REF 偏差 #######################################
+        ################################### 偏差 #######################################
         fix_point = sc.plot_scatter_fix_ref
         fix_dif, fix_pdif = get_dif_pdif(ref_s1, ref_s2, fix_point)
         annotate_absolute = {'left_top': ['Dif@{:.2f}={:.4f}'.format(fix_point, fix_dif),
@@ -236,7 +236,7 @@ def main(sat_sensor, in_file):
                                                          channel2)
         y_label_scatter_absolute = 'Dif  {}-{}'.format(sensor1, sensor2)
         y_label_scatter_relative = 'PDif  ({}/{})-1'.format(sensor1, sensor2)
-        x_label_scatter = 'REF {}'.format(sat_sensor1)
+        x_label_scatter = '{} {}'.format(channel2, sat_sensor2)
         annotate_scatter_absolute = annotate_absolute
         annotate_scatter_relative = annotate_relative
         picture_path = yc.path_opath
@@ -248,12 +248,12 @@ def main(sat_sensor, in_file):
                                                                           channel2)
         picture_file_absolute = os.path.join(picture_path, picture_name_absolute)
         picture_file_relative = os.path.join(picture_path, picture_name_relative)
-        plot_regression(data_x=ref_s1, data_y=absolute_bias, out_file=picture_file_absolute,
+        plot_regression(data_x=ref_s2, data_y=absolute_bias, out_file=picture_file_absolute,
                         title=title_scatter, x_label=x_label_scatter,
                         y_label=y_label_scatter_absolute,
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
                         annotate=annotate_scatter_absolute, plot_slope=False, plot_zero=False)
-        plot_regression(data_x=ref_s1, data_y=relative_bias, out_file=picture_file_relative,
+        plot_regression(data_x=ref_s2, data_y=relative_bias, out_file=picture_file_relative,
                         title=title_scatter, x_label=x_label_scatter,
                         y_label=y_label_scatter_relative,
                         ymd_start=yc.info_ymd_s, ymd_end=yc.info_ymd_e,
